@@ -32,11 +32,23 @@ export function SharedMessagePageClient({ message }: SharedMessagePageClientProp
       <div className="container mx-auto p-4 max-w-7xl">
         <BrandHeader
           title={message.emailAddress || message.to_address || message.subject}
-          subtitle={message.emailExpiresAt && new Date(message.emailExpiresAt).getFullYear() === 9999
-            ? tShared("permanent")
-            : message.emailExpiresAt
-              ? `${tShared("expiresAt")}: ${new Date(message.emailExpiresAt).toLocaleString()}`
-              : tShared("sharedMessage")}
+          subtitle={(() => {
+            const expiresAt = message.expiresAt || message.emailExpiresAt
+
+            if (!expiresAt) {
+              return tShared("sharedMessage")
+            }
+
+            const expiresDate = new Date(expiresAt)
+
+            if (isNaN(expiresDate.getTime())) {
+              return tShared("sharedMessage")
+            }
+
+            return expiresDate.getFullYear() === 9999
+              ? tShared("permanent")
+              : `${tShared("expiresAt")}: ${expiresDate.toLocaleString()}`
+          })()}
           ctaText={tShared("createOwnEmail")}
         />
 

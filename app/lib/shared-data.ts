@@ -7,6 +7,7 @@ export interface SharedEmail {
   address: string
   createdAt: Date
   expiresAt: Date
+  shareExpiresAt?: Date
 }
 
 export interface SharedMessage {
@@ -52,7 +53,8 @@ export async function getSharedEmail(token: string): Promise<SharedEmail | null>
       id: share.email.id,
       address: share.email.address,
       createdAt: share.email.createdAt,
-      expiresAt: share.email.expiresAt
+      expiresAt: share.email.expiresAt,
+      shareExpiresAt: share.expiresAt ?? undefined
     }
   } catch (error) {
     console.error("Failed to fetch shared email:", error)

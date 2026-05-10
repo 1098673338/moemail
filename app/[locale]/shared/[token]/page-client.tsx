@@ -13,6 +13,7 @@ interface Email {
   address: string
   createdAt: Date
   expiresAt: Date
+  shareExpiresAt?: Date
 }
 
 interface Message {
@@ -179,7 +180,7 @@ export function SharedEmailPageClient({
           title={email.address}
           subtitle={(() => {
             try {
-              const expiresDate = new Date(email.expiresAt)
+              const expiresDate = new Date(email.shareExpiresAt || email.expiresAt)
               if (isNaN(expiresDate.getTime())) return tShared("sharedMailbox")
               return expiresDate.getFullYear() === 9999
                 ? tShared("permanent")
