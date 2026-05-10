@@ -4,7 +4,6 @@ import { useState, useEffect, useRef } from "react"
 import { Loader2 } from "lucide-react"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Label } from "@/components/ui/label"
-import { useTheme } from "next-themes"
 
 interface MessageDetail {
   id: string
@@ -42,7 +41,6 @@ export function SharedMessageDetail({
 }: SharedMessageDetailProps) {
   const [viewMode, setViewMode] = useState<ViewMode>("html")
   const iframeRef = useRef<HTMLIFrameElement>(null)
-  const { theme } = useTheme()
 
   // 如果没有HTML内容，默认显示文本
   useEffect(() => {
@@ -73,8 +71,8 @@ export function SharedMessageDetail({
                   padding: 0;
                   min-height: 100%;
                   font-family: system-ui, -apple-system, sans-serif;
-                  color: ${theme === "dark" ? "#fff" : "#000"};
-                  background: ${theme === "dark" ? "#1a1a1a" : "#fff"};
+                  color: #000;
+                  background: #fff;
                 }
                 body {
                   padding: 20px;
@@ -129,7 +127,7 @@ export function SharedMessageDetail({
 
   useEffect(() => {
     updateIframeContent()
-  }, [message?.html, viewMode, theme])
+  }, [message?.html, viewMode])
 
   if (loading) {
     return (
@@ -150,7 +148,7 @@ export function SharedMessageDetail({
 
   return (
     <div className="h-full flex flex-col">
-      <div className="p-4 space-y-2 border-b border-gray-200 dark:border-gray-800">
+      <div className="p-4 space-y-2 border-b border-gray-200">
         <div className="flex items-start justify-between gap-2">
           <h3 className="text-base font-bold flex-1">{message.subject}</h3>
         </div>
@@ -175,7 +173,7 @@ export function SharedMessageDetail({
       </div>
 
       {message.html && message.content && (
-        <div className="border-b border-gray-200 p-2 dark:border-gray-800">
+        <div className="border-b border-gray-200 p-2">
           <RadioGroup
             value={viewMode}
             onValueChange={(value) => setViewMode(value as ViewMode)}

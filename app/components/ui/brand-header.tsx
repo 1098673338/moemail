@@ -101,10 +101,10 @@ export function BrandHeader({
       )}
 
       <div className="space-y-1">
-        <h1 className="mx-auto h-7 max-w-full truncate px-2 text-xl font-bold leading-7 text-gray-900 dark:text-white">
+        <h1 className="mx-auto h-7 max-w-full truncate px-2 text-xl font-bold leading-7 text-gray-900">
           {displayTitle}
         </h1>
-        <p className="mx-auto h-5 max-w-full truncate px-2 text-sm text-gray-400 tabular-nums leading-5 dark:text-gray-500">
+        <p className="mx-auto h-5 max-w-full truncate px-2 text-sm text-gray-400 tabular-nums leading-5">
           {displaySubtitle}
         </p>
       </div>

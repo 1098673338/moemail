@@ -20,7 +20,7 @@ export function SharedErrorPage({
   const resolvedDescription = tShared(descriptionKey)
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex flex-col justify-center items-center">
+    <div className="min-h-screen bg-gray-50 flex flex-col justify-center items-center">
       <div className="container mx-auto p-4 max-w-4xl">
         <div className="text-center">
           <Card className="max-w-md mx-auto p-8 text-center space-y-4">

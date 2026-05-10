@@ -165,7 +165,7 @@ export function EmailList({ onEmailSelect, selectedEmailId }: EmailListProps) {
   return (
     <>
       <div className="flex flex-col h-full">
-        <div className="p-2 flex justify-between items-center border-b border-gray-200 dark:border-gray-800">
+        <div className="p-2 flex justify-between items-center border-b border-gray-200">
           <div className="flex items-center gap-2">
             <Button
               variant="ghost"
@@ -197,8 +197,8 @@ export function EmailList({ onEmailSelect, selectedEmailId }: EmailListProps) {
                   key={email.id}
                   className={cn("flex items-center gap-2 py-2 px-3 rounded cursor-pointer text-sm group",
                     selectedEmailId === email.id
-                      ? "bg-gray-200 dark:bg-gray-700"
-                      : "hover:bg-gray-100 dark:hover:bg-gray-800"
+                      ? "bg-gray-200"
+                      : "hover:bg-gray-100"
                   )}
                   onClick={() => onEmailSelect(email)}
                 >
@@ -216,7 +216,7 @@ export function EmailList({ onEmailSelect, selectedEmailId }: EmailListProps) {
                     <Button
                       variant="ghost"
                       size="icon"
-                      className="h-8 w-8 hover:bg-black/10 dark:hover:bg-white/10"
+                      className="h-8 w-8 hover:bg-black/10"
                       aria-label={tCommon("copy")}
                       onClick={() => copyToClipboard(email.address)}
                     >
@@ -226,7 +226,7 @@ export function EmailList({ onEmailSelect, selectedEmailId }: EmailListProps) {
                     <Button
                       variant="ghost"
                       size="icon"
-                      className="h-8 w-8 hover:bg-black/10 dark:hover:bg-white/10"
+                      className="h-8 w-8 hover:bg-black/10"
                       onClick={(e) => {
                         e.stopPropagation()
                         setEmailToDelete(email)

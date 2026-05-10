@@ -105,18 +105,18 @@ export function WebsiteConfigPanel() {
   }
 
   return (
-    <div className="bg-background rounded-lg border border-gray-200 p-6 dark:border-gray-800">
+    <div className="bg-background rounded-lg border border-gray-200 p-6">
       <div className="flex items-center gap-2 mb-6">
         <Settings className="w-5 h-5 text-primary" />
         <h2 className="text-lg font-semibold">{t("title")}</h2>
       </div>
 
       <div className="space-y-4">
-        <div className="flex items-center gap-4">
-          <span className="text-sm">{t("defaultRole")}:</span>
+        <div className="grid grid-cols-[180px_minmax(0,1fr)] items-center gap-4">
+          <span className="text-left text-sm">{t("defaultRole")}:</span>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" className="h-9 px-3">
+              <Button variant="ghost" className="h-9 justify-self-start px-3">
                 {defaultRoleLabel}
               </Button>
             </DropdownMenuTrigger>
@@ -134,46 +134,40 @@ export function WebsiteConfigPanel() {
           </DropdownMenu>
         </div>
 
-        <div className="flex items-center gap-4">
-          <span className="text-sm">{t("emailDomains")}:</span>
-          <div className="flex-1">
-            <Input 
-              value={emailDomains}
-              onChange={(e) => setEmailDomains(e.target.value)}
-              placeholder={t("emailDomainsPlaceholder")}
-            />
-          </div>
+        <div className="grid grid-cols-[180px_minmax(0,1fr)] items-center gap-4">
+          <span className="text-left text-sm">{t("emailDomains")}:</span>
+          <Input 
+            value={emailDomains}
+            onChange={(e) => setEmailDomains(e.target.value)}
+            placeholder={t("emailDomainsPlaceholder")}
+          />
         </div>
 
-        <div className="flex items-center gap-4">
-          <span className="text-sm">{t("adminContact")}:</span>
-          <div className="flex-1">
-            <Input 
-              value={adminContact}
-              onChange={(e) => setAdminContact(e.target.value)}
-              placeholder={t("adminContactPlaceholder")}
-            />
-          </div>
+        <div className="grid grid-cols-[180px_minmax(0,1fr)] items-center gap-4">
+          <span className="text-left text-sm">{t("adminContact")}:</span>
+          <Input 
+            value={adminContact}
+            onChange={(e) => setAdminContact(e.target.value)}
+            placeholder={t("adminContactPlaceholder")}
+          />
         </div>
 
-        <div className="flex items-center gap-4">
-          <span className="text-sm">{t("maxEmails")}:</span>
-          <div className="flex-1">
-            <Input 
-              type="number"
-              min="1"
-              max="100"
-              value={maxEmails}
-              onChange={(e) => setMaxEmails(e.target.value)}
-              placeholder={`${EMAIL_CONFIG.MAX_ACTIVE_EMAILS}`}
-            />
-          </div>
+        <div className="grid grid-cols-[180px_minmax(0,1fr)] items-center gap-4">
+          <span className="text-left text-sm">{t("maxEmails")}:</span>
+          <Input 
+            type="number"
+            min="1"
+            max="100"
+            value={maxEmails}
+            onChange={(e) => setMaxEmails(e.target.value)}
+            placeholder={`${EMAIL_CONFIG.MAX_ACTIVE_EMAILS}`}
+          />
         </div>
 
-        <div className="space-y-4 rounded-lg border border-dashed border-gray-200 p-4 dark:border-gray-800">
-          <div className="flex items-center justify-between">
+        <div className="space-y-4 rounded-lg border border-dashed border-gray-200 p-4">
+          <div className="grid grid-cols-[180px_minmax(0,1fr)] items-start gap-4">
             <div className="space-y-1">
-              <Label htmlFor="turnstile-enabled" className="text-sm font-medium">
+              <Label htmlFor="turnstile-enabled" className="text-left text-sm font-medium">
                 {t("turnstile.enable")}
               </Label>
               <p className="text-xs text-muted-foreground">
@@ -182,6 +176,7 @@ export function WebsiteConfigPanel() {
             </div>
             <Switch
               id="turnstile-enabled"
+              className="justify-self-start"
               checked={turnstileEnabled}
               onCheckedChange={setTurnstileEnabled}
             />
@@ -189,8 +184,8 @@ export function WebsiteConfigPanel() {
 
           {turnstileEnabled && (
             <>
-              <div className="space-y-2">
-                <Label htmlFor="turnstile-site-key" className="text-sm font-medium">
+              <div className="grid grid-cols-[180px_minmax(0,1fr)] items-center gap-4">
+                <Label htmlFor="turnstile-site-key" className="text-left text-sm font-medium">
                   {t("turnstile.siteKey")}
                 </Label>
                 <Input
@@ -201,31 +196,33 @@ export function WebsiteConfigPanel() {
                 />
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="turnstile-secret-key" className="text-sm font-medium">
+              <div className="grid grid-cols-[180px_minmax(0,1fr)] items-start gap-4">
+                <Label htmlFor="turnstile-secret-key" className="pt-2 text-left text-sm font-medium">
                   {t("turnstile.secretKey")}
                 </Label>
-                <div className="relative">
-                  <Input
-                    id="turnstile-secret-key"
-                    type={showSecretKey ? "text" : "password"}
-                    value={turnstileSecretKey}
-                    onChange={(e) => setTurnstileSecretKey(e.target.value)}
-                    placeholder={t("turnstile.secretKeyPlaceholder")}
-                  />
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
-                    onClick={() => setShowSecretKey((prev) => !prev)}
-                  >
-                    {showSecretKey ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                  </Button>
+                <div className="space-y-2">
+                  <div className="relative">
+                    <Input
+                      id="turnstile-secret-key"
+                      type={showSecretKey ? "text" : "password"}
+                      value={turnstileSecretKey}
+                      onChange={(e) => setTurnstileSecretKey(e.target.value)}
+                      placeholder={t("turnstile.secretKeyPlaceholder")}
+                    />
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
+                      onClick={() => setShowSecretKey((prev) => !prev)}
+                    >
+                      {showSecretKey ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    </Button>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    {t("turnstile.secretKeyDescription")}
+                  </p>
                 </div>
-                <p className="text-xs text-muted-foreground">
-                  {t("turnstile.secretKeyDescription")}
-                </p>
               </div>
             </>
           )}

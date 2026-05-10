@@ -61,7 +61,7 @@ export function SharedMessageList({
 
   return (
     <div className="h-full flex flex-col">
-      <div className="p-2 flex justify-between items-center border-b border-gray-200 dark:border-gray-800">
+      <div className="p-2 flex justify-between items-center border-b border-gray-200">
         <Button
           variant="ghost"
           size="icon"
@@ -91,8 +91,8 @@ export function SharedMessageList({
                 className={cn(
                   "py-2 px-3 rounded cursor-pointer",
                   selectedMessageId === message.id
-                    ? "bg-gray-200 dark:bg-gray-700"
-                    : "hover:bg-gray-100 dark:hover:bg-gray-800"
+                    ? "bg-gray-200"
+                    : "hover:bg-gray-100"
                 )}
               >
                 <div className="flex items-start gap-3">

@@ -191,7 +191,7 @@ export function ShareMessageDialog({ emailId, messageId, messageSubject, trigger
 
           <div className="min-h-0 -mx-1 space-y-4 overflow-y-auto px-1 py-1">
             {/* Message info */}
-            <div className="p-3 bg-gray-50 dark:bg-gray-800 rounded-lg min-w-0">
+            <div className="p-3 bg-gray-50 rounded-lg min-w-0">
               <p className="text-sm font-medium truncate">{messageSubject}</p>
             </div>
 
@@ -268,7 +268,7 @@ export function ShareMessageDialog({ emailId, messageId, messageSubject, trigger
                               "min-w-0 flex-1 text-xs p-1 rounded font-mono transition-colors break-all",
                               isExpired
                                 ? "bg-destructive/10 text-destructive/70 cursor-not-allowed pointer-events-none"
-                                : "bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:text-primary dark:hover:text-primary cursor-pointer"
+                                : "bg-gray-100 text-gray-700 hover:text-primary cursor-pointer"
                             )}
                           >
                             {getShareUrl(share.token)}

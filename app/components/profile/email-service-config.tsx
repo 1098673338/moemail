@@ -87,7 +87,7 @@ export function EmailServiceConfig() {
   }
 
   return (
-    <div className="bg-background rounded-lg border border-gray-200 p-6 dark:border-gray-800">
+    <div className="bg-background rounded-lg border border-gray-200 p-6">
       <div className="flex items-center gap-2 mb-6">
         <Zap className="w-5 h-5 text-primary" />
         <h2 className="text-lg font-semibold">{t("title")}</h2>
@@ -147,12 +147,12 @@ export function EmailServiceConfig() {
                 {t("roleLimits")}
               </Label>
               <div className="space-y-4">
-                <div className="p-4 bg-gray-50 border border-gray-200 rounded-lg text-sm dark:bg-gray-900/60 dark:border-gray-800">
-                  <p className="font-semibold text-gray-900 mb-3 flex items-center gap-2 dark:text-gray-100">
+                <div className="p-4 bg-gray-50 border border-gray-200 rounded-lg text-sm">
+                  <p className="font-semibold text-gray-900 mb-3 flex items-center gap-2">
                     <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
                     {t("fixedRoleLimits")}
                   </p>
-                  <div className="space-y-2 text-gray-700 dark:text-gray-300">
+                  <div className="space-y-2 text-gray-700">
                     <div className="flex items-center gap-2">
                       <div className="w-1.5 h-1.5 bg-green-500 rounded-full"></div>
                       <span><strong>{tCard("roles.EMPEROR")}</strong> - {t("emperorLimit")}</span>
@@ -166,7 +166,7 @@ export function EmailServiceConfig() {
                 <div className="space-y-4">
                   <div className="flex items-center gap-2">
                     <div className="w-2 h-2 bg-orange-500 rounded-full"></div>
-                    <p className="text-sm font-medium text-gray-900 dark:text-gray-100">{t("configRoleLabel")}</p>
+                    <p className="text-sm font-medium text-gray-900">{t("configRoleLabel")}</p>
                   </div>
                   {[
                     { value: "duke", label: tCard("roles.DUKE"), key: "duke" as const },
@@ -180,8 +180,8 @@ export function EmailServiceConfig() {
                         key={role.value} 
                         className={`group relative p-4 border rounded-xl transition-all duration-200 ${
                           isEnabled
-                            ? 'border-gray-200 bg-primary/5 shadow-sm dark:border-gray-800' 
-                            : 'border-gray-200 hover:border-gray-200 hover:shadow-sm dark:border-gray-800 dark:hover:border-gray-800'
+                            ? 'border-gray-200 bg-gray-50 shadow-sm' 
+                            : 'border-gray-200 hover:border-gray-200 hover:shadow-sm'
                         }`}
                       >
                         <div className="flex items-center justify-between">

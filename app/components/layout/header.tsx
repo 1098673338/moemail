@@ -1,6 +1,5 @@
 import { SignButton } from "@/components/auth/sign-button"
 import { FontSwitcher } from "@/components/theme/font-switcher"
-import { ThemeToggle } from "@/components/theme/theme-toggle"
 import { LanguageSwitcher } from "@/components/layout/language-switcher"
 import { Logo } from "@/components/ui/logo"
 
@@ -13,7 +12,6 @@ export function Header() {
           <div className="flex items-center gap-y-4 gap-x-4">
             <LanguageSwitcher />
             <FontSwitcher />
-            <ThemeToggle />
             <SignButton />
           </div>
         </div>

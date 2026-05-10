@@ -209,7 +209,7 @@ export function MessageList({ email, messageType, onMessageSelect, selectedMessa
   return (
   <>
     <div className="h-full flex flex-col">
-      <div className="p-2 flex justify-between items-center border-b border-gray-200 dark:border-gray-800">
+      <div className="p-2 flex justify-between items-center border-b border-gray-200">
         <Button
           variant="ghost"
           size="icon"
@@ -236,8 +236,8 @@ export function MessageList({ email, messageType, onMessageSelect, selectedMessa
                 className={cn(
                   "py-2 px-3 rounded cursor-pointer text-sm group",
                   selectedMessageId === message.id
-                    ? "bg-gray-200 dark:bg-gray-700"
-                    : "hover:bg-gray-100 dark:hover:bg-gray-800"
+                    ? "bg-gray-200"
+                    : "hover:bg-gray-100"
                 )}
               >
                 <div className="flex items-start gap-3">
@@ -260,7 +260,7 @@ export function MessageList({ email, messageType, onMessageSelect, selectedMessa
                         <Button
                           variant="ghost"
                           size="icon"
-                          className="h-8 w-8 hover:bg-black/10 dark:hover:bg-white/10"
+                          className="h-8 w-8 hover:bg-black/10"
                         >
                           <Share2 className="h-4 w-4" />
                         </Button>
@@ -269,7 +269,7 @@ export function MessageList({ email, messageType, onMessageSelect, selectedMessa
                     <Button
                       variant="ghost"
                       size="icon"
-                      className="h-8 w-8 hover:bg-black/10 dark:hover:bg-white/10"
+                      className="h-8 w-8 hover:bg-black/10"
                       onClick={(e) => {
                         e.stopPropagation()
                         setMessageToDelete(message)

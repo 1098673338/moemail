@@ -72,7 +72,7 @@ export function ProfileCard({ user }: ProfileCardProps) {
 
   return (
     <div className="max-w-2xl mx-auto space-y-6">
-      <div className="bg-background rounded-lg border border-gray-200 p-6 dark:border-gray-800">
+      <div className="bg-background rounded-lg border border-gray-200 p-6">
         <div className="flex items-center gap-6">
           <div className="relative">
             {user.image && (
@@ -136,7 +136,7 @@ export function ProfileCard({ user }: ProfileCardProps) {
       </div>
 
       {canManageWebhook && (
-        <div className="bg-background rounded-lg border border-gray-200 p-6 dark:border-gray-800">
+        <div className="bg-background rounded-lg border border-gray-200 p-6">
           <div className="flex items-center gap-2 mb-6">
             <Settings className="w-5 h-5 text-primary" />
             <h2 className="text-lg font-semibold">{tWebhook("title")}</h2>
@@ -161,7 +161,7 @@ export function ProfileCard({ user }: ProfileCardProps) {
         <Button
           variant="outline"
           onClick={() => signOut({ callbackUrl: `/${locale}` })}
-          className="flex-1"
+          className="flex-shrink-0"
         >
           {tAuth("logout")}
         </Button>

@@ -3,7 +3,6 @@ import { notFound } from "next/navigation"
 import { getTranslations } from "next-intl/server"
 import { i18n, type Locale } from "@/i18n/config"
 import type { Metadata, Viewport } from "next"
-import { ThemeProvider } from "@/components/theme/theme-provider"
 import { Toaster } from "@/components/ui/toaster"
 import { cn } from "@/lib/utils"
 import { zpix } from "../fonts"
@@ -141,20 +140,12 @@ export default async function LocaleLayout({
           "transition-colors duration-300"
         )}
       >
-        <ThemeProvider
-          attribute="class"
-          defaultTheme="system"
-          enableSystem
-          disableTransitionOnChange={false}
-          storageKey="temp-mail-theme"
-        >
-          <Providers>
-            <NextIntlClientProvider locale={locale} messages={messages}>
-              {children}
-            </NextIntlClientProvider>
-          </Providers>
-          <Toaster />
-        </ThemeProvider>
+        <Providers>
+          <NextIntlClientProvider locale={locale} messages={messages}>
+            {children}
+          </NextIntlClientProvider>
+        </Providers>
+        <Toaster />
       </body>
     </html>
   )

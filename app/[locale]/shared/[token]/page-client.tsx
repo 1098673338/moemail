@@ -57,7 +57,7 @@ export function SharedEmailPageClient({
   const [refreshing, setRefreshing] = useState(false)
   const pollTimeoutRef = useRef<Timer | null>(null)
   const messagesRef = useRef<Message[]>(initialMessages)
-  const columnClass = "border border-gray-200 bg-background rounded-lg overflow-hidden dark:border-gray-800"
+  const columnClass = "border border-gray-200 bg-background rounded-lg overflow-hidden"
 
   // 当 messages 改变时更新 ref
   useEffect(() => {
@@ -175,7 +175,7 @@ export function SharedEmailPageClient({
   }
 
   return (
-    <div className="h-screen bg-gray-50 dark:bg-gray-900">
+    <div className="h-screen bg-gray-50">
       <div className="mx-auto flex h-full w-full max-w-[1720px] flex-col px-5 pb-5 pt-4">
         <BrandHeader
           title={email.address}

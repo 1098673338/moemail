@@ -6,14 +6,14 @@ interface FeatureCardProps {
 
 export function FeatureCard({ icon, title, description }: FeatureCardProps) {
   return (
-    <div className="p-4 rounded border border-gray-200 hover:border-gray-200 transition-colors bg-white/5 backdrop-blur dark:border-gray-800 dark:hover:border-gray-800">
+    <div className="p-4 rounded-lg border border-gray-200 hover:border-gray-200 transition-colors bg-white/5 backdrop-blur">
       <div className="flex items-center gap-3">
         <div className="rounded-lg bg-primary/10 text-primary p-2">
           {icon}
         </div>
         <div className="text-left">
           <h3 className="font-bold">{title}</h3>
-          <p className="text-sm text-gray-600 dark:text-gray-400">{description}</p>
+          <p className="text-sm text-gray-600">{description}</p>
         </div>
       </div>
     </div>

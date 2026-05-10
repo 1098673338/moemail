@@ -31,7 +31,7 @@ export function MessageListContainer({ email, onMessageSelect, selectedMessageId
     <div className="h-full flex flex-col">
       {canSendEmails ? (
         <Tabs value={activeTab} onValueChange={handleTabChange} className="h-full flex flex-col">
-          <div className="p-2 border-b border-gray-200 dark:border-gray-800">
+          <div className="p-2 border-b border-gray-200">
             <SlidingTabsList>
               <SlidingTabsTrigger value="received">
                 <Inbox className="h-4 w-4" />

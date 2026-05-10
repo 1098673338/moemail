@@ -205,7 +205,7 @@ export function LoginForm({ turnstile }: LoginFormProps) {
   }
 
   return (
-    <Card className="w-[95%] max-w-lg border border-gray-200 dark:border-gray-800">
+    <Card className="w-[95%] max-w-lg border border-gray-200">
       <CardHeader className="space-y-2">
         <CardTitle className="text-2xl text-center bg-gradient-to-r from-primary to-purple-600 bg-clip-text text-transparent">
           {t("title")}

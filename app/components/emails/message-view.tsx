@@ -5,7 +5,6 @@ import { useTranslations } from "next-intl"
 import { Loader2, Share2 } from "lucide-react"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Label } from "@/components/ui/label"
-import { useTheme } from "next-themes"
 import { useToast } from "@/components/ui/use-toast"
 import { ShareMessageDialog } from "./share-message-dialog"
 
@@ -37,7 +36,6 @@ export function MessageView({ emailId, messageId, messageType = 'received' }: Me
   const [error, setError] = useState<string | null>(null)
   const [viewMode, setViewMode] = useState<ViewMode>("html")
   const iframeRef = useRef<HTMLIFrameElement>(null)
-  const { theme } = useTheme()
   const { toast } = useToast()
 
   useEffect(() => {
@@ -102,8 +100,8 @@ export function MessageView({ emailId, messageId, messageType = 'received' }: Me
                   padding: 0;
                   min-height: 100%;
                   font-family: system-ui, -apple-system, sans-serif;
-                  color: ${theme === 'dark' ? '#fff' : '#000'};
-                  background: ${theme === 'dark' ? '#1a1a1a' : '#fff'};
+                  color: #000;
+                  background: #fff;
                 }
                 body {
                   padding: 20px;
@@ -159,10 +157,9 @@ export function MessageView({ emailId, messageId, messageType = 'received' }: Me
     }
   }
 
-  // 监听主题变化和内容变化
   useEffect(() => {
     updateIframeContent()
-  }, [message?.html, viewMode, theme])
+  }, [message?.html, viewMode])
 
   if (loading) {
     return (
@@ -191,7 +188,7 @@ export function MessageView({ emailId, messageId, messageType = 'received' }: Me
 
   return (
     <div className="h-full flex flex-col">
-      <div className="p-4 space-y-2 border-b border-gray-200 dark:border-gray-800">
+      <div className="p-4 space-y-2 border-b border-gray-200">
         <div className="flex items-start justify-between gap-2">
           <h3 className="text-base font-bold flex-1">{message.subject}</h3>
           <ShareMessageDialog 
@@ -217,7 +214,7 @@ export function MessageView({ emailId, messageId, messageType = 'received' }: Me
       </div>
       
       {message.html && message.content && (
-        <div className="border-b border-gray-200 p-2 dark:border-gray-800">
+        <div className="border-b border-gray-200 p-2">
           <RadioGroup
             value={viewMode}
             onValueChange={(value) => setViewMode(value as ViewMode)}

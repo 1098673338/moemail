@@ -28,7 +28,7 @@ export function SharedMessagePageClient({ message }: SharedMessagePageClientProp
   const t = useTranslations("emails")
 
   return (
-    <div className="h-screen bg-gray-50 dark:bg-gray-900">
+    <div className="h-screen bg-gray-50">
       <div className="mx-auto flex h-full w-full max-w-[1720px] flex-col px-5 pb-5 pt-4">
         <BrandHeader
           title={message.emailAddress || message.to_address || message.subject}
@@ -54,7 +54,7 @@ export function SharedMessagePageClient({ message }: SharedMessagePageClientProp
 
         <div className="mt-4 grid min-h-0 flex-1 gap-5" style={{ gridTemplateColumns: "repeat(24, minmax(0, 1fr))" }}>
           <div
-            className="h-full border border-gray-200 bg-background rounded-lg overflow-hidden dark:border-gray-800"
+            className="h-full border border-gray-200 bg-background rounded-lg overflow-hidden"
             style={{ gridColumn: "span 24 / span 24" }}
           >
             <SharedMessageDetail

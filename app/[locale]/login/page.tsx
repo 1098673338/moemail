@@ -22,7 +22,7 @@ export default async function LoginPage({
   const turnstile = await getTurnstileConfig()
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800">
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-gray-50 to-gray-100">
       <LoginForm turnstile={{ enabled: turnstile.enabled, siteKey: turnstile.siteKey }} />
     </div>
   )

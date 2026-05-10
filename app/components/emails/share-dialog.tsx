@@ -165,7 +165,7 @@ export function ShareDialog({ emailId }: ShareDialogProps) {
     <>
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogTrigger asChild>
-          <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-black/10 dark:hover:bg-white/10">
+          <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-black/10">
             <Share2 className="h-4 w-4" />
           </Button>
         </DialogTrigger>
@@ -259,7 +259,7 @@ export function ShareDialog({ emailId }: ShareDialogProps) {
                                 "min-w-0 flex-1 text-xs p-1 rounded font-mono transition-colors break-all",
                                 isExpired
                                   ? "bg-destructive/10 text-destructive/70 cursor-not-allowed pointer-events-none"
-                                  : "bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:text-primary dark:hover:text-primary cursor-pointer"
+                                  : "bg-gray-100 text-gray-700 hover:text-primary cursor-pointer"
                               )}
                             >
                               {getShareUrl(share.token)}
