@@ -258,7 +258,7 @@ export function MessageList({ email, messageType, onMessageSelect, selectedMessa
                         <Button
                           variant="ghost"
                           size="icon"
-                          className="h-8 w-8"
+                          className="h-8 w-8 hover:bg-black/10 dark:hover:bg-white/10"
                         >
                           <Share2 className="h-4 w-4" />
                         </Button>
@@ -267,7 +267,7 @@ export function MessageList({ email, messageType, onMessageSelect, selectedMessa
                     <Button
                       variant="ghost"
                       size="icon"
-                      className="h-8 w-8"
+                      className="h-8 w-8 hover:bg-black/10 dark:hover:bg-white/10"
                       onClick={(e) => {
                         e.stopPropagation()
                         setMessageToDelete(message)
