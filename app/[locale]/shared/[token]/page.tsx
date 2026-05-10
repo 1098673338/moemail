@@ -18,8 +18,6 @@ export default async function SharedEmailPage({ params }: PageProps) {
   if (!email) {
     return (
       <SharedErrorPage
-        titleKey="emailNotFound"
-        subtitleKey="linkExpired"
         errorKey="linkInvalid"
         descriptionKey="linkInvalidDescription"
       />

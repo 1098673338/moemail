@@ -18,8 +18,6 @@ export default async function SharedMessagePage({ params }: PageProps) {
   if (!message) {
     return (
       <SharedErrorPage
-        titleKey="messageNotFound"
-        subtitleKey="linkExpired"
         errorKey="linkInvalid"
         descriptionKey="linkInvalidDescription"
       />
