@@ -28,7 +28,7 @@ export function SharedMessagePageClient({ message }: SharedMessagePageClientProp
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
-      <div className="container mx-auto p-4 max-w-7xl">
+      <div className="mx-auto w-full max-w-[1600px] px-5 py-4">
         <BrandHeader
           title={message.emailAddress || message.to_address || message.subject}
           subtitle={(() => {
@@ -50,8 +50,11 @@ export function SharedMessagePageClient({ message }: SharedMessagePageClientProp
           })()}
         />
 
-        <div className="mt-6">
-          <div className="border-2 border-primary/20 bg-background rounded-lg overflow-hidden h-[calc(100vh-260px)] lg:h-[calc(100vh-280px)]">
+        <div className="mt-6 grid gap-4" style={{ gridTemplateColumns: "repeat(24, minmax(0, 1fr))" }}>
+          <div
+            className="border-2 border-primary/20 bg-background rounded-lg overflow-hidden h-[calc(100vh-260px)] lg:h-[calc(100vh-280px)]"
+            style={{ gridColumn: "span 24 / span 24" }}
+          >
             <SharedMessageDetail
               message={{
                 ...message,
