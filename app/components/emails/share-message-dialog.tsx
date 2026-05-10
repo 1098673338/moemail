@@ -174,7 +174,7 @@ export function ShareMessageDialog({ emailId, messageId, messageSubject, trigger
           )}
         </DialogTrigger>
         <DialogContent 
-          className="sm:max-w-[600px]"
+          className="w-[calc(100vw-2rem)] max-w-[calc(100vw-2rem)] sm:max-w-[600px] max-h-[calc(100vh-2rem)] overflow-hidden p-4 sm:p-6"
           onInteractOutside={(e) => e.preventDefault()}
           onEscapeKeyDown={(e) => {
             if (deleteTarget) {
@@ -189,18 +189,16 @@ export function ShareMessageDialog({ emailId, messageId, messageSubject, trigger
             </DialogDescription>
           </DialogHeader>
 
-          <div className="space-y-4">
-            {/* Message info */}
-            <div className="p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
+          <div className="min-h-0 space-y-4 overflow-y-auto pr-1">
+            <div className="p-3 bg-gray-50 dark:bg-gray-800 rounded-lg min-w-0">
               <p className="text-sm font-medium truncate">{messageSubject}</p>
             </div>
 
-            {/* Create new share link */}
             <div className="space-y-2">
               <Label>{t("expiryTime")}</Label>
-              <div className="flex gap-2">
+              <div className="flex flex-col gap-2 sm:flex-row">
                 <Select value={expiryTime} onValueChange={setExpiryTime}>
-                  <SelectTrigger className="flex-1">
+                  <SelectTrigger className="w-full sm:flex-1">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -211,16 +209,15 @@ export function ShareMessageDialog({ emailId, messageId, messageSubject, trigger
                     ))}
                   </SelectContent>
                 </Select>
-                <Button onClick={createShare} disabled={creating} className="min-w-[100px]">
+                <Button onClick={createShare} disabled={creating} className="w-full sm:w-auto sm:min-w-[100px]">
                   {creating ? t("creating") : t("createLink")}
                 </Button>
               </div>
             </div>
 
-            {/* Active share links */}
             <div className="space-y-2">
               <Label>{t("activeLinks")}</Label>
-              <div className="h-[270px] overflow-y-auto">
+              <div className="max-h-[270px] overflow-y-auto">
                 {loading ? (
                   <div className="text-sm text-gray-500 text-center py-8 flex flex-col items-center gap-2">
                     <div className="w-5 h-5 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
@@ -233,96 +230,100 @@ export function ShareMessageDialog({ emailId, messageId, messageSubject, trigger
                 ) : (
                   <div className="space-y-2">
                     {shares.map(share => {
-                    // 将expiresAt转换为时间戳进行比较
-                    const expiresAtTime = share.expiresAt 
-                      ? (typeof share.expiresAt === 'number' 
-                          ? share.expiresAt 
-                          : new Date(share.expiresAt).getTime())
-                      : null
-                    const isExpired = expiresAtTime !== null && expiresAtTime < Date.now()
-                    return (
-                      <div
-                        key={share.id}
-                        className={cn(
-                          "p-3 border rounded-lg space-y-2 transition-all",
-                          isExpired 
-                            ? "border-destructive/30 bg-destructive/5 opacity-75" 
-                            : "border-border"
-                        )}
-                      >
-                        <div className="flex items-center gap-2">
-                          <Link2 className={cn(
-                            "h-4 w-4 flex-shrink-0",
-                            isExpired ? "text-destructive/60" : "text-primary/60"
-                          )} />
-                          <a
-                            href={isExpired ? undefined : getShareUrl(share.token)}
-                            target={isExpired ? undefined : "_blank"}
-                            rel={isExpired ? undefined : "noopener noreferrer"}
-                            onClick={(e) => {
-                              if (isExpired) {
-                                e.preventDefault()
-                              }
-                            }}
-                            className={cn(
-                              "flex-1 text-xs p-1 rounded font-mono transition-colors break-all",
-                              isExpired
-                                ? "bg-destructive/10 text-destructive/70 cursor-not-allowed pointer-events-none"
-                                : "bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:text-primary dark:hover:text-primary cursor-pointer"
-                            )}
-                          >
-                            {getShareUrl(share.token)}
-                          </a>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8 flex-shrink-0"
-                            onClick={() => handleCopy(share.token)}
-                          >
-                            <Copy className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8 flex-shrink-0"
-                            onClick={() => setDeleteTarget(share)}
-                          >
-                            <Trash2 className="h-4 w-4 text-destructive" />
-                          </Button>
-                        </div>
-                        <div className="flex gap-y-4 gap-x-2 sm:gap-x-4 text-xs">
-                          <span className={cn(
-                            isExpired ? "text-destructive/70" : "text-gray-500"
-                          )}>
-                            {t("createdAt")}: {new Date(
-                              typeof share.createdAt === 'number' 
-                                ? share.createdAt 
-                                : share.createdAt
-                            ).toLocaleString()}
-                          </span>
-                          <span className={cn(
-                            isExpired ? "text-destructive/70" : "text-gray-500"
-                          )}>
-                            {t("expiresAt")}: {
-                              share.expiresAt
-                                ? new Date(
-                                    typeof share.expiresAt === 'number' 
-                                      ? share.expiresAt 
-                                      : share.expiresAt
-                                  ).toLocaleString()
-                                : t("permanent")
-                            }
-                          </span>
-                          {isExpired && (
-                            <span className="text-destructive font-medium flex items-center gap-1">
-                              <span className="w-2 h-2 bg-destructive rounded-full"></span>
-                              {t("expired")}
-                            </span>
+                      const expiresAtTime = share.expiresAt 
+                        ? (typeof share.expiresAt === "number" 
+                            ? share.expiresAt 
+                            : new Date(share.expiresAt).getTime())
+                        : null
+                      const isExpired = expiresAtTime !== null && expiresAtTime < Date.now()
+
+                      return (
+                        <div
+                          key={share.id}
+                          className={cn(
+                            "p-3 border rounded-lg space-y-2 transition-all",
+                            isExpired 
+                              ? "border-destructive/30 bg-destructive/5 opacity-75" 
+                              : "border-border"
                           )}
+                        >
+                          <div className="flex items-start gap-2 min-w-0">
+                            <Link2 className={cn(
+                              "h-4 w-4 flex-shrink-0 mt-1",
+                              isExpired ? "text-destructive/60" : "text-primary/60"
+                            )} />
+                            <a
+                              href={isExpired ? undefined : getShareUrl(share.token)}
+                              target={isExpired ? undefined : "_blank"}
+                              rel={isExpired ? undefined : "noopener noreferrer"}
+                              onClick={(e) => {
+                                if (isExpired) {
+                                  e.preventDefault()
+                                }
+                              }}
+                              className={cn(
+                                "min-w-0 flex-1 text-xs p-1 rounded font-mono transition-colors break-all",
+                                isExpired
+                                  ? "bg-destructive/10 text-destructive/70 cursor-not-allowed pointer-events-none"
+                                  : "bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:text-primary dark:hover:text-primary cursor-pointer"
+                              )}
+                            >
+                              {getShareUrl(share.token)}
+                            </a>
+                            <div className="flex flex-shrink-0 gap-1">
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8"
+                                onClick={() => handleCopy(share.token)}
+                              >
+                                <Copy className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8"
+                                onClick={() => setDeleteTarget(share)}
+                              >
+                                <Trash2 className="h-4 w-4 text-destructive" />
+                              </Button>
+                            </div>
+                          </div>
+                          <div className="flex flex-wrap gap-y-1 gap-x-2 sm:gap-x-4 text-xs">
+                            <span className={cn(
+                              "break-words",
+                              isExpired ? "text-destructive/70" : "text-gray-500"
+                            )}>
+                              {t("createdAt")}: {new Date(
+                                typeof share.createdAt === "number" 
+                                  ? share.createdAt 
+                                  : share.createdAt
+                              ).toLocaleString()}
+                            </span>
+                            <span className={cn(
+                              "break-words",
+                              isExpired ? "text-destructive/70" : "text-gray-500"
+                            )}>
+                              {t("expiresAt")}: {
+                                share.expiresAt
+                                  ? new Date(
+                                      typeof share.expiresAt === "number" 
+                                        ? share.expiresAt 
+                                        : share.expiresAt
+                                    ).toLocaleString()
+                                  : t("permanent")
+                              }
+                            </span>
+                            {isExpired && (
+                              <span className="text-destructive font-medium flex items-center gap-1">
+                                <span className="w-2 h-2 bg-destructive rounded-full"></span>
+                                {t("expired")}
+                              </span>
+                            )}
+                          </div>
                         </div>
-                      </div>
-                    )
-                  })}
+                      )
+                    })}
                   </div>
                 )}
               </div>
@@ -353,4 +354,3 @@ export function ShareMessageDialog({ emailId, messageId, messageSubject, trigger
     </>
   )
 }
-
