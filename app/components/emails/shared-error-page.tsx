@@ -11,7 +11,6 @@ interface SharedErrorPageProps {
   subtitleKey: string
   errorKey: string
   descriptionKey: string
-  ctaTextKey: string
 }
 
 export function SharedErrorPage({
@@ -19,7 +18,6 @@ export function SharedErrorPage({
   subtitleKey,
   errorKey,
   descriptionKey,
-  ctaTextKey,
 }: SharedErrorPageProps) {
   const tShared = useTranslations("emails.shared")
 
@@ -27,7 +25,6 @@ export function SharedErrorPage({
   const resolvedSubtitle = tShared(subtitleKey)
   const resolvedError = tShared(errorKey)
   const resolvedDescription = tShared(descriptionKey)
-  const resolvedCtaText = tShared(ctaTextKey)
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex flex-col justify-center items-center">
@@ -35,7 +32,6 @@ export function SharedErrorPage({
         <BrandHeader
           title={resolvedTitle}
           subtitle={resolvedSubtitle}
-          ctaText={resolvedCtaText}
         />
         <div className="text-center mt-6">
           <Card className="max-w-md mx-auto p-8 text-center space-y-4">

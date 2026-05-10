@@ -25,7 +25,6 @@ interface SharedMessagePageClientProps {
 
 export function SharedMessagePageClient({ message }: SharedMessagePageClientProps) {
   const t = useTranslations("emails")
-  const tShared = useTranslations("emails.shared")
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
@@ -36,20 +35,19 @@ export function SharedMessagePageClient({ message }: SharedMessagePageClientProp
             const expiresAt = message.expiresAt || message.emailExpiresAt
 
             if (!expiresAt) {
-              return tShared("sharedMessage")
+              return ""
             }
 
             const expiresDate = new Date(expiresAt)
 
             if (isNaN(expiresDate.getTime())) {
-              return tShared("sharedMessage")
+              return ""
             }
 
             return expiresDate.getFullYear() === 9999
-              ? tShared("permanent")
-              : `${tShared("expiresAt")}: ${expiresDate.toLocaleString()}`
+              ? "永久有效"
+              : `有效期至: ${expiresDate.toLocaleString()}`
           })()}
-          ctaText={tShared("createOwnEmail")}
         />
 
         <div className="mt-6">
@@ -64,7 +62,7 @@ export function SharedMessagePageClient({ message }: SharedMessagePageClientProp
               t={{
                 messageContent: t("layout.messageContent"),
                 selectMessage: t("layout.selectMessage"),
-                loading: tShared("loading"),
+                loading: t("messageView.loading"),
                 from: t("messageView.from"),
                 to: t("messageView.to"),
                 subject: t("messages.subject"),

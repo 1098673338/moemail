@@ -22,7 +22,6 @@ export default async function SharedEmailPage({ params }: PageProps) {
         subtitleKey="linkExpired"
         errorKey="linkInvalid"
         descriptionKey="linkInvalidDescription"
-        ctaTextKey="createOwnEmail"
       />
     )
   }

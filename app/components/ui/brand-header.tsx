@@ -20,7 +20,6 @@ export function BrandHeader({
 
   const displayTitle = title || t("title")
   const displaySubtitle = subtitle || t("subtitle")
-  const displayCtaText = ctaText || t("cta")
   return (
     <div className="text-center space-y-4 lg:pb-4">
       <div className="flex justify-center pt-2">
@@ -92,19 +91,21 @@ export function BrandHeader({
         </p>
       </div>
 
-      <div className="flex justify-center">
-        <Button
-          asChild
-          size="lg"
-          className="gap-2 bg-primary hover:bg-primary/90 text-white px-8 min-h-10 h-auto py-1"
-        >
-          <Link href="/" target="_blank" rel="noopener noreferrer">
-            <Mail className="w-5 h-5" />
-            {displayCtaText}
-            <ExternalLink className="w-4 h-4" />
-          </Link>
-        </Button>
-      </div>
+      {ctaText && (
+        <div className="flex justify-center">
+          <Button
+            asChild
+            size="lg"
+            className="gap-2 bg-primary hover:bg-primary/90 text-white px-8 min-h-10 h-auto py-1"
+          >
+            <Link href="/" target="_blank" rel="noopener noreferrer">
+              <Mail className="w-5 h-5" />
+              {ctaText}
+              <ExternalLink className="w-4 h-4" />
+            </Link>
+          </Button>
+        </div>
+      )}
     </div>
   )
 }

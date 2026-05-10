@@ -46,7 +46,6 @@ export function SharedEmailPageClient({
   token
 }: SharedEmailPageClientProps) {
   const t = useTranslations("emails")
-  const tShared = useTranslations("emails.shared")
 
   const [messages, setMessages] = useState<Message[]>(initialMessages)
   const [selectedMessage, setSelectedMessage] = useState<MessageDetail | null>(null)
@@ -57,6 +56,7 @@ export function SharedEmailPageClient({
   const [refreshing, setRefreshing] = useState(false)
   const pollTimeoutRef = useRef<Timer | null>(null)
   const messagesRef = useRef<Message[]>(initialMessages)
+  const columnClass = "border-2 border-primary/20 bg-background rounded-lg overflow-hidden"
 
   // 当 messages 改变时更新 ref
   useEffect(() => {
@@ -175,26 +175,25 @@ export function SharedEmailPageClient({
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
-      <div className="container mx-auto p-4 max-w-7xl">
+      <div className="w-full px-5 py-4">
         <BrandHeader
           title={email.address}
           subtitle={(() => {
             try {
               const expiresDate = new Date(email.shareExpiresAt || email.expiresAt)
-              if (isNaN(expiresDate.getTime())) return tShared("sharedMailbox")
+              if (isNaN(expiresDate.getTime())) return ""
               return expiresDate.getFullYear() === 9999
-                ? tShared("permanent")
-                : `${tShared("expiresAt")}: ${expiresDate.toLocaleDateString()} ${expiresDate.toLocaleTimeString()}`
+                ? "永久有效"
+                : `有效期至: ${expiresDate.toLocaleDateString()} ${expiresDate.toLocaleTimeString()}`
             } catch {
-              return tShared("sharedMailbox")
+              return ""
             }
           })()}
-          ctaText={tShared("createOwnEmail")}
         />
 
         {/* 桌面端双栏布局 */}
-        <div className="hidden lg:grid grid-cols-2 gap-4 h-[calc(100vh-280px)] mt-6">
-          <div className="border-2 border-primary/20 bg-background rounded-lg overflow-hidden">
+        <div className="hidden lg:grid gap-4 h-[calc(100vh-280px)] mt-6" style={{ gridTemplateColumns: "repeat(24, minmax(0, 1fr))" }}>
+          <div className={columnClass} style={{ gridColumn: "span 6 / span 6" }}>
             <SharedMessageList
               messages={messages.map(msg => ({
                 ...msg,
@@ -236,7 +235,7 @@ export function SharedEmailPageClient({
             />
           </div>
 
-          <div className="border-2 border-primary/20 bg-background rounded-lg overflow-hidden">
+          <div className={columnClass} style={{ gridColumn: "span 18 / span 18" }}>
             <SharedMessageDetail
               message={selectedMessage ? {
                 ...selectedMessage,
