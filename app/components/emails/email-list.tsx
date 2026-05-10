@@ -215,7 +215,7 @@ export function EmailList({ onEmailSelect, selectedEmailId }: EmailListProps) {
                     <Button
                       variant="ghost"
                       size="icon"
-                      className="h-8 w-8 hover:bg-primary/10 dark:hover:bg-primary/20"
+                      className="h-8 w-8"
                       aria-label={tCommon("copy")}
                       onClick={() => copyToClipboard(email.address)}
                     >
@@ -225,7 +225,7 @@ export function EmailList({ onEmailSelect, selectedEmailId }: EmailListProps) {
                     <Button
                       variant="ghost"
                       size="icon"
-                      className="h-8 w-8 hover:bg-primary/10 dark:hover:bg-primary/20"
+                      className="h-8 w-8"
                       onClick={(e) => {
                         e.stopPropagation()
                         setEmailToDelete(email)
