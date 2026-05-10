@@ -57,7 +57,7 @@ export function SharedEmailPageClient({
   const [refreshing, setRefreshing] = useState(false)
   const pollTimeoutRef = useRef<Timer | null>(null)
   const messagesRef = useRef<Message[]>(initialMessages)
-  const columnClass = "border border-gray-300 bg-background rounded-lg overflow-hidden dark:border-gray-700"
+  const columnClass = "border border-gray-200 bg-background rounded-lg overflow-hidden dark:border-gray-800"
 
   // 当 messages 改变时更新 ref
   useEffect(() => {

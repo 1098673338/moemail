@@ -11,12 +11,11 @@ import { Switch } from "@/components/ui/switch"
 import { Label } from "@/components/ui/label"
 import { Eye, EyeOff } from "lucide-react"
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 import { EMAIL_CONFIG } from "@/config"
 
 export function WebsiteConfigPanel() {
@@ -33,6 +32,13 @@ export function WebsiteConfigPanel() {
   const [loading, setLoading] = useState(false)
   const { toast } = useToast()
 
+  const defaultRoleOptions = [
+    { value: ROLES.DUKE, label: tCard("roles.DUKE") },
+    { value: ROLES.KNIGHT, label: tCard("roles.KNIGHT") },
+    { value: ROLES.CIVILIAN, label: tCard("roles.CIVILIAN") },
+  ]
+  const defaultRoleLabel =
+    defaultRoleOptions.find((role) => role.value === defaultRole)?.label ?? tCard("roles.CIVILIAN")
 
   useEffect(() => {
     fetchConfig()
@@ -99,7 +105,7 @@ export function WebsiteConfigPanel() {
   }
 
   return (
-    <div className="bg-background rounded-lg border border-gray-300 p-6 dark:border-gray-700">
+    <div className="bg-background rounded-lg border border-gray-200 p-6 dark:border-gray-800">
       <div className="flex items-center gap-2 mb-6">
         <Settings className="w-5 h-5 text-primary" />
         <h2 className="text-lg font-semibold">{t("title")}</h2>
@@ -108,16 +114,24 @@ export function WebsiteConfigPanel() {
       <div className="space-y-4">
         <div className="flex items-center gap-4">
           <span className="text-sm">{t("defaultRole")}:</span>
-          <Select value={defaultRole} onValueChange={setDefaultRole}>
-            <SelectTrigger className="w-32">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value={ROLES.DUKE}>{tCard("roles.DUKE")}</SelectItem>
-              <SelectItem value={ROLES.KNIGHT}>{tCard("roles.KNIGHT")}</SelectItem>
-              <SelectItem value={ROLES.CIVILIAN}>{tCard("roles.CIVILIAN")}</SelectItem>
-            </SelectContent>
-          </Select>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" className="h-9 px-3">
+                {defaultRoleLabel}
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="center">
+              {defaultRoleOptions.map((role) => (
+                <DropdownMenuItem
+                  key={role.value}
+                  onClick={() => setDefaultRole(role.value)}
+                  className={defaultRole === role.value ? "bg-accent" : ""}
+                >
+                  {role.label}
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
 
         <div className="flex items-center gap-4">
@@ -173,44 +187,48 @@ export function WebsiteConfigPanel() {
             />
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="turnstile-site-key" className="text-sm font-medium">
-              {t("turnstile.siteKey")}
-            </Label>
-            <Input
-              id="turnstile-site-key"
-              value={turnstileSiteKey}
-              onChange={(e) => setTurnstileSiteKey(e.target.value)}
-              placeholder={t("turnstile.siteKeyPlaceholder")}
-            />
-          </div>
+          {turnstileEnabled && (
+            <>
+              <div className="space-y-2">
+                <Label htmlFor="turnstile-site-key" className="text-sm font-medium">
+                  {t("turnstile.siteKey")}
+                </Label>
+                <Input
+                  id="turnstile-site-key"
+                  value={turnstileSiteKey}
+                  onChange={(e) => setTurnstileSiteKey(e.target.value)}
+                  placeholder={t("turnstile.siteKeyPlaceholder")}
+                />
+              </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="turnstile-secret-key" className="text-sm font-medium">
-              {t("turnstile.secretKey")}
-            </Label>
-            <div className="relative">
-              <Input
-                id="turnstile-secret-key"
-                type={showSecretKey ? "text" : "password"}
-                value={turnstileSecretKey}
-                onChange={(e) => setTurnstileSecretKey(e.target.value)}
-                placeholder={t("turnstile.secretKeyPlaceholder")}
-              />
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
-                onClick={() => setShowSecretKey((prev) => !prev)}
-              >
-                {showSecretKey ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-              </Button>
-            </div>
-            <p className="text-xs text-muted-foreground">
-              {t("turnstile.secretKeyDescription")}
-            </p>
-          </div>
+              <div className="space-y-2">
+                <Label htmlFor="turnstile-secret-key" className="text-sm font-medium">
+                  {t("turnstile.secretKey")}
+                </Label>
+                <div className="relative">
+                  <Input
+                    id="turnstile-secret-key"
+                    type={showSecretKey ? "text" : "password"}
+                    value={turnstileSecretKey}
+                    onChange={(e) => setTurnstileSecretKey(e.target.value)}
+                    placeholder={t("turnstile.secretKeyPlaceholder")}
+                  />
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
+                    onClick={() => setShowSecretKey((prev) => !prev)}
+                  >
+                    {showSecretKey ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </Button>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  {t("turnstile.secretKeyDescription")}
+                </p>
+              </div>
+            </>
+          )}
         </div>
 
         <Button 
