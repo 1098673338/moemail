@@ -80,7 +80,10 @@ export function ThreeColumnLayout() {
                 <div className="w-full flex justify-between items-center gap-2">
                   <div className="flex items-center gap-2">
                     <span className="truncate min-w-0">{selectedEmail.address}</span>
-                    <div className="shrink-0 cursor-pointer text-primary" onClick={copyEmailAddress}>
+                    <div
+                      className="shrink-0 h-8 w-8 cursor-pointer rounded-md flex items-center justify-center hover:bg-primary/10 dark:hover:bg-primary/20"
+                      onClick={copyEmailAddress}
+                    >
                       <Copy className="size-4" />
                     </div>
                   </div>
@@ -156,7 +159,10 @@ export function ThreeColumnLayout() {
                 <div className="flex-1 flex justify-between items-center gap-2 min-w-0">
                   <div className="flex items-center gap-2">
                     <span className="truncate min-w-0 flex-1 text-right">{selectedEmail.address}</span>
-                    <div className="shrink-0 cursor-pointer text-primary" onClick={copyEmailAddress}>
+                    <div
+                      className="shrink-0 h-8 w-8 cursor-pointer rounded-md flex items-center justify-center hover:bg-primary/10 dark:hover:bg-primary/20"
+                      onClick={copyEmailAddress}
+                    >
                       <Copy className="size-4" />
                     </div>
                   </div>

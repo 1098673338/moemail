@@ -60,6 +60,7 @@
   },
   "send": {
     "title": "Send Email",
+    "trigger": "Send",
     "from": "From",
     "to": "To",
     "toPlaceholder": "Recipient email address",

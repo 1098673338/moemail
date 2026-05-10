@@ -60,6 +60,7 @@
   },
   "send": {
     "title": "發送郵件",
+    "trigger": "發郵件",
     "from": "寄件者",
     "to": "收件者",
     "toPlaceholder": "收件者郵箱地址",

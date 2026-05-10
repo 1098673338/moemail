@@ -91,15 +91,15 @@ export function SendDialog({ emailId, fromAddress, onSendSuccess }: SendDialogPr
               <Button 
                 variant="ghost" 
                 size="sm"
-                className="h-8 gap-2 hover:bg-primary/10 hover:text-primary transition-colors"
+                className="h-8 gap-2 text-foreground hover:text-foreground transition-colors"
               >
                 <Send className="h-4 w-4" />
-                <span className="hidden sm:inline">{t("title")}</span>
+                <span className="hidden sm:inline">{t("trigger")}</span>
               </Button>
             </TooltipTrigger>
           </DialogTrigger>
           <TooltipContent className="sm:hidden">
-            <p>{t("title")}</p>
+            <p>{t("trigger")}</p>
           </TooltipContent>
         </Tooltip>
       </TooltipProvider>

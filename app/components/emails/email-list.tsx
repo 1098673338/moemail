@@ -195,7 +195,7 @@ export function EmailList({ onEmailSelect, selectedEmailId }: EmailListProps) {
               {emails.map(email => (
                 <div
                   key={email.id}
-                  className={cn("flex items-center gap-2 p-2 rounded cursor-pointer text-sm group",
+                  className={cn("flex items-center gap-2 py-2 px-3 rounded cursor-pointer text-sm group",
                     "hover:bg-primary/5",
                     selectedEmailId === email.id && "bg-primary/10"
                   )}

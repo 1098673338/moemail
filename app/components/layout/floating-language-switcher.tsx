@@ -20,7 +20,7 @@ export function FloatingLanguageSwitcher() {
   const controlIconClass = "h-5 w-5"
 
   return (
-    <div className="fixed bottom-6 right-6 z-50 flex flex-col gap-1 rounded-lg border bg-white p-1.5 text-foreground shadow-lg dark:bg-background">
+    <div className="fixed bottom-5 right-5 z-50 flex flex-col gap-1 rounded-lg border bg-white p-1.5 text-foreground shadow-lg dark:bg-background">
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <Button

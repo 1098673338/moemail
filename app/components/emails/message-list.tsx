@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from "react"
 import { useTranslations } from "next-intl"
-import {Mail, Calendar, RefreshCw, Trash2, Share2} from "lucide-react"
+import { Mail, RefreshCw, Trash2, Share2 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { useThrottle } from "@/hooks/use-throttle"
@@ -234,7 +234,7 @@ export function MessageList({ email, messageType, onMessageSelect, selectedMessa
                 key={message.id}
                 onClick={() => onMessageSelect(message.id, messageType)}
                 className={cn(
-                  "p-2 rounded cursor-pointer text-sm group hover:bg-primary/5",
+                  "py-2 px-3 rounded cursor-pointer text-sm group hover:bg-primary/5",
                   selectedMessageId === message.id && "bg-primary/10"
                 )}
               >
@@ -245,8 +245,7 @@ export function MessageList({ email, messageType, onMessageSelect, selectedMessa
                     <p className="mt-1 truncate text-left text-xs text-gray-500">
                       {message.from_address || message.to_address || ''}
                     </p>
-                    <p className="mt-1 flex items-center gap-1 text-left text-xs text-gray-500">
-                      <Calendar className="w-3 h-3 shrink-0" />
+                    <p className="mt-1 text-left text-xs text-gray-500">
                       {new Date(message.received_at || message.sent_at || 0).toLocaleString()}
                     </p>
                   </div>

@@ -60,6 +60,7 @@
   },
   "send": {
     "title": "メールを送信",
+    "trigger": "送信",
     "from": "差出人",
     "to": "宛先",
     "toPlaceholder": "宛先メールアドレス",

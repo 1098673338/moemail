@@ -1,6 +1,6 @@
 "use client"
 
-import { Mail, Calendar, RefreshCw } from "lucide-react"
+import { Mail, RefreshCw } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useThrottle } from "@/hooks/use-throttle"
 import { Button } from "@/components/ui/button"
@@ -76,25 +76,25 @@ export function SharedMessageList({
         </span>
       </div>
 
-      <div className="flex-1 overflow-auto" onScroll={handleScroll}>
+      <div className="flex-1 overflow-auto p-2" onScroll={handleScroll}>
         {loading ? (
           <div className="p-4 text-center text-sm text-gray-500">
             <RefreshCw className="h-6 w-6 animate-spin mx-auto text-primary mb-2" />
             {t.loading}
           </div>
         ) : messages.length > 0 ? (
-          <div className="divide-y divide-primary/10">
+          <div className="space-y-1">
             {messages.map((message) => (
               <div
                 key={message.id}
                 onClick={() => onMessageSelect(message.id)}
                 className={cn(
-                  "p-3 hover:bg-primary/5 cursor-pointer",
+                  "py-2 px-3 rounded hover:bg-primary/5 cursor-pointer",
                   selectedMessageId === message.id && "bg-primary/10"
                 )}
               >
                 <div className="flex items-start gap-3">
-                  <Mail className="w-4 h-4 text-primary/60 mt-1" />
+                  <Mail className="w-4 h-4 text-primary/60 mt-0.5" />
                   <div className="min-w-0 flex-1">
                     <p className="font-medium text-sm truncate">
                       {message.subject}
@@ -102,8 +102,7 @@ export function SharedMessageList({
                     <p className="mt-1 truncate text-left text-xs text-gray-500">
                       {message.from_address || message.to_address || ""}
                     </p>
-                    <p className="mt-1 flex items-center gap-1 text-left text-xs text-gray-500">
-                      <Calendar className="w-3 h-3 shrink-0" />
+                    <p className="mt-1 text-left text-xs text-gray-500">
                       {new Date(
                         message.received_at || message.sent_at || 0
                       ).toLocaleString()}
