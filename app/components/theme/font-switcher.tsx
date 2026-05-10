@@ -37,7 +37,7 @@ export function FontSwitcher({
         <Button
           variant={buttonVariant}
           size="icon"
-          className={cn("rounded-full", buttonClassName)}
+          className={cn(buttonClassName)}
           aria-label={t("label")}
         >
           <Type className={cn("h-5 w-5", iconClassName)} />

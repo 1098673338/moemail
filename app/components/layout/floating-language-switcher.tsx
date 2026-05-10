@@ -16,11 +16,11 @@ import {
 export function FloatingLanguageSwitcher() {
   const { locale, locales, switchLocale } = useLocaleSwitcher()
   const { resolvedTheme, setTheme } = useTheme()
-  const controlButtonClass = "group relative h-10 w-10 shrink-0 rounded-none border-0 bg-transparent shadow-none focus-visible:ring-0 focus-visible:ring-offset-0"
+  const controlButtonClass = "group relative m-0.5 h-9 w-9 shrink-0 rounded-md border-0 bg-transparent shadow-none focus-visible:ring-0 focus-visible:ring-offset-0"
   const controlIconClass = "h-5 w-5 group-hover:scale-110 transition-transform"
 
   return (
-    <div className="fixed bottom-6 right-6 z-50 flex overflow-hidden rounded-full border bg-white text-foreground shadow-lg dark:bg-background">
+    <div className="fixed bottom-6 right-6 z-50 flex rounded-lg border bg-white text-foreground shadow-lg dark:bg-background">
       <FontSwitcher
         buttonVariant="ghost"
         buttonClassName={controlButtonClass}
