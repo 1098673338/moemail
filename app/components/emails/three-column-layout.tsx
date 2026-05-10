@@ -24,8 +24,8 @@ export function ThreeColumnLayout() {
   const { copyToClipboard } = useCopy()
   const { canSend: canSendEmails } = useSendPermission()
 
-  const columnClass = "border-2 border-primary/20 bg-background rounded-lg overflow-hidden flex flex-col"
-  const headerClass = "p-2 border-b-2 border-primary/20 flex items-center justify-between shrink-0"
+  const columnClass = "border border-gray-300 bg-background rounded-lg overflow-hidden flex flex-col dark:border-gray-700"
+  const headerClass = "p-2 border-b border-gray-200 flex items-center justify-between shrink-0 dark:border-gray-800"
   const titleClass = "text-sm font-bold px-2 w-full overflow-hidden"
   const emailColumnStyle = { gridColumn: "span 4 / span 4" }
   const messageListColumnStyle = { gridColumn: "span 6 / span 6" }

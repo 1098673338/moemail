@@ -90,8 +90,7 @@ const SlidingTabsList = React.forwardRef<
   
   const childrenArray = React.Children.toArray(children)
   const tabCount = childrenArray.length
-  const tabWidth = `calc(${100 / tabCount}% - ${2 * (tabCount - 1) / tabCount}px)`
-  const slidePosition = `calc(${(100 / tabCount) * activeIndex}% + ${activeIndex}px)`
+  const tabWidth = `calc((100% - 0.5rem) / ${tabCount})`
   
   return (
     <TabsPrimitive.List
@@ -106,7 +105,8 @@ const SlidingTabsList = React.forwardRef<
         className="absolute top-1 bottom-1 bg-primary rounded-md shadow-sm transition-all duration-300 ease-in-out"
         style={{
           width: tabWidth,
-          left: slidePosition
+          left: "0.25rem",
+          transform: `translateX(${activeIndex * 100}%)`
         }}
       />
       {children}

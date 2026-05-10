@@ -26,7 +26,7 @@ export const Checkbox: React.FC<CheckboxProps> = ({
   return (
     <div 
       className={cn(
-        "relative inline-flex items-center justify-center w-5 h-5 rounded border-2 cursor-pointer transition-all duration-200",
+        "relative inline-flex items-center justify-center w-5 h-5 rounded border cursor-pointer transition-all duration-200",
         checked 
           ? "bg-primary border-primary text-primary-foreground" 
           : "bg-background border-input hover:border-primary/50",

@@ -99,7 +99,7 @@ export function WebsiteConfigPanel() {
   }
 
   return (
-    <div className="bg-background rounded-lg border-2 border-primary/20 p-6">
+    <div className="bg-background rounded-lg border border-gray-300 p-6 dark:border-gray-700">
       <div className="flex items-center gap-2 mb-6">
         <Settings className="w-5 h-5 text-primary" />
         <h2 className="text-lg font-semibold">{t("title")}</h2>
@@ -156,7 +156,7 @@ export function WebsiteConfigPanel() {
           </div>
         </div>
 
-        <div className="space-y-4 rounded-lg border border-dashed border-primary/40 p-4">
+        <div className="space-y-4 rounded-lg border border-dashed border-gray-200 p-4 dark:border-gray-800">
           <div className="flex items-center justify-between">
             <div className="space-y-1">
               <Label htmlFor="turnstile-enabled" className="text-sm font-medium">

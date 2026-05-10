@@ -214,7 +214,7 @@ export function ShareDialog({ emailId }: ShareDialogProps) {
               <div className="max-h-[270px] overflow-y-auto">
                 {loading ? (
                   <div className="text-sm text-gray-500 text-center py-8 flex flex-col items-center gap-2">
-                    <div className="w-5 h-5 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
+                    <div className="w-5 h-5 border border-primary/30 border-t-primary rounded-full animate-spin" />
                     <span>{t("loading")}</span>
                   </div>
                 ) : shares.length === 0 ? (

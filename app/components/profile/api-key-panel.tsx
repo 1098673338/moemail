@@ -158,7 +158,7 @@ export function ApiKeyPanel() {
   }
 
   return (
-    <div className="bg-background rounded-lg border-2 border-primary/20 p-6 space-y-6">
+    <div className="bg-background rounded-lg border border-gray-300 p-6 space-y-6 dark:border-gray-700">
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-2">
           <Key className="w-5 h-5 text-primary" />

@@ -34,7 +34,7 @@ export function SignButton({ size = "default" }: SignButtonProps) {
   }
 
   return (
-    <div className="flex items-center gap-y-4 gap-x-3 sm:gap-x-4">
+    <div className="flex items-center gap-y-4 gap-x-4">
       <Link 
         href={`/${locale}/profile`}
         className="flex items-center gap-2 hover:opacity-80 transition-opacity"
@@ -48,7 +48,7 @@ export function SignButton({ size = "default" }: SignButtonProps) {
             className="rounded-full"
           />
         )}
-        <span className="hidden sm:inline-block text-sm">{session.user.name}</span>
+        <span className="inline-block text-sm">{session.user.name}</span>
       </Link>
       <Button onClick={() => signOut({ callbackUrl: `/${locale}` })} variant="outline" className={cn("flex-shrink-0", size === "lg" ? "px-8" : "")} size={size}>
         {t("logout")}

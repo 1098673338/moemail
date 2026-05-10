@@ -191,7 +191,7 @@ export function MessageView({ emailId, messageId, messageType = 'received' }: Me
 
   return (
     <div className="h-full flex flex-col">
-      <div className="p-4 space-y-2 border-b border-primary/20">
+      <div className="p-4 space-y-2 border-b border-gray-200 dark:border-gray-800">
         <div className="flex items-start justify-between gap-2">
           <h3 className="text-base font-bold flex-1">{message.subject}</h3>
           <ShareMessageDialog 
@@ -217,7 +217,7 @@ export function MessageView({ emailId, messageId, messageType = 'received' }: Me
       </div>
       
       {message.html && message.content && (
-        <div className="border-b border-primary/20 p-2">
+        <div className="border-b border-gray-200 p-2 dark:border-gray-800">
           <RadioGroup
             value={viewMode}
             onValueChange={(value) => setViewMode(value as ViewMode)}

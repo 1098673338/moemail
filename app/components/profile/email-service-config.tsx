@@ -87,7 +87,7 @@ export function EmailServiceConfig() {
   }
 
   return (
-    <div className="bg-background rounded-lg border-2 border-primary/20 p-6">
+    <div className="bg-background rounded-lg border border-gray-300 p-6 dark:border-gray-700">
       <div className="flex items-center gap-2 mb-6">
         <Zap className="w-5 h-5 text-primary" />
         <h2 className="text-lg font-semibold">{t("title")}</h2>
@@ -178,10 +178,10 @@ export function EmailServiceConfig() {
                     return (
                       <div 
                         key={role.value} 
-                        className={`group relative p-4 border-2 rounded-xl transition-all duration-200 ${
+                        className={`group relative p-4 border rounded-xl transition-all duration-200 ${
                           isEnabled
-                            ? 'border-primary/30 bg-primary/5 shadow-sm' 
-                            : 'border-gray-200 hover:border-primary/20 hover:shadow-sm'
+                            ? 'border-gray-300 bg-primary/5 shadow-sm dark:border-gray-700' 
+                            : 'border-gray-200 hover:border-gray-300 hover:shadow-sm dark:border-gray-800 dark:hover:border-gray-700'
                         }`}
                       >
                         <div className="flex items-center justify-between">

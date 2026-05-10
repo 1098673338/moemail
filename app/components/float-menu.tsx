@@ -28,7 +28,7 @@ export function FloatMenu() {
             <Button
               variant="outline"
               size="icon"
-              className="bg-white dark:bg-background rounded-full shadow-lg group relative border-primary/20"
+              className="bg-white dark:bg-background rounded-full shadow-lg group relative border-gray-300 dark:border-gray-700"
               onClick={() => window.open("https://github.com/beilunyang/moemail", "_blank")}
             >
               <Github 

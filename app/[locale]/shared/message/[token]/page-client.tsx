@@ -54,7 +54,7 @@ export function SharedMessagePageClient({ message }: SharedMessagePageClientProp
 
         <div className="mt-4 grid min-h-0 flex-1 gap-5" style={{ gridTemplateColumns: "repeat(24, minmax(0, 1fr))" }}>
           <div
-            className="h-full border-2 border-primary/20 bg-background rounded-lg overflow-hidden"
+            className="h-full border border-gray-300 bg-background rounded-lg overflow-hidden dark:border-gray-700"
             style={{ gridColumn: "span 24 / span 24" }}
           >
             <SharedMessageDetail
