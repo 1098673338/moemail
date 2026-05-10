@@ -178,7 +178,7 @@ export function SharedEmailPageClient({
       <div className="mx-auto flex h-full w-full max-w-[1600px] flex-col px-5 py-4">
         <BrandHeader
           title={email.address}
-          showBrand={false}
+          brandHref={null}
           subtitle={(() => {
             try {
               const expiresDate = new Date(email.shareExpiresAt || email.expiresAt)

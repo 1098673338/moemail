@@ -170,7 +170,7 @@ export function ShareDialog({ emailId }: ShareDialogProps) {
           </Button>
         </DialogTrigger>
         <DialogContent
-          className="sm:max-w-[600px]"
+          className="w-[calc(100vw-2rem)] max-w-[calc(100vw-2rem)] sm:max-w-[600px] max-h-[calc(100vh-2rem)] overflow-hidden p-4 sm:p-6"
           onInteractOutside={(e) => e.preventDefault()}
           onEscapeKeyDown={(e) => {
             if (deleteTarget) {
@@ -185,13 +185,13 @@ export function ShareDialog({ emailId }: ShareDialogProps) {
             </DialogDescription>
           </DialogHeader>
 
-          <div className="space-y-4">
+          <div className="min-h-0 -mx-1 space-y-4 overflow-y-auto px-1 py-1">
             {/* Create new share link */}
             <div className="space-y-2">
               <Label>{t("expiryTime")}</Label>
-              <div className="flex gap-2">
+              <div className="flex flex-col gap-2 sm:flex-row">
                 <Select value={expiryTime} onValueChange={setExpiryTime}>
-                  <SelectTrigger className="flex-1">
+                  <SelectTrigger className="w-full sm:flex-1">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -202,7 +202,7 @@ export function ShareDialog({ emailId }: ShareDialogProps) {
                     ))}
                   </SelectContent>
                 </Select>
-                <Button onClick={createShare} disabled={creating} className="min-w-[100px]">
+                <Button onClick={createShare} disabled={creating} className="w-full sm:w-auto sm:min-w-[100px]">
                   {creating ? t("creating") : t("createLink")}
                 </Button>
               </div>
@@ -211,7 +211,7 @@ export function ShareDialog({ emailId }: ShareDialogProps) {
             {/* Active share links */}
             <div className="space-y-2">
               <Label>{t("activeLinks")}</Label>
-              <div className="h-[270px] overflow-y-auto">
+              <div className="max-h-[270px] overflow-y-auto">
                 {loading ? (
                   <div className="text-sm text-gray-500 text-center py-8 flex flex-col items-center gap-2">
                     <div className="w-5 h-5 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
@@ -241,9 +241,9 @@ export function ShareDialog({ emailId }: ShareDialogProps) {
                               : "border-border"
                           )}
                         >
-                          <div className="flex items-center gap-2">
+                          <div className="flex items-start gap-2 min-w-0">
                             <Link2 className={cn(
-                              "h-4 w-4 flex-shrink-0",
+                              "h-4 w-4 flex-shrink-0 mt-1",
                               isExpired ? "text-destructive/60" : "text-primary/60"
                             )} />
                             <a
@@ -256,7 +256,7 @@ export function ShareDialog({ emailId }: ShareDialogProps) {
                                 }
                               }}
                               className={cn(
-                                "flex-1 text-xs p-1 rounded font-mono transition-colors break-all",
+                                "min-w-0 flex-1 text-xs p-1 rounded font-mono transition-colors break-all",
                                 isExpired
                                   ? "bg-destructive/10 text-destructive/70 cursor-not-allowed pointer-events-none"
                                   : "bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:text-primary dark:hover:text-primary cursor-pointer"
@@ -264,25 +264,28 @@ export function ShareDialog({ emailId }: ShareDialogProps) {
                             >
                               {getShareUrl(share.token)}
                             </a>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-8 w-8 flex-shrink-0"
-                              onClick={() => handleCopy(share.token)}
-                            >
-                              <Copy className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-8 w-8 flex-shrink-0"
-                              onClick={() => setDeleteTarget(share)}
-                            >
-                              <Trash2 className="h-4 w-4 text-destructive" />
-                            </Button>
+                            <div className="flex flex-shrink-0 gap-1">
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8"
+                                onClick={() => handleCopy(share.token)}
+                              >
+                                <Copy className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8"
+                                onClick={() => setDeleteTarget(share)}
+                              >
+                                <Trash2 className="h-4 w-4 text-destructive" />
+                              </Button>
+                            </div>
                           </div>
-                          <div className="flex gap-y-4 gap-x-2 sm:gap-x-4 text-xs">
+                          <div className="flex flex-wrap gap-y-1 gap-x-2 sm:gap-x-4 text-xs">
                             <span className={cn(
+                              "break-words",
                               isExpired ? "text-destructive/70" : "text-gray-500"
                             )}>
                               {t("createdAt")}: {new Date(
@@ -292,6 +295,7 @@ export function ShareDialog({ emailId }: ShareDialogProps) {
                               ).toLocaleString()}
                             </span>
                             <span className={cn(
+                              "break-words",
                               isExpired ? "text-destructive/70" : "text-gray-500"
                             )}>
                               {t("expiresAt")}: {
@@ -344,4 +348,3 @@ export function ShareDialog({ emailId }: ShareDialogProps) {
     </>
   )
 }
-
