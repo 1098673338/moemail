@@ -3,6 +3,7 @@
 import { useTranslations } from "next-intl"
 import { AlertCircle } from "lucide-react"
 import { Card } from "@/components/ui/card"
+import { FloatingLanguageSwitcher } from "@/components/layout/floating-language-switcher"
 
 interface SharedErrorPageProps {
   errorKey: string
@@ -31,6 +32,8 @@ export function SharedErrorPage({
           </Card>
         </div>
       </div>
+
+      <FloatingLanguageSwitcher />
     </div>
   )
 }

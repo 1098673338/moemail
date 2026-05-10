@@ -48,8 +48,6 @@ export function FloatingLanguageSwitcher() {
         buttonVariant="ghost"
         buttonClassName={controlButtonClass}
         iconClassName={controlIconClass}
-        contentAlign="center"
-        contentSide="left"
       />
       <Button
         variant="ghost"

@@ -174,8 +174,8 @@ export function SharedEmailPageClient({
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
-      <div className="mx-auto w-full max-w-[1600px] px-5 py-4">
+    <div className="h-screen bg-gray-50 dark:bg-gray-900">
+      <div className="mx-auto flex h-full w-full max-w-[1600px] flex-col px-5 py-4">
         <BrandHeader
           title={email.address}
           showBrand={false}
@@ -193,7 +193,7 @@ export function SharedEmailPageClient({
         />
 
         {/* 桌面端双栏布局 */}
-        <div className="hidden lg:grid gap-4 h-[calc(100vh-280px)] mt-6" style={{ gridTemplateColumns: "repeat(24, minmax(0, 1fr))" }}>
+        <div className="mt-4 hidden min-h-0 flex-1 gap-4 lg:grid" style={{ gridTemplateColumns: "repeat(24, minmax(0, 1fr))" }}>
           <div className={columnClass} style={{ gridColumn: "span 6 / span 6" }}>
             <SharedMessageList
               messages={messages.map(msg => ({
@@ -276,7 +276,7 @@ export function SharedEmailPageClient({
         </div>
 
         {/* 移动端单栏布局 */}
-        <div className="lg:hidden h-[calc(100vh-260px)] mt-6">
+        <div className="mt-4 min-h-0 flex-1 lg:hidden">
           <div className="border-2 border-primary/20 bg-background rounded-lg overflow-hidden h-full flex flex-col">
             {!selectedMessage ? (
               // 消息列表视图
