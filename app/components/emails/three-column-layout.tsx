@@ -28,6 +28,9 @@ export function ThreeColumnLayout() {
   const columnClass = "border-2 border-primary/20 bg-background rounded-lg overflow-hidden flex flex-col"
   const headerClass = "p-2 border-b-2 border-primary/20 flex items-center justify-between shrink-0"
   const titleClass = "text-sm font-bold px-2 w-full overflow-hidden"
+  const emailColumnStyle = { gridColumn: "span 4 / span 4" }
+  const messageListColumnStyle = { gridColumn: "span 5 / span 5" }
+  const contentColumnStyle = { gridColumn: "span 15 / span 15" }
 
   // 移动端视图逻辑
   const getMobileView = () => {
@@ -54,8 +57,8 @@ export function ThreeColumnLayout() {
   return (
     <div className="pb-5 pt-20 h-full flex flex-col">
       {/* 桌面端三栏布局 */}
-      <div className="hidden lg:grid grid-cols-12 gap-4 h-full min-h-0">
-        <div className={cn("col-span-3", columnClass)}>
+      <div className="hidden lg:grid gap-4 h-full min-h-0" style={{ gridTemplateColumns: "repeat(24, minmax(0, 1fr))" }}>
+        <div className={columnClass} style={emailColumnStyle}>
           <div className={headerClass}>
             <h2 className={titleClass}>{t("myEmails")}</h2>
           </div>
@@ -70,7 +73,7 @@ export function ThreeColumnLayout() {
           </div>
         </div>
 
-        <div className={cn("col-span-4", columnClass)}>
+        <div className={columnClass} style={messageListColumnStyle}>
           <div className={headerClass}>
             <h2 className={titleClass}>
               {selectedEmail ? (
@@ -106,7 +109,7 @@ export function ThreeColumnLayout() {
           )}
         </div>
 
-        <div className={cn("col-span-5", columnClass)}>
+        <div className={columnClass} style={contentColumnStyle}>
           <div className={headerClass}>
             <h2 className={titleClass}>
               {selectedMessageId ? t("messageContent") : t("selectMessage")}
