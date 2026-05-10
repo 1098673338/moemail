@@ -21,13 +21,6 @@ export function FloatingLanguageSwitcher() {
 
   return (
     <div className="fixed bottom-6 right-6 z-50 flex flex-col gap-1 rounded-lg border bg-white p-1.5 text-foreground shadow-lg dark:bg-background">
-      <FontSwitcher
-        buttonVariant="ghost"
-        buttonClassName={controlButtonClass}
-        iconClassName={controlIconClass}
-        contentAlign="center"
-        contentSide="left"
-      />
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <Button
@@ -51,6 +44,13 @@ export function FloatingLanguageSwitcher() {
           ))}
         </DropdownMenuContent>
       </DropdownMenu>
+      <FontSwitcher
+        buttonVariant="ghost"
+        buttonClassName={controlButtonClass}
+        iconClassName={controlIconClass}
+        contentAlign="center"
+        contentSide="left"
+      />
       <Button
         variant="ghost"
         size="icon"

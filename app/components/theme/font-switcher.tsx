@@ -10,7 +10,7 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { useFontPreference } from "@/hooks/use-font-preference"
 import { cn } from "@/lib/utils"
-import { Check, Type } from "lucide-react"
+import { Type } from "lucide-react"
 import { useTranslations } from "next-intl"
 
 interface FontSwitcherProps {
@@ -49,15 +49,9 @@ export function FontSwitcher({
           <DropdownMenuItem
             key={option.value}
             onClick={() => setFont(option.value)}
-            className="gap-2"
+            className={font === option.value ? "bg-accent" : ""}
           >
-            <Check
-              className={cn(
-                "h-4 w-4",
-                font === option.value ? "opacity-100" : "opacity-0"
-              )}
-            />
-            <span>{t(option.labelKey)}</span>
+            {t(option.labelKey)}
           </DropdownMenuItem>
         ))}
       </DropdownMenuContent>
