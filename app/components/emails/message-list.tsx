@@ -243,11 +243,11 @@ export function MessageList({ email, messageType, onMessageSelect, selectedMessa
                   <div className="min-w-0 flex-1">
                     <p className="font-medium text-sm truncate">{message.subject}</p>
                     <div className="mt-1 flex items-center gap-2 text-xs text-gray-500">
-                      <span className="truncate">
+                      <span className="min-w-0 flex-1 truncate text-left">
                         {message.from_address || message.to_address || ''}
                       </span>
-                      <span className="flex items-center gap-1">
-                        <Calendar className="w-3 h-3" />
+                      <span className="ml-auto flex shrink-0 items-center justify-end gap-1 text-right">
+                        <Calendar className="w-3 h-3 shrink-0" />
                         {new Date(message.received_at || message.sent_at || 0).toLocaleString()}
                       </span>
                     </div>
@@ -316,4 +316,4 @@ export function MessageList({ email, messageType, onMessageSelect, selectedMessa
     </AlertDialog>
   </>
   )
-} 
+}

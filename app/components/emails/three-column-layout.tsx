@@ -57,7 +57,7 @@ export function ThreeColumnLayout() {
   return (
     <div className="pb-5 pt-20 h-full flex flex-col">
       {/* 桌面端三栏布局 */}
-      <div className="hidden lg:grid gap-4 h-full min-h-0" style={{ gridTemplateColumns: "repeat(24, minmax(0, 1fr))" }}>
+      <div className="hidden lg:grid gap-5 h-full min-h-0" style={{ gridTemplateColumns: "repeat(24, minmax(0, 1fr))" }}>
         <div className={columnClass} style={emailColumnStyle}>
           <div className={headerClass}>
             <h2 className={titleClass}>{t("myEmails")}</h2>

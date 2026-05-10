@@ -82,7 +82,7 @@ export function BrandHeader({
   )
 
   return (
-    <div className="text-center space-y-4 lg:pb-4">
+    <div className="text-center space-y-2 lg:pb-2">
       {showBrand && (
         <div className="flex justify-center pt-2">
           {brandHref ? (
@@ -100,11 +100,11 @@ export function BrandHeader({
         </div>
       )}
 
-      <div className="space-y-3">
+      <div className="space-y-1">
         <h1 className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white">
           {displayTitle}
         </h1>
-        <p className="text-gray-600 dark:text-gray-300 max-w-md mx-auto">
+        <p className="text-gray-600 dark:text-gray-300 max-w-md mx-auto tabular-nums">
           {displaySubtitle}
         </p>
       </div>

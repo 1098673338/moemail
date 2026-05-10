@@ -4,6 +4,7 @@ import { useTranslations } from "next-intl"
 import { BrandHeader } from "@/components/ui/brand-header"
 import { FloatingLanguageSwitcher } from "@/components/layout/floating-language-switcher"
 import { SharedMessageDetail } from "@/components/emails/shared-message-detail"
+import { formatUtcPlus8DateTime, isPermanentDate } from "@/lib/date-format"
 
 interface MessageDetail {
   id: string
@@ -28,7 +29,7 @@ export function SharedMessagePageClient({ message }: SharedMessagePageClientProp
 
   return (
     <div className="h-screen bg-gray-50 dark:bg-gray-900">
-      <div className="mx-auto flex h-full w-full max-w-[1600px] flex-col px-5 pb-5 pt-4">
+      <div className="mx-auto flex h-full w-full max-w-[1720px] flex-col px-5 pb-5 pt-4">
         <BrandHeader
           title={message.emailAddress || message.to_address || message.subject}
           brandHref={null}
@@ -39,19 +40,19 @@ export function SharedMessagePageClient({ message }: SharedMessagePageClientProp
               return ""
             }
 
-            const expiresDate = new Date(expiresAt)
+            const formattedExpiresAt = formatUtcPlus8DateTime(expiresAt)
 
-            if (isNaN(expiresDate.getTime())) {
+            if (!formattedExpiresAt) {
               return ""
             }
 
-            return expiresDate.getFullYear() === 9999
+            return isPermanentDate(expiresAt)
               ? "永久有效"
-              : `有效期至: ${expiresDate.toLocaleString()}`
+              : `有效期至: ${formattedExpiresAt}`
           })()}
         />
 
-        <div className="mt-4 grid min-h-0 flex-1 gap-4" style={{ gridTemplateColumns: "repeat(24, minmax(0, 1fr))" }}>
+        <div className="mt-4 grid min-h-0 flex-1 gap-5" style={{ gridTemplateColumns: "repeat(24, minmax(0, 1fr))" }}>
           <div
             className="h-full border-2 border-primary/20 bg-background rounded-lg overflow-hidden"
             style={{ gridColumn: "span 24 / span 24" }}

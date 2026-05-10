@@ -5,7 +5,7 @@ import { useSession } from "next-auth/react"
 import { useTranslations } from "next-intl"
 import { CreateDialog } from "./create-dialog"
 import { ShareDialog } from "./share-dialog"
-import { Mail, RefreshCw, Trash2 } from "lucide-react"
+import { Copy, Mail, RefreshCw, Trash2 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { useThrottle } from "@/hooks/use-throttle"
@@ -24,6 +24,7 @@ import {
 import { ROLES } from "@/lib/permissions"
 import { useUserRole } from "@/hooks/use-user-role"
 import { useConfig } from "@/hooks/use-config"
+import { useCopy } from "@/hooks/use-copy"
 
 interface Email {
   id: string
@@ -57,6 +58,7 @@ export function EmailList({ onEmailSelect, selectedEmailId }: EmailListProps) {
   const [total, setTotal] = useState(0)
   const [emailToDelete, setEmailToDelete] = useState<Email | null>(null)
   const { toast } = useToast()
+  const { copyToClipboard } = useCopy()
 
   const fetchEmails = async (cursor?: string) => {
     try {
@@ -211,6 +213,15 @@ export function EmailList({ onEmailSelect, selectedEmailId }: EmailListProps) {
                     </div>
                   </div>
                   <div className="opacity-0 group-hover:opacity-100 flex gap-1" onClick={(e) => e.stopPropagation()}>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8"
+                      aria-label={tCommon("copy")}
+                      onClick={() => copyToClipboard(email.address)}
+                    >
+                      <Copy className="h-4 w-4" />
+                    </Button>
                     <ShareDialog emailId={email.id} emailAddress={email.address} />
                     <Button
                       variant="ghost"
@@ -261,4 +272,4 @@ export function EmailList({ onEmailSelect, selectedEmailId }: EmailListProps) {
       </AlertDialog>
     </>
   )
-} 
+}

@@ -7,6 +7,7 @@ import { FloatingLanguageSwitcher } from "@/components/layout/floating-language-
 import { SharedMessageList } from "@/components/emails/shared-message-list"
 import { SharedMessageDetail } from "@/components/emails/shared-message-detail"
 import { EMAIL_CONFIG } from "@/config"
+import { formatUtcPlus8DateTime, isPermanentDate } from "@/lib/date-format"
 
 interface Email {
   id: string
@@ -175,25 +176,24 @@ export function SharedEmailPageClient({
 
   return (
     <div className="h-screen bg-gray-50 dark:bg-gray-900">
-      <div className="mx-auto flex h-full w-full max-w-[1600px] flex-col px-5 pb-5 pt-4">
+      <div className="mx-auto flex h-full w-full max-w-[1720px] flex-col px-5 pb-5 pt-4">
         <BrandHeader
           title={email.address}
           brandHref={null}
           subtitle={(() => {
-            try {
-              const expiresDate = new Date(email.shareExpiresAt || email.expiresAt)
-              if (isNaN(expiresDate.getTime())) return ""
-              return expiresDate.getFullYear() === 9999
-                ? "永久有效"
-                : `有效期至: ${expiresDate.toLocaleDateString()} ${expiresDate.toLocaleTimeString()}`
-            } catch {
-              return ""
-            }
+            const expiresAt = email.shareExpiresAt || email.expiresAt
+            const formattedExpiresAt = formatUtcPlus8DateTime(expiresAt)
+
+            if (!formattedExpiresAt) return ""
+
+            return isPermanentDate(expiresAt)
+              ? "永久有效"
+              : `有效期至: ${formattedExpiresAt}`
           })()}
         />
 
         {/* 桌面端双栏布局 */}
-        <div className="mt-4 hidden min-h-0 flex-1 gap-4 lg:grid" style={{ gridTemplateColumns: "repeat(24, minmax(0, 1fr))" }}>
+        <div className="mt-4 hidden min-h-0 flex-1 gap-5 lg:grid" style={{ gridTemplateColumns: "repeat(24, minmax(0, 1fr))" }}>
           <div className={columnClass} style={{ gridColumn: "span 6 / span 6" }}>
             <SharedMessageList
               messages={messages.map(msg => ({
