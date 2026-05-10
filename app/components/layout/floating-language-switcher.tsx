@@ -16,16 +16,17 @@ import {
 export function FloatingLanguageSwitcher() {
   const { locale, locales, switchLocale } = useLocaleSwitcher()
   const { resolvedTheme, setTheme } = useTheme()
-  const controlButtonClass = "group relative m-0.5 h-9 w-9 shrink-0 rounded-md border-0 bg-transparent shadow-none focus-visible:ring-0 focus-visible:ring-offset-0"
-  const controlIconClass = "h-5 w-5 group-hover:scale-110 transition-transform"
+  const controlButtonClass = "relative h-9 w-9 shrink-0 rounded-md border-0 bg-transparent shadow-none focus-visible:ring-0 focus-visible:ring-offset-0"
+  const controlIconClass = "h-5 w-5"
 
   return (
-    <div className="fixed bottom-6 right-6 z-50 flex rounded-lg border bg-white text-foreground shadow-lg dark:bg-background">
+    <div className="fixed bottom-6 right-6 z-50 flex flex-col gap-1 rounded-lg border bg-white p-1.5 text-foreground shadow-lg dark:bg-background">
       <FontSwitcher
         buttonVariant="ghost"
         buttonClassName={controlButtonClass}
         iconClassName={controlIconClass}
-        contentSide="top"
+        contentAlign="center"
+        contentSide="left"
       />
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
@@ -38,7 +39,7 @@ export function FloatingLanguageSwitcher() {
             <Languages className={controlIconClass} />
           </Button>
         </DropdownMenuTrigger>
-        <DropdownMenuContent align="end" side="top" className="mb-2">
+        <DropdownMenuContent align="center" side="left">
           {locales.map((loc) => (
             <DropdownMenuItem
               key={loc}

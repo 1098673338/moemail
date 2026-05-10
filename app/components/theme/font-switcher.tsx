@@ -24,7 +24,7 @@ interface FontSwitcherProps {
 export function FontSwitcher({
   buttonClassName,
   buttonVariant = "ghost",
-  contentAlign = "end",
+  contentAlign = "center",
   contentSide = "bottom",
   iconClassName,
 }: FontSwitcherProps) {

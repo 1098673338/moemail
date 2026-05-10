@@ -21,7 +21,7 @@ export function LanguageSwitcher() {
           <Languages className="h-5 w-5" />
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end">
+      <DropdownMenuContent align="center">
         {locales.map((loc) => (
           <DropdownMenuItem
             key={loc}
