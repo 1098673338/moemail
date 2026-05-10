@@ -3,6 +3,11 @@
 @tailwind utilities;
 
 @layer base {
+  html,
+  body {
+    min-width: 1900px;
+  }
+
   body {
     --font-family-app: var(--font-zpix), system-ui, sans-serif;
   }

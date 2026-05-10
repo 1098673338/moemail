@@ -192,8 +192,7 @@ export function SharedEmailPageClient({
           })()}
         />
 
-        {/* 桌面端双栏布局 */}
-        <div className="mt-4 hidden min-h-0 flex-1 gap-5 lg:grid" style={{ gridTemplateColumns: "repeat(24, minmax(0, 1fr))" }}>
+        <div className="mt-4 grid min-h-0 flex-1 gap-5" style={{ gridTemplateColumns: "repeat(24, minmax(0, 1fr))" }}>
           <div className={columnClass} style={{ gridColumn: "span 6 / span 6" }}>
             <SharedMessageList
               messages={messages.map(msg => ({
@@ -272,104 +271,6 @@ export function SharedEmailPageClient({
                 textFormat: t("messageView.textFormat")
               }}
             />
-          </div>
-        </div>
-
-        {/* 移动端单栏布局 */}
-        <div className="mt-4 min-h-0 flex-1 lg:hidden">
-          <div className="border-2 border-primary/20 bg-background rounded-lg overflow-hidden h-full flex flex-col">
-            {!selectedMessage ? (
-              // 消息列表视图
-              <SharedMessageList
-                messages={messages.map(msg => ({
-                  ...msg,
-                  received_at: (() => {
-                    if (!msg.received_at) return undefined
-                    try {
-                      const date = new Date(msg.received_at)
-                      return isNaN(date.getTime()) ? undefined : date.getTime()
-                    } catch {
-                      return undefined
-                    }
-                  })(),
-                  sent_at: (() => {
-                    if (!msg.sent_at) return undefined
-                    try {
-                      const date = new Date(msg.sent_at)
-                      return isNaN(date.getTime()) ? undefined : date.getTime()
-                    } catch {
-                      return undefined
-                    }
-                  })()
-                }))}
-                selectedMessageId={null}
-                onMessageSelect={fetchMessageDetail}
-                onLoadMore={handleLoadMore}
-                onRefresh={handleRefresh}
-                loading={false}
-                loadingMore={loadingMore}
-                refreshing={refreshing}
-                hasMore={!!nextCursor}
-                total={total}
-                t={{
-                  received: t("messages.received"),
-                  noMessages: t("messages.noMessages"),
-                  messageCount: t("messages.messageCount"),
-                  loading: t("messageView.loading"),
-                  loadingMore: t("messages.loadingMore")
-                }}
-              />
-            ) : (
-              // 消息详情视图
-              <>
-                <div className="p-2 border-b-2 border-primary/20 flex items-center justify-between shrink-0">
-                  <button
-                    onClick={() => setSelectedMessage(null)}
-                    className="text-sm text-primary"
-                  >
-                    {t("layout.backToMessageList")}
-                  </button>
-                  <span className="text-sm font-medium">{t("layout.messageContent")}</span>
-                </div>
-                <div className="flex-1 overflow-auto">
-                  <SharedMessageDetail
-                    message={{
-                      ...selectedMessage,
-                      received_at: (() => {
-                        if (!selectedMessage.received_at) return undefined
-                        try {
-                          const date = new Date(selectedMessage.received_at)
-                          return isNaN(date.getTime()) ? undefined : date.getTime()
-                        } catch {
-                          return undefined
-                        }
-                      })(),
-                      sent_at: (() => {
-                        if (!selectedMessage.sent_at) return undefined
-                        try {
-                          const date = new Date(selectedMessage.sent_at)
-                          return isNaN(date.getTime()) ? undefined : date.getTime()
-                        } catch {
-                          return undefined
-                        }
-                      })()
-                    }}
-                    loading={messageLoading}
-                    t={{
-                      messageContent: t("layout.messageContent"),
-                      selectMessage: t("layout.selectMessage"),
-                      loading: t("messageView.loading"),
-                      from: t("messageView.from"),
-                      to: t("messageView.to"),
-                      subject: t("messages.subject"),
-                      time: t("messageView.time"),
-                      htmlFormat: t("messageView.htmlFormat"),
-                      textFormat: t("messageView.textFormat")
-                    }}
-                  />
-                </div>
-              </>
-            )}
           </div>
         </div>
       </div>
