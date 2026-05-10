@@ -18,6 +18,7 @@ interface FontSwitcherProps {
   buttonVariant?: ButtonProps["variant"]
   contentAlign?: "start" | "center" | "end"
   contentSide?: "top" | "right" | "bottom" | "left"
+  iconClassName?: string
 }
 
 export function FontSwitcher({
@@ -25,6 +26,7 @@ export function FontSwitcher({
   buttonVariant = "ghost",
   contentAlign = "end",
   contentSide = "bottom",
+  iconClassName,
 }: FontSwitcherProps) {
   const t = useTranslations("common.font")
   const { font, setFont, options } = useFontPreference()
@@ -38,7 +40,7 @@ export function FontSwitcher({
           className={cn("rounded-full", buttonClassName)}
           aria-label={t("label")}
         >
-          <Type className="h-5 w-5" />
+          <Type className={cn("h-5 w-5", iconClassName)} />
           <span className="sr-only">{t("label")}</span>
         </Button>
       </DropdownMenuTrigger>

@@ -77,34 +77,15 @@
     background-size: 20px 20px;
   }
 
-  /* 整体滚动条 */
-  ::-webkit-scrollbar {
-    width: 6px;
-    height: 6px;
-  }
-
-  /* 滚动条轨道 */
-  ::-webkit-scrollbar-track {
-    background: transparent;
-  }
-
-  /* 滚动条滑块 */
-  ::-webkit-scrollbar-thumb {
-    @apply bg-primary/20 rounded-full hover:bg-primary/40 transition-colors;
-  }
-
-  /* Firefox 滚动条 */
+  /* 隐藏滚动条，保留滚动能力 */
   * {
-    scrollbar-width: thin;
-    scrollbar-color: hsl(var(--primary) / 0.2) transparent;
+    -ms-overflow-style: none;
+    scrollbar-width: none;
   }
 
-  /* 深色模式下的滚动条 */
-  .dark ::-webkit-scrollbar-thumb {
-    @apply bg-primary/30 hover:bg-primary/50;
-  }
-
-  .dark * {
-    scrollbar-color: hsl(var(--primary) / 0.3) transparent;
+  *::-webkit-scrollbar {
+    display: none;
+    width: 0;
+    height: 0;
   }
 }

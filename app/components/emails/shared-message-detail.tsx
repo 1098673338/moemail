@@ -86,36 +86,14 @@ export function SharedMessageDetail({
                 a {
                   color: #2563eb;
                 }
-                ::-webkit-scrollbar {
-                  width: 6px;
-                  height: 6px;
-                }
-                ::-webkit-scrollbar-track {
-                  background: transparent;
-                }
-                ::-webkit-scrollbar-thumb {
-                  background: ${
-                    theme === "dark"
-                      ? "rgba(130, 109, 217, 0.3)"
-                      : "rgba(130, 109, 217, 0.2)"
-                  };
-                  border-radius: 9999px;
-                  transition: background-color 0.2s;
-                }
-                ::-webkit-scrollbar-thumb:hover {
-                  background: ${
-                    theme === "dark"
-                      ? "rgba(130, 109, 217, 0.5)"
-                      : "rgba(130, 109, 217, 0.4)"
-                  };
-                }
                 * {
-                  scrollbar-width: thin;
-                  scrollbar-color: ${
-                    theme === "dark"
-                      ? "rgba(130, 109, 217, 0.3) transparent"
-                      : "rgba(130, 109, 217, 0.2) transparent"
-                  };
+                  -ms-overflow-style: none;
+                  scrollbar-width: none;
+                }
+                *::-webkit-scrollbar {
+                  display: none;
+                  width: 0;
+                  height: 0;
                 }
               </style>
             </head>

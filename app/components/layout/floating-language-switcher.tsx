@@ -20,6 +20,7 @@ export function FloatingLanguageSwitcher() {
       <FontSwitcher
         buttonVariant="outline"
         buttonClassName="bg-white dark:bg-background shadow-lg group relative border-primary/20 hover:border-primary/40 transition-all"
+        iconClassName="text-primary group-hover:scale-110 transition-transform"
         contentSide="top"
       />
       <DropdownMenu>
