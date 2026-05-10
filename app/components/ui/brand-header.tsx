@@ -26,11 +26,11 @@ export function BrandHeader({
   const displaySubtitle = subtitle || t("subtitle")
   const brandContent = (
     <>
-      <div className="relative w-12 h-12">
+      <div className="relative w-8 h-8">
         <div className="absolute inset-0 grid grid-cols-8 grid-rows-8 gap-px">
           <svg
-            width="48"
-            height="48"
+            width="32"
+            height="32"
             viewBox="0 0 32 32"
             fill="none"
             xmlns="http://www.w3.org/2000/svg"
@@ -75,7 +75,7 @@ export function BrandHeader({
           </svg>
         </div>
       </div>
-      <span className="text-3xl font-bold tracking-wider bg-clip-text text-transparent bg-gradient-to-r from-primary to-purple-600">
+      <span className="font-bold tracking-wider bg-clip-text text-transparent bg-gradient-to-r from-primary to-purple-600">
         MoeMail
       </span>
     </>
@@ -88,12 +88,12 @@ export function BrandHeader({
           {brandHref ? (
             <Link
               href={brandHref}
-              className="flex items-center gap-3 hover:opacity-80 transition-opacity group"
+              className="flex items-center gap-2 hover:opacity-80 transition-opacity group"
             >
               {brandContent}
             </Link>
           ) : (
-            <div className="flex items-center gap-3" aria-label="MoeMail">
+            <div className="flex items-center gap-2" aria-label="MoeMail">
               {brandContent}
             </div>
           )}

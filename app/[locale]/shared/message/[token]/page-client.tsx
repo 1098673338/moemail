@@ -28,7 +28,7 @@ export function SharedMessagePageClient({ message }: SharedMessagePageClientProp
 
   return (
     <div className="h-screen bg-gray-50 dark:bg-gray-900">
-      <div className="mx-auto flex h-full w-full max-w-[1600px] flex-col px-5 py-4">
+      <div className="mx-auto flex h-full w-full max-w-[1600px] flex-col px-5 pb-5 pt-4">
         <BrandHeader
           title={message.emailAddress || message.to_address || message.subject}
           brandHref={null}
