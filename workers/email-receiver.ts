@@ -2,14 +2,79 @@ import { Env } from '../types'
 import { drizzle } from 'drizzle-orm/d1'
 import { messages, emails, webhooks } from '../app/lib/schema'
 import { eq, sql } from 'drizzle-orm'
-import PostalMime from 'postal-mime'
+import PostalMime, { type Attachment } from 'postal-mime'
 import { WEBHOOK_CONFIG } from '../app/config/webhook'
 import { EmailMessage } from '../app/lib/webhook'
+
+const arrayBufferToBase64 = (buffer: ArrayBuffer) => {
+  const bytes = new Uint8Array(buffer)
+  let binary = ''
+  const chunkSize = 0x8000
+
+  for (let i = 0; i < bytes.length; i += chunkSize) {
+    binary += String.fromCharCode(...bytes.subarray(i, i + chunkSize))
+  }
+
+  return btoa(binary)
+}
+
+const normalizeContentId = (contentId: string) => {
+  return contentId.trim().replace(/^<|>$/g, '')
+}
+
+const escapeRegExp = (value: string) => {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+}
+
+const inlineCidImages = (html: string, attachments: Attachment[]) => {
+  if (!html || attachments.length === 0) {
+    return html
+  }
+
+  let nextHtml = html
+
+  for (const attachment of attachments) {
+    if (
+      !attachment.contentId ||
+      !attachment.content ||
+      !attachment.mimeType.startsWith('image/')
+    ) {
+      continue
+    }
+
+    const contentId = normalizeContentId(attachment.contentId)
+    if (!contentId) {
+      continue
+    }
+
+    const dataUrl = `data:${attachment.mimeType};base64,${arrayBufferToBase64(
+      attachment.content
+    )}`
+    const cidVariants = Array.from(new Set([
+      contentId,
+      encodeURI(contentId),
+      encodeURIComponent(contentId),
+      `<${contentId}>`,
+      encodeURI(`<${contentId}>`),
+      encodeURIComponent(`<${contentId}>`)
+    ]))
+
+    for (const cid of cidVariants) {
+      nextHtml = nextHtml.replace(
+        new RegExp(`cid:${escapeRegExp(cid)}`, 'gi'),
+        dataUrl
+      )
+    }
+  }
+
+  return nextHtml
+}
 
 const handleEmail = async (message: ForwardableEmailMessage, env: Env) => {
   const db = drizzle(env.DB, { schema: { messages, emails, webhooks } })
 
   const parsedMessage = await PostalMime.parse(message.raw)
+  const html = inlineCidImages(parsedMessage.html || '', parsedMessage.attachments)
 
   console.log("parsedMessage:", parsedMessage)
 
@@ -28,7 +93,7 @@ const handleEmail = async (message: ForwardableEmailMessage, env: Env) => {
       fromAddress: message.from,
       subject: parsedMessage.subject || '(无主题)',
       content: parsedMessage.text || '',
-      html: parsedMessage.html || '',
+      html,
       type: 'received',
     }).returning().get()
 
@@ -72,4 +137,4 @@ const worker = {
   }
 }
 
-export default worker 
+export default worker

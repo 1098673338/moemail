@@ -110,11 +110,6 @@ export function ThreeColumnLayout() {
         </div>
 
         <div className={columnClass} style={contentColumnStyle}>
-          <div className={headerClass}>
-            <h2 className={titleClass}>
-              {selectedMessageId ? t("messageContent") : t("selectMessage")}
-            </h2>
-          </div>
           {selectedEmail && selectedMessageId && (
             <div className="flex-1 overflow-auto">
               <MessageView

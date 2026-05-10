@@ -224,22 +224,22 @@ export function MessageList({ email, messageType, onMessageSelect, selectedMessa
         </span>
       </div>
 
-      <div className="flex-1 overflow-auto" onScroll={handleScroll}>
+      <div className="flex-1 overflow-auto p-2" onScroll={handleScroll}>
         {loading ? (
           <div className="p-4 text-center text-sm text-gray-500">{t("loading")}</div>
         ) : messages.length > 0 ? (
-          <div className="divide-y divide-primary/10">
+          <div className="space-y-1">
             {messages.map(message => (
               <div
                 key={message.id}
                 onClick={() => onMessageSelect(message.id, messageType)}
                 className={cn(
-                  "p-3 hover:bg-primary/5 cursor-pointer group",
+                  "p-2 rounded cursor-pointer text-sm group hover:bg-primary/5",
                   selectedMessageId === message.id && "bg-primary/10"
                 )}
               >
                 <div className="flex items-start gap-3">
-                  <Mail className="w-4 h-4 text-primary/60 mt-1" />
+                  <Mail className="w-4 h-4 text-primary/60 mt-0.5" />
                   <div className="min-w-0 flex-1">
                     <p className="font-medium text-sm truncate">{message.subject}</p>
                     <p className="mt-1 truncate text-left text-xs text-gray-500">
@@ -259,7 +259,7 @@ export function MessageList({ email, messageType, onMessageSelect, selectedMessa
                         <Button
                           variant="ghost"
                           size="icon"
-                          className="h-8 w-8"
+                          className="h-8 w-8 hover:bg-primary/10 dark:hover:bg-primary/20"
                         >
                           <Share2 className="h-4 w-4" />
                         </Button>
@@ -268,13 +268,13 @@ export function MessageList({ email, messageType, onMessageSelect, selectedMessa
                     <Button
                       variant="ghost"
                       size="icon"
-                      className="h-8 w-8"
+                      className="h-8 w-8 hover:bg-primary/10 dark:hover:bg-primary/20"
                       onClick={(e) => {
                         e.stopPropagation()
                         setMessageToDelete(message)
                       }}
                     >
-                      <Trash2 className="h-4 w-4 text-destructive" />
+                      <Trash2 className="h-4 w-4" />
                     </Button>
                   </div>
                 </div>

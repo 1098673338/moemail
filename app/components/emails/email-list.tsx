@@ -5,7 +5,7 @@ import { useSession } from "next-auth/react"
 import { useTranslations } from "next-intl"
 import { CreateDialog } from "./create-dialog"
 import { ShareDialog } from "./share-dialog"
-import { Copy, Mail, RefreshCw, Trash2 } from "lucide-react"
+import { Copy, RefreshCw, Trash2 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { useThrottle } from "@/hooks/use-throttle"
@@ -201,7 +201,6 @@ export function EmailList({ onEmailSelect, selectedEmailId }: EmailListProps) {
                   )}
                   onClick={() => onEmailSelect(email)}
                 >
-                  <Mail className="h-4 w-4 text-primary/60" />
                   <div className="truncate flex-1">
                     <div className="font-medium truncate">{email.address}</div>
                     <div className="text-xs text-gray-500">
