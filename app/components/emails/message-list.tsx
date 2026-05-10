@@ -242,15 +242,13 @@ export function MessageList({ email, messageType, onMessageSelect, selectedMessa
                   <Mail className="w-4 h-4 text-primary/60 mt-1" />
                   <div className="min-w-0 flex-1">
                     <p className="font-medium text-sm truncate">{message.subject}</p>
-                    <div className="mt-1 flex items-center gap-2 text-xs text-gray-500">
-                      <span className="min-w-0 flex-1 truncate text-left">
-                        {message.from_address || message.to_address || ''}
-                      </span>
-                      <span className="ml-auto flex shrink-0 items-center justify-end gap-1 text-right">
-                        <Calendar className="w-3 h-3 shrink-0" />
-                        {new Date(message.received_at || message.sent_at || 0).toLocaleString()}
-                      </span>
-                    </div>
+                    <p className="mt-1 truncate text-left text-xs text-gray-500">
+                      {message.from_address || message.to_address || ''}
+                    </p>
+                    <p className="mt-1 flex items-center gap-1 text-left text-xs text-gray-500">
+                      <Calendar className="w-3 h-3 shrink-0" />
+                      {new Date(message.received_at || message.sent_at || 0).toLocaleString()}
+                    </p>
                   </div>
                   <div className="opacity-0 group-hover:opacity-100 flex gap-1" onClick={(e) => e.stopPropagation()}>
                     <ShareMessageDialog

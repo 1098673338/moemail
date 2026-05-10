@@ -29,8 +29,8 @@ export function ThreeColumnLayout() {
   const headerClass = "p-2 border-b-2 border-primary/20 flex items-center justify-between shrink-0"
   const titleClass = "text-sm font-bold px-2 w-full overflow-hidden"
   const emailColumnStyle = { gridColumn: "span 4 / span 4" }
-  const messageListColumnStyle = { gridColumn: "span 6 / span 6" }
-  const contentColumnStyle = { gridColumn: "span 14 / span 14" }
+  const messageListColumnStyle = { gridColumn: "span 4 / span 4" }
+  const contentColumnStyle = { gridColumn: "span 16 / span 16" }
 
   // 移动端视图逻辑
   const getMobileView = () => {
