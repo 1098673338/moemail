@@ -3,6 +3,7 @@
 import { useLocaleSwitcher } from "@/hooks/use-locale-switcher"
 import { LOCALE_LABELS } from "@/i18n/config"
 import { Button } from "@/components/ui/button"
+import { FontSwitcher } from "@/components/theme/font-switcher"
 import { Languages } from "lucide-react"
 import {
   DropdownMenu,
@@ -15,7 +16,12 @@ export function FloatingLanguageSwitcher() {
   const { locale, locales, switchLocale } = useLocaleSwitcher()
 
   return (
-    <div className="fixed bottom-6 right-6 z-50">
+    <div className="fixed bottom-6 right-6 z-50 flex items-center gap-2">
+      <FontSwitcher
+        buttonVariant="outline"
+        buttonClassName="bg-white dark:bg-background shadow-lg group relative border-primary/20 hover:border-primary/40 transition-all"
+        contentSide="top"
+      />
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <Button

@@ -15,6 +15,12 @@
     "logout": "ログアウト",
     "backToMailbox": "メールボックスに戻る"
   },
+  "font": {
+    "label": "フォントを切り替え",
+    "options": {
+      "pixel": "ピクセル",
+      "system": "システムフォント"
+    }
+  },
   "github": "ソースコードを入手"
 }
-

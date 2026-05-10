@@ -15,5 +15,12 @@
     "logout": "로그아웃",
     "backToMailbox": "메일함으로 돌아가기"
   },
+  "font": {
+    "label": "글꼴 전환",
+    "options": {
+      "pixel": "픽셀",
+      "system": "시스템 글꼴"
+    }
+  },
   "github": "소스 코드 받기"
 }

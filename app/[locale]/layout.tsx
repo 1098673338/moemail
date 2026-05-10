@@ -21,6 +21,22 @@ export const viewport: Viewport = {
   userScalable: false,
 }
 
+const fontPreferenceScript = `
+  (function() {
+    try {
+      var font = localStorage.getItem("moemail-font");
+      if (font === "sans") {
+        font = "system";
+      }
+      var allowedFonts = ["pixel", "system"];
+      if (allowedFonts.indexOf(font) === -1) {
+        font = "pixel";
+      }
+      document.documentElement.dataset.font = font;
+    } catch (_) {}
+  })();
+`
+
 async function getMessages(locale: Locale) {
   try {
     const common = (await import(`@/i18n/messages/${locale}/common.json`)).default
@@ -108,8 +124,9 @@ export default async function LocaleLayout({
   const messages = await getMessages(locale)
 
   return (
-    <html lang={locale} suppressHydrationWarning>
+    <html lang={locale} data-font="pixel" suppressHydrationWarning>
       <head>
+        <script dangerouslySetInnerHTML={{ __html: fontPreferenceScript }} />
         <meta name="application-name" content="MoeMail" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="default" />
@@ -120,7 +137,7 @@ export default async function LocaleLayout({
       <body 
         className={cn(
           zpix.variable,
-          "font-zpix min-h-screen antialiased",
+          "font-sans min-h-screen antialiased",
           "bg-background text-foreground",
           "transition-colors duration-300"
         )}
@@ -144,4 +161,3 @@ export default async function LocaleLayout({
     </html>
   )
 }
-

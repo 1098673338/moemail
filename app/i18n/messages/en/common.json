@@ -15,5 +15,12 @@
     "logout": "Logout",
     "backToMailbox": "Back to Mailbox"
   },
+  "font": {
+    "label": "Switch font",
+    "options": {
+      "pixel": "Pixel",
+      "system": "System Font"
+    }
+  },
   "github": "Get Source Code"
 }

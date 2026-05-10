@@ -189,7 +189,7 @@ export function ShareMessageDialog({ emailId, messageId, messageSubject, trigger
             </DialogDescription>
           </DialogHeader>
 
-          <div className="min-h-0 space-y-4 overflow-y-auto pr-1">
+          <div className="min-h-0 -mx-1 space-y-4 overflow-y-auto px-1 py-1">
             {/* Message info */}
             <div className="p-3 bg-gray-50 dark:bg-gray-800 rounded-lg min-w-0">
               <p className="text-sm font-medium truncate">{messageSubject}</p>

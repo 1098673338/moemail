@@ -59,8 +59,8 @@ const config = {
         sm: "calc(var(--radius) - 4px)",
       },
       fontFamily: {
-        sans: ['var(--font-zpix)'],
-        zpix: ['var(--font-zpix)'],
+        sans: ['var(--font-family-app)'],
+        zpix: ['var(--font-zpix)', 'system-ui', 'sans-serif'],
       },
       keyframes: {
         "accordion-down": {
