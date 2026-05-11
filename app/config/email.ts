@@ -3,8 +3,8 @@ export const EMAIL_CONFIG = {
   POLL_INTERVAL: 10_000, // Polling interval in milliseconds
   DEFAULT_DAILY_SEND_LIMITS: {
     emperor: 0,   // 皇帝无限制
-    duke: 5,      // 公爵每日5封
-    knight: 2,    // 骑士每日2封
+    duke: -1,     // 公爵禁止发件
+    knight: -1,   // 骑士禁止发件
     civilian: -1, // 平民禁止发件
   },
 } as const
