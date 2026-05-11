@@ -88,7 +88,7 @@ export function CreateDialog({ onEmailCreated }: CreateDialogProps) {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button className="h-10 gap-2">
+        <Button className="h-8 gap-2">
           <Plus className="w-4 h-4" />
           {t("title")}
         </Button>

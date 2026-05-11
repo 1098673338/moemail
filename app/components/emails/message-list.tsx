@@ -247,7 +247,7 @@ export function MessageList({ email, messageType, onMessageSelect, selectedMessa
                     <p className="mt-1 truncate text-left text-xs text-gray-500">
                       {message.from_address || message.to_address || ''}
                     </p>
-                    <p className="mt-1 text-left text-xs text-gray-500">
+                    <p className="mt-1 truncate text-left text-xs text-gray-500">
                       {new Date(message.received_at || message.sent_at || 0).toLocaleString()}
                     </p>
                   </div>

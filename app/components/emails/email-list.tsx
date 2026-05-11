@@ -166,7 +166,7 @@ export function EmailList({ onEmailSelect, selectedEmailId }: EmailListProps) {
   return (
     <>
       <div className="flex flex-col h-full">
-        <div className="p-2 flex justify-between items-center border-b border-gray-200">
+        <div className="flex h-14 shrink-0 items-center justify-between border-b border-gray-200 px-2">
           <div className="flex items-center gap-2">
             <Button
               variant="ghost"
@@ -203,9 +203,9 @@ export function EmailList({ onEmailSelect, selectedEmailId }: EmailListProps) {
                   )}
                   onClick={() => onEmailSelect(email)}
                 >
-                  <div className="truncate flex-1">
+                  <div className="min-w-0 flex-1">
                     <div className="font-medium truncate">{email.address}</div>
-                    <div className="text-xs text-gray-500">
+                    <div className="truncate text-xs text-gray-500">
                       {new Date(email.expiresAt).getFullYear() === 9999 ? (
                         t("permanent")
                       ) : (
