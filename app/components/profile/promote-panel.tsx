@@ -235,7 +235,7 @@ export function PromotePanel() {
 
         <Button
           onClick={handleAction}
-          disabled={loading || searching || !targetUser}
+          disabled={loading || searching || !targetUser || targetUser.role === ROLES.EMPEROR}
           className="w-full"
         >
           {loading ? (
