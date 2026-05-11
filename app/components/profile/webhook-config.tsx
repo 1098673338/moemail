@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unused-vars */
 "use client"
 
 import { useState, useEffect } from "react"
@@ -19,8 +18,6 @@ import {
 export function WebhookConfig() {
   const t = useTranslations("profile.webhook")
   const tCommon = useTranslations("common.actions")
-  const tMessages = useTranslations("emails.messages")
-  const tApiKey = useTranslations("profile.apiKey")
   const [enabled, setEnabled] = useState(false)
   const [url, setUrl] = useState("")
   const [loading, setLoading] = useState(false)
@@ -40,19 +37,6 @@ export function WebhookConfig() {
       .finally(() => setInitialLoading(false))
   }, [])
 
-  if (initialLoading) {
-    return (
-      <div className="text-center">
-        <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center mx-auto">
-          <Loader2 className="w-6 h-6 text-primary animate-spin" />
-        </div>
-        <div>
-          <p className="text-sm text-muted-foreground">{tMessages("loading")}</p>
-        </div>
-      </div>
-    )
-  }
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!url) return
@@ -71,7 +55,7 @@ export function WebhookConfig() {
         title: t("saveSuccess"),
         description: t("saveSuccess")
       })
-    } catch (_error) {
+    } catch {
       toast({
         title: t("saveFailed"),
         description: t("saveFailed"),
@@ -99,7 +83,7 @@ export function WebhookConfig() {
         title: t("testSuccess"),
         description: t("testSuccess")
       })
-    } catch (_error) {
+    } catch {
       toast({
         title: t("testFailed"),
         description: t("testFailed"),
@@ -111,7 +95,7 @@ export function WebhookConfig() {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
+    <form onSubmit={handleSubmit} className="space-y-4" aria-busy={initialLoading}>
       <div className="flex items-center justify-between">
         <div className="space-y-0.5">
           <Label className="text-sm font-medium">{t("enable")}</Label>
@@ -120,12 +104,13 @@ export function WebhookConfig() {
           </p>
         </div>
         <Switch
-          checked={enabled}
+          checked={!initialLoading && enabled}
           onCheckedChange={setEnabled}
+          disabled={initialLoading}
         />
       </div>
 
-      {enabled && (
+      {!initialLoading && enabled && (
         <div className="space-y-4">
           <div className="space-y-2">
             <Label htmlFor="webhook-url">{t("url")}</Label>

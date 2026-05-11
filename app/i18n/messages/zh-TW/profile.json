@@ -128,7 +128,6 @@
     "username": "使用者名稱",
     "email": "郵箱",
     "role": "角色",
-    "rolePlaceholder": "請輸入使用者名稱",
     "maxEmails": "最大郵箱數",
     "sendLimit": "發件限額",
     "sendLimitPlaceholder": "留空表示不能發件",
@@ -138,7 +137,6 @@
     "actions": "操作",
     "promote": "設為",
     "saveConfig": "儲存設定",
-    "loading": "載入中...",
     "updateSuccess": "使用者角色更新成功",
     "updateFailed": "更新使用者角色失敗"
   }

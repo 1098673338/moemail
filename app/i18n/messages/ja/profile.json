@@ -128,7 +128,6 @@
     "username": "ユーザー名",
     "email": "メール",
     "role": "ロール",
-    "rolePlaceholder": "ユーザー名を入力",
     "maxEmails": "最大メールボックス数",
     "sendLimit": "送信上限",
     "sendLimitPlaceholder": "空欄は送信不可",
@@ -138,7 +137,6 @@
     "actions": "操作",
     "promote": "設定",
     "saveConfig": "設定を保存",
-    "loading": "読み込み中...",
     "updateSuccess": "ユーザーロールを更新しました",
     "updateFailed": "ユーザーロールの更新に失敗しました"
   }

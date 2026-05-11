@@ -2,7 +2,7 @@
 
 import { useTranslations } from "next-intl"
 import { Button } from "@/components/ui/button"
-import { Eye, EyeOff, Gem, Settings, Sword, User2 } from "lucide-react"
+import { Eye, EyeOff, Gem, Loader2, Settings, Sword, User2 } from "lucide-react"
 import { useToast } from "@/components/ui/use-toast"
 import { useState, useEffect } from "react"
 import { Role, ROLES } from "@/lib/permissions"
@@ -29,6 +29,7 @@ export function WebsiteConfigPanel() {
   const [turnstileSiteKey, setTurnstileSiteKey] = useState("")
   const [turnstileSecretKey, setTurnstileSecretKey] = useState("")
   const [showSecretKey, setShowSecretKey] = useState(false)
+  const [initialLoading, setInitialLoading] = useState(true)
   const [loading, setLoading] = useState(false)
   const { toast } = useToast()
 
@@ -43,26 +44,30 @@ export function WebsiteConfigPanel() {
   }, [])
 
   const fetchConfig = async () => {
-    const res = await fetch("/api/config")
-    if (res.ok) {
-      const data = await res.json() as { 
-        defaultRole: Exclude<Role, typeof ROLES.EMPEROR>,
-        emailDomains: string,
-        adminContact: string,
-        maxEmails: string,
-        turnstile?: {
-          enabled: boolean,
-          siteKey: string,
-          secretKey?: string
+    try {
+      const res = await fetch("/api/config")
+      if (res.ok) {
+        const data = await res.json() as { 
+          defaultRole: Exclude<Role, typeof ROLES.EMPEROR>,
+          emailDomains: string,
+          adminContact: string,
+          maxEmails: string,
+          turnstile?: {
+            enabled: boolean,
+            siteKey: string,
+            secretKey?: string
+          }
         }
+        setDefaultRole(data.defaultRole)
+        setEmailDomains(data.emailDomains)
+        setAdminContact(data.adminContact)
+        setMaxEmails(data.maxEmails || EMAIL_CONFIG.MAX_ACTIVE_EMAILS.toString())
+        setTurnstileEnabled(Boolean(data.turnstile?.enabled))
+        setTurnstileSiteKey(data.turnstile?.siteKey ?? "")
+        setTurnstileSecretKey(data.turnstile?.secretKey ?? "")
       }
-      setDefaultRole(data.defaultRole)
-      setEmailDomains(data.emailDomains)
-      setAdminContact(data.adminContact)
-      setMaxEmails(data.maxEmails || EMAIL_CONFIG.MAX_ACTIVE_EMAILS.toString())
-      setTurnstileEnabled(Boolean(data.turnstile?.enabled))
-      setTurnstileSiteKey(data.turnstile?.siteKey ?? "")
-      setTurnstileSecretKey(data.turnstile?.secretKey ?? "")
+    } finally {
+      setInitialLoading(false)
     }
   }
 
@@ -109,35 +114,42 @@ export function WebsiteConfigPanel() {
         <h2 className="text-lg font-semibold">{t("title")}</h2>
       </div>
 
-      <div className="space-y-4">
-        <div className="grid grid-cols-[180px_minmax(0,1fr)] items-center gap-4">
-          <span className="text-left text-sm">{t("defaultRole")}:</span>
-          <Select value={defaultRole} onValueChange={setDefaultRole}>
-            <SelectTrigger className="w-44">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value={ROLES.DUKE}>
-                <div className="flex items-center gap-2">
-                  <Gem className="w-4 h-4" />
-                  {roleNames[ROLES.DUKE]}
-                </div>
-              </SelectItem>
-              <SelectItem value={ROLES.KNIGHT}>
-                <div className="flex items-center gap-2">
-                  <Sword className="w-4 h-4" />
-                  {roleNames[ROLES.KNIGHT]}
-                </div>
-              </SelectItem>
-              <SelectItem value={ROLES.CIVILIAN}>
-                <div className="flex items-center gap-2">
-                  <User2 className="w-4 h-4" />
-                  {roleNames[ROLES.CIVILIAN]}
-                </div>
-              </SelectItem>
-            </SelectContent>
-          </Select>
+      {initialLoading ? (
+        <div className="flex min-h-40 items-center justify-center">
+          <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center">
+            <Loader2 className="w-6 h-6 text-primary animate-spin" />
+          </div>
         </div>
+      ) : (
+        <div className="space-y-4">
+          <div className="grid grid-cols-[180px_minmax(0,1fr)] items-center gap-4">
+            <span className="text-left text-sm">{t("defaultRole")}:</span>
+            <Select value={defaultRole} onValueChange={setDefaultRole}>
+              <SelectTrigger className="w-44">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value={ROLES.DUKE}>
+                  <div className="flex items-center gap-2">
+                    <Gem className="w-4 h-4" />
+                    {roleNames[ROLES.DUKE]}
+                  </div>
+                </SelectItem>
+                <SelectItem value={ROLES.KNIGHT}>
+                  <div className="flex items-center gap-2">
+                    <Sword className="w-4 h-4" />
+                    {roleNames[ROLES.KNIGHT]}
+                  </div>
+                </SelectItem>
+                <SelectItem value={ROLES.CIVILIAN}>
+                  <div className="flex items-center gap-2">
+                    <User2 className="w-4 h-4" />
+                    {roleNames[ROLES.CIVILIAN]}
+                  </div>
+                </SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
 
         <div className="grid grid-cols-[180px_minmax(0,1fr)] items-center gap-4">
           <span className="text-left text-sm">{t("emailDomains")}:</span>
@@ -236,6 +248,7 @@ export function WebsiteConfigPanel() {
           {t("save")}
         </Button>
       </div>
+      )}
     </div>
   )
 } 

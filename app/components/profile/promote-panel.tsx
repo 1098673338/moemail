@@ -34,7 +34,7 @@ export function PromotePanel() {
   const [targetUser, setTargetUser] = useState<TargetUser | null>(null)
   const [loading, setLoading] = useState(false)
   const [searching, setSearching] = useState(false)
-  const [targetRole, setTargetRole] = useState<Role | "">("")
+  const [targetRole, setTargetRole] = useState<Role>(ROLES.KNIGHT)
   const [maxEmails, setMaxEmails] = useState("")
   const [sendLimit, setSendLimit] = useState("")
   const { toast } = useToast()
@@ -52,14 +52,14 @@ export function PromotePanel() {
     const search = searchText.trim()
     if (!search) {
       setTargetUser(null)
-      setTargetRole("")
+      setTargetRole(ROLES.KNIGHT)
       setMaxEmails("")
       setSendLimit("")
       return
     }
 
     setTargetUser(null)
-    setTargetRole("")
+    setTargetRole(ROLES.KNIGHT)
     setMaxEmails("")
     setSendLimit("")
 
@@ -80,7 +80,7 @@ export function PromotePanel() {
 
         if (!res.ok || !data.user) {
           setTargetUser(null)
-          setTargetRole("")
+          setTargetRole(ROLES.KNIGHT)
           setMaxEmails("")
           setSendLimit("")
           return
@@ -92,12 +92,12 @@ export function PromotePanel() {
         if ([ROLES.EMPEROR, ROLES.DUKE, ROLES.KNIGHT, ROLES.CIVILIAN].includes(data.user.role as Role)) {
           setTargetRole(data.user.role as Role)
         } else {
-          setTargetRole("")
+          setTargetRole(ROLES.KNIGHT)
         }
       } catch {
         if (!cancelled) {
           setTargetUser(null)
-          setTargetRole("")
+          setTargetRole(ROLES.KNIGHT)
           setMaxEmails("")
           setSendLimit("")
         }
@@ -115,7 +115,7 @@ export function PromotePanel() {
   }, [searchText])
 
   const handleAction = async () => {
-    if (!targetUser || !targetRole) return
+    if (!targetUser) return
 
     const parsedMaxEmails = isTargetEmperor ? 0 : Number(maxEmails)
     if (!isTargetEmperor && (!maxEmails.trim() || !Number.isInteger(parsedMaxEmails) || parsedMaxEmails < 0)) {
@@ -162,7 +162,7 @@ export function PromotePanel() {
       })
       setSearchText("")
       setTargetUser(null)
-      setTargetRole("")
+      setTargetRole(ROLES.KNIGHT)
       setMaxEmails("")
       setSendLimit("")
     } catch (error) {
@@ -201,7 +201,7 @@ export function PromotePanel() {
             disabled={isUserFormDisabled}
           >
             <SelectTrigger className="w-44">
-              <SelectValue placeholder={t("rolePlaceholder")} />
+              <SelectValue />
             </SelectTrigger>
             <SelectContent>
               {targetUser?.role === ROLES.EMPEROR && (
@@ -259,15 +259,9 @@ export function PromotePanel() {
             disabled={isUserFormDisabled}
           />
         </div>
-        {searching && (
-          <p className="h-4 text-xs leading-4 text-muted-foreground">
-            {t("loading")}
-          </p>
-        )}
-
         <Button
           onClick={handleAction}
-          disabled={loading || isUserFormDisabled || !targetRole}
+          disabled={loading || isUserFormDisabled}
           className="w-full"
         >
           {loading ? (
