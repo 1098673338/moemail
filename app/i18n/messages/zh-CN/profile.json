@@ -56,7 +56,6 @@
   },
   "emailService": {
     "title": "Resend 发件服务配置",
-    "configRoleLabel": "可配置的角色权限",
     "enable": "启用邮件服务",
     "fixedRoleLimits": "固定权限规则",
     "emperorLimit": "皇帝可以无限发件，不受任何限制",
@@ -65,7 +64,7 @@
     "apiKey": "Resend API Key",
     "apiKeyPlaceholder": "输入 Resend API Key",
     "dailyLimit": "每日限额",
-    "roleLimits": "允许使用发件功能的角色",
+    "roleLimits": "发件权限规则",
     "save": "保存配置",
     "saving": "保存中...",
     "saveSuccess": "配置保存成功",

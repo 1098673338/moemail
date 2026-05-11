@@ -8,28 +8,18 @@ import { useToast } from "@/components/ui/use-toast"
 import { Input } from "@/components/ui/input"
 import { Switch } from "@/components/ui/switch"
 import { Label } from "@/components/ui/label"
-import { Checkbox } from "@/components/ui/checkbox"
 
 interface EmailServiceConfig {
   enabled: boolean
   apiKey: string
-  roleLimits: {
-    duke: number
-    knight: number
-  }
 }
 
 export function EmailServiceConfig() {
   const t = useTranslations("profile.emailService")
   const tCard = useTranslations("profile.card")
-  const tSend = useTranslations("emails.send")
   const [config, setConfig] = useState<EmailServiceConfig>({
     enabled: false,
     apiKey: "",
-    roleLimits: {
-      duke: -1,
-      knight: -1,
-    }
   })
   const [loading, setLoading] = useState(false)
   const [showToken, setShowToken] = useState(false)
@@ -57,7 +47,6 @@ export function EmailServiceConfig() {
       const saveData = {
         enabled: config.enabled,
         apiKey: config.apiKey,
-        roleLimits: config.roleLimits
       }
 
       const res = await fetch("/api/config/email-service", {
@@ -159,93 +148,17 @@ export function EmailServiceConfig() {
                     </div>
                     <div className="flex items-center gap-2">
                       <div className="w-1.5 h-1.5 bg-red-500 rounded-full"></div>
+                      <span><strong>{tCard("roles.DUKE")}</strong> - {t("civilianLimit")}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <div className="w-1.5 h-1.5 bg-red-500 rounded-full"></div>
+                      <span><strong>{tCard("roles.KNIGHT")}</strong> - {t("civilianLimit")}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <div className="w-1.5 h-1.5 bg-red-500 rounded-full"></div>
                       <span><strong>{tCard("roles.CIVILIAN")}</strong> - {t("civilianLimit")}</span>
                     </div>
                   </div>
-                </div>
-                <div className="space-y-4">
-                  <div className="flex items-center gap-2">
-                    <div className="w-2 h-2 bg-orange-500 rounded-full"></div>
-                    <p className="text-sm font-medium text-gray-900">{t("configRoleLabel")}</p>
-                  </div>
-                  {[
-                    { value: "duke", label: tCard("roles.DUKE"), key: "duke" as const },
-                    { value: "knight", label: tCard("roles.KNIGHT"), key: "knight" as const }
-                  ].map((role) => {
-                    const isDisabled = config.roleLimits[role.key] === -1
-                    const isEnabled = !isDisabled
-                    
-                    return (
-                      <div 
-                        key={role.value} 
-                        className={`group relative p-4 border rounded-xl transition-all duration-200 ${
-                          isEnabled
-                            ? 'border-gray-200 bg-gray-50' 
-                            : 'border-gray-200 hover:border-gray-200'
-                        }`}
-                      >
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center space-x-4">
-                            <div className="relative">
-                              <Checkbox
-                                id={`role-${role.value}`}
-                                checked={isEnabled}
-                                onChange={(checked: boolean) => {
-                                  setConfig((prev: EmailServiceConfig) => ({
-                                    ...prev,
-                                    roleLimits: {
-                                      ...prev.roleLimits,
-                                      [role.key]: checked ? 0 : -1
-                                    }
-                                  }))
-                                }}
-                              />
-                            </div>
-                            <div>
-                              <Label 
-                                htmlFor={`role-${role.value}`} 
-                                className="text-base font-semibold cursor-pointer select-none flex items-center gap-2"
-                              >
-                                <span className="text-2xl">
-                                  {role.value === 'duke' ? '🏰' : '⚔️'}
-                                </span>
-                                {role.label}
-                              </Label>
-                              <p className="text-xs text-muted-foreground mt-1">
-                                {isEnabled ? t("enabled") : t("disabled")}
-                              </p>
-                            </div>
-                          </div>
-                          <div className="flex items-center space-x-3">
-                            <div className="text-right">
-                              <Label className="text-xs font-medium text-gray-600 block mb-1">{t("dailyLimit")}</Label>
-                              <div className="flex items-center space-x-2">
-                                <Input
-                                  type="number"
-                                  min="-1"
-                                  value={config.roleLimits[role.key]}
-                                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => 
-                                    setConfig((prev: EmailServiceConfig) => ({
-                                      ...prev,
-                                      roleLimits: {
-                                        ...prev.roleLimits,
-                                        [role.key]: parseInt(e.target.value) || 0
-                                      }
-                                    }))
-                                  }
-                                  className="w-20 h-9 text-center text-sm font-medium"
-                                  placeholder="0"
-                                  disabled={isDisabled}
-                                />
-                                <span className="text-xs text-muted-foreground whitespace-nowrap">{tSend("dailyLimitUnit")}</span>
-                              </div>
-                              <p className="text-xs text-muted-foreground mt-1">0 = {t("unlimited")}</p>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    )
-                  })}
                 </div>
               </div>
             </div>

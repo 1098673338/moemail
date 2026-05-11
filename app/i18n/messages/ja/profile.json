@@ -56,7 +56,6 @@
   },
   "emailService": {
     "title": "Resend 送信サービス設定",
-    "configRoleLabel": "設定可能なロール権限",
     "enable": "メール送信を有効にする",
     "fixedRoleLimits": "固定権限ルール",
     "emperorLimit": "皇帝は制限なく無制限に送信できます",
@@ -65,7 +64,7 @@
     "apiKey": "Resend API Key",
     "apiKeyPlaceholder": "Resend API Key を入力",
     "dailyLimit": "1日の上限",
-    "roleLimits": "送信機能を許可するロール",
+    "roleLimits": "送信権限ルール",
     "save": "設定を保存",
     "saving": "保存中...",
     "saveSuccess": "設定を保存しました",

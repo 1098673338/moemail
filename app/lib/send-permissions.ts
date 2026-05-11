@@ -91,15 +91,10 @@ async function getUserDailyLimit(userId: string): Promise<number> {
 
     const userRoleNames = userRoleData.map(r => r.roleName)
 
-    const env = getRequestContext().env
-    const roleLimitsStr = await env.SITE_CONFIG.get("EMAIL_ROLE_LIMITS")
-    
-    const customLimits = roleLimitsStr ? JSON.parse(roleLimitsStr) : {}
-    
     const finalLimits = {
       emperor: EMAIL_CONFIG.DEFAULT_DAILY_SEND_LIMITS.emperor,
-      duke: customLimits.duke !== undefined ? customLimits.duke : EMAIL_CONFIG.DEFAULT_DAILY_SEND_LIMITS.duke,
-      knight: customLimits.knight !== undefined ? customLimits.knight : EMAIL_CONFIG.DEFAULT_DAILY_SEND_LIMITS.knight,
+      duke: EMAIL_CONFIG.DEFAULT_DAILY_SEND_LIMITS.duke,
+      knight: EMAIL_CONFIG.DEFAULT_DAILY_SEND_LIMITS.knight,
       civilian: EMAIL_CONFIG.DEFAULT_DAILY_SEND_LIMITS.civilian,
     }
 

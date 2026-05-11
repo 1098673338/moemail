@@ -56,7 +56,6 @@
   },
   "emailService": {
     "title": "Resend Email Service Configuration",
-    "configRoleLabel": "Configurable Role Permissions",
     "enable": "Enable Email Service",
     "fixedRoleLimits": "Fixed Role Limits",
     "emperorLimit": "Emperor can send unlimited emails without any restrictions",
@@ -65,7 +64,7 @@
     "apiKey": "Resend API Key",
     "apiKeyPlaceholder": "Enter Resend API Key",
     "dailyLimit": "Daily Limit",
-    "roleLimits": "Roles allowed to use sending feature",
+    "roleLimits": "Sending permission rules",
     "save": "Save Configuration",
     "saving": "Saving...",
     "saveSuccess": "Configuration saved successfully",

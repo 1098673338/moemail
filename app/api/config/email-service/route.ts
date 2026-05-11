@@ -2,17 +2,12 @@ import { NextResponse } from "next/server"
 import { getRequestContext } from "@cloudflare/next-on-pages"
 import { checkPermission } from "@/lib/auth"
 import { PERMISSIONS } from "@/lib/permissions"
-import { EMAIL_CONFIG } from "@/config"
 
 export const runtime = "edge"
 
 interface EmailServiceConfig {
   enabled: boolean
   apiKey: string
-  roleLimits: {
-    duke?: number
-    knight?: number
-  }
 }
 
 export async function GET() {
@@ -26,23 +21,14 @@ export async function GET() {
 
   try {
     const env = getRequestContext().env
-    const [enabled, apiKey, roleLimits] = await Promise.all([
+    const [enabled, apiKey] = await Promise.all([
       env.SITE_CONFIG.get("EMAIL_SERVICE_ENABLED"),
       env.SITE_CONFIG.get("RESEND_API_KEY"),
-      env.SITE_CONFIG.get("EMAIL_ROLE_LIMITS")
     ])
-
-    const customLimits = roleLimits ? JSON.parse(roleLimits) : {}
-    
-    const finalLimits = {
-      duke: customLimits.duke !== undefined ? customLimits.duke : EMAIL_CONFIG.DEFAULT_DAILY_SEND_LIMITS.duke,
-      knight: customLimits.knight !== undefined ? customLimits.knight : EMAIL_CONFIG.DEFAULT_DAILY_SEND_LIMITS.knight,
-    }
 
     return NextResponse.json({
       enabled: enabled === "true",
       apiKey: apiKey || "",
-      roleLimits: finalLimits
     })
   } catch (error) {
     console.error("Failed to get email service config:", error)
@@ -73,19 +59,11 @@ export async function POST(request: Request) {
     }
 
     const env = getRequestContext().env
-    
-    const customLimits: { duke?: number; knight?: number } = {}
-    if (config.roleLimits?.duke !== undefined) {
-      customLimits.duke = config.roleLimits.duke
-    }
-    if (config.roleLimits?.knight !== undefined) {
-      customLimits.knight = config.roleLimits.knight
-    }
 
     await Promise.all([
       env.SITE_CONFIG.put("EMAIL_SERVICE_ENABLED", config.enabled.toString()),
       env.SITE_CONFIG.put("RESEND_API_KEY", config.apiKey),
-      env.SITE_CONFIG.put("EMAIL_ROLE_LIMITS", JSON.stringify(customLimits))
+      env.SITE_CONFIG.delete("EMAIL_ROLE_LIMITS")
     ])
 
     return NextResponse.json({ success: true })
