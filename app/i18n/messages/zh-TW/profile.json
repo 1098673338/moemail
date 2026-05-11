@@ -135,6 +135,7 @@
     "maxEmailsInvalid": "最大郵箱數必須是大於等於 0 的整數",
     "actions": "操作",
     "promote": "設為",
+    "saveConfig": "儲存設定",
     "noUsers": "未找到使用者",
     "loading": "載入中...",
     "updateSuccess": "使用者角色更新成功",

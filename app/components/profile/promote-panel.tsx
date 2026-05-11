@@ -226,7 +226,7 @@ export function PromotePanel() {
           {loading ? (
             <Loader2 className="w-4 h-4 animate-spin" />
           ) : (
-            `${t("promote")}${roleNames[targetRole]}`
+            t("saveConfig")
           )}
         </Button>
       </div>

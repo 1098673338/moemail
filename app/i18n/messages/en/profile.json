@@ -135,6 +135,7 @@
     "maxEmailsInvalid": "Max emails must be an integer greater than or equal to 0",
     "actions": "Actions",
     "promote": "Set as",
+    "saveConfig": "Save Configuration",
     "noUsers": "No users found",
     "loading": "Loading...",
     "updateSuccess": "User role updated successfully",

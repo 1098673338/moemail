@@ -44,6 +44,12 @@ export async function POST(request: Request) {
     });
 
     if (currentUserRole?.role.name === ROLES.EMPEROR) {
+      if (maxEmails === 0) {
+        return Response.json({
+          success: true,
+        });
+      }
+
       return Response.json(
         { error: "不能降级皇帝" },
         { status: 400 }

@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect, useRef } from "react"
-import { Loader2 } from "lucide-react"
+import { Loader2, MailOpen } from "lucide-react"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Label } from "@/components/ui/label"
 
@@ -140,8 +140,9 @@ export function SharedMessageDetail({
 
   if (!message) {
     return (
-      <div className="flex items-center justify-center h-32 text-gray-500">
-        {t.selectMessage}
+      <div className="flex h-full flex-col items-center justify-center px-6 text-center text-muted-foreground">
+        <MailOpen className="mb-3 h-8 w-8 text-primary/40" />
+        <p className="text-sm">{t.selectMessage}</p>
       </div>
     )
   }
@@ -207,8 +208,9 @@ export function SharedMessageDetail({
             {message.content}
           </div>
         ) : (
-          <div className="flex items-center justify-center h-32 text-gray-500 text-sm">
-            {t.selectMessage}
+          <div className="flex h-full flex-col items-center justify-center px-6 text-center text-muted-foreground">
+            <MailOpen className="mb-3 h-8 w-8 text-primary/40" />
+            <p className="text-sm">{t.selectMessage}</p>
           </div>
         )}
       </div>

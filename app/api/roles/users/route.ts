@@ -2,7 +2,7 @@ import { createDb } from "@/lib/db"
 import { users } from "@/lib/schema"
 import { eq } from "drizzle-orm"
 import { checkPermission } from "@/lib/auth"
-import { PERMISSIONS } from "@/lib/permissions"
+import { PERMISSIONS, ROLES } from "@/lib/permissions"
 import { getRequestContext } from "@cloudflare/next-on-pages"
 import { EMAIL_CONFIG } from "@/config"
 
@@ -45,14 +45,16 @@ export async function POST(request: Request) {
       ? siteMaxEmails
       : EMAIL_CONFIG.MAX_ACTIVE_EMAILS
 
+    const roleName = user.userRoles[0]?.role.name
+
     return Response.json({
       user: {
         id: user.id,
         name: user.name,
         username: user.username,
         email: user.email,
-        role: user.userRoles[0]?.role.name,
-        maxEmails: user.maxEmails ?? defaultMaxEmails
+        role: roleName,
+        maxEmails: roleName === ROLES.EMPEROR ? 0 : user.maxEmails ?? defaultMaxEmails
       }
     })
   } catch (error) {
