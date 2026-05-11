@@ -39,22 +39,13 @@ export function CreateDialog({ onEmailCreated }: CreateDialogProps) {
   }
 
   const createEmail = async () => {
-    if (!emailName.trim()) {
-      toast({
-        title: tList("error"),
-        description: t("namePlaceholder"),
-        variant: "destructive"
-      })
-      return
-    }
-
     setLoading(true)
     try {
       const response = await fetch("/api/emails/generate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          name: emailName,
+          name: emailName.trim(),
           domain: currentDomain,
           expiryTime: parseInt(expiryTime)
         })

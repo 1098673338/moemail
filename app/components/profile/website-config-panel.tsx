@@ -161,13 +161,14 @@ export function WebsiteConfigPanel() {
           <span className="text-left text-sm">{t("maxEmails")}:</span>
           <Input 
             type="number"
-            min="1"
+            min="0"
             max="100"
             value={maxEmails}
             onChange={(e) => setMaxEmails(e.target.value)}
             placeholder={`${EMAIL_CONFIG.MAX_ACTIVE_EMAILS}`}
           />
         </div>
+        <p className="text-xs text-muted-foreground">{t("maxEmailsHint")}</p>
 
         <div className="flex items-center justify-between">
           <div className="space-y-0.5">

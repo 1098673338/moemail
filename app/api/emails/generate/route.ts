@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server"
 import { nanoid } from "nanoid"
 import { createDb } from "@/lib/db"
-import { emails } from "@/lib/schema"
+import { emails, users } from "@/lib/schema"
 import { eq, and, gt, sql } from "drizzle-orm"
 import { EXPIRY_OPTIONS } from "@/types/email"
 import { EMAIL_CONFIG } from "@/config"
@@ -21,7 +21,17 @@ export async function POST(request: Request) {
 
   try {
     if (userRole !== ROLES.EMPEROR) {
-      const maxEmails = await env.SITE_CONFIG.get("MAX_EMAILS") || EMAIL_CONFIG.MAX_ACTIVE_EMAILS.toString()
+      const siteMaxEmails = Number(await env.SITE_CONFIG.get("MAX_EMAILS"))
+      const defaultMaxEmails = Number.isFinite(siteMaxEmails) && siteMaxEmails >= 0
+        ? siteMaxEmails
+        : EMAIL_CONFIG.MAX_ACTIVE_EMAILS
+      const user = await db.query.users.findFirst({
+        where: eq(users.id, userId!),
+        columns: {
+          maxEmails: true,
+        },
+      })
+      const maxEmails = user?.maxEmails ?? defaultMaxEmails
       const activeEmailsCount = await db
         .select({ count: sql<number>`count(*)` })
         .from(emails)
@@ -32,7 +42,7 @@ export async function POST(request: Request) {
           )
         )
       
-      if (Number(activeEmailsCount[0].count) >= Number(maxEmails)) {
+      if (maxEmails > 0 && Number(activeEmailsCount[0].count) >= maxEmails) {
         return NextResponse.json(
           { error: `已达到最大邮箱数量限制 (${maxEmails})` },
           { status: 403 }
@@ -40,8 +50,8 @@ export async function POST(request: Request) {
       }
     }
 
-    const { name, expiryTime, domain } = await request.json<{ 
-      name: string
+    const { name, expiryTime, domain } = await request.json<{
+      name?: string
       expiryTime: number
       domain: string
     }>()
@@ -63,7 +73,8 @@ export async function POST(request: Request) {
       )
     }
 
-    const address = `${name || nanoid(8)}@${domain}`
+    const emailName = name?.trim() || nanoid(8)
+    const address = `${emailName}@${domain}`
     const existingEmail = await db.query.emails.findFirst({
       where: eq(sql`LOWER(${emails.address})`, address.toLowerCase())
     })

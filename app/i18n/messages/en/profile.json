@@ -107,6 +107,7 @@
     "adminContact": "Admin Contact",
     "adminContactPlaceholder": "Email or other contact method",
     "maxEmails": "Max Emails per User",
+    "maxEmailsHint": "Set to 0 for unlimited",
     "turnstile": {
       "enable": "Enable Cloudflare Turnstile",
       "enableDescription": "When enabled, username/password login and registration require Turnstile verification",
@@ -129,6 +130,9 @@
     "username": "Username",
     "email": "Email",
     "role": "Role",
+    "maxEmails": "Max Emails",
+    "maxEmailsHint": "Enter a valid username or email to auto-fill this value; 0 means unlimited",
+    "maxEmailsInvalid": "Max emails must be an integer greater than or equal to 0",
     "actions": "Actions",
     "promote": "Set as",
     "noUsers": "No users found",

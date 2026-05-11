@@ -1,5 +1,5 @@
 import { createDb } from "@/lib/db";
-import { roles, userRoles } from "@/lib/schema";
+import { roles, userRoles, users } from "@/lib/schema";
 import { eq } from "drizzle-orm";
 import { ROLES } from "@/lib/permissions";
 import { assignRoleToUser } from "@/lib/auth";
@@ -8,9 +8,10 @@ export const runtime = "edge";
 
 export async function POST(request: Request) {
   try {
-    const { userId, roleName } = await request.json() as { 
+    const { userId, roleName, maxEmails } = await request.json() as {
       userId: string, 
-      roleName: typeof ROLES.DUKE | typeof ROLES.KNIGHT | typeof ROLES.CIVILIAN 
+      roleName: typeof ROLES.DUKE | typeof ROLES.KNIGHT | typeof ROLES.CIVILIAN
+      maxEmails?: number
     };
     if (!userId || !roleName) {
       return Response.json(
@@ -22,6 +23,13 @@ export async function POST(request: Request) {
     if (![ROLES.DUKE, ROLES.KNIGHT, ROLES.CIVILIAN].includes(roleName)) {
       return Response.json(
         { error: "角色不合法" },
+        { status: 400 }
+      );
+    }
+
+    if (maxEmails !== undefined && (!Number.isInteger(maxEmails) || maxEmails < 0)) {
+      return Response.json(
+        { error: "最大邮箱数必须是大于等于 0 的整数" },
         { status: 400 }
       );
     }
@@ -63,6 +71,12 @@ export async function POST(request: Request) {
     }
 
     await assignRoleToUser(db, userId, targetRole.id);
+
+    if (maxEmails !== undefined) {
+      await db.update(users)
+        .set({ maxEmails })
+        .where(eq(users.id, userId));
+    }
 
     return Response.json({ 
       success: true,

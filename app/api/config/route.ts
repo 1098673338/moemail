@@ -2,6 +2,10 @@ import { PERMISSIONS, Role, ROLES } from "@/lib/permissions"
 import { getRequestContext } from "@cloudflare/next-on-pages"
 import { EMAIL_CONFIG } from "@/config"
 import { checkPermission } from "@/lib/auth"
+import { createDb } from "@/lib/db"
+import { getUserId } from "@/lib/apiKey"
+import { users } from "@/lib/schema"
+import { eq } from "drizzle-orm"
 
 export const runtime = "edge"
 
@@ -27,11 +31,30 @@ export async function GET() {
     env.SITE_CONFIG.get("TURNSTILE_SECRET_KEY")
   ])
 
+  const parsedMaxEmails = Number(maxEmails)
+  const globalMaxEmails = Number.isFinite(parsedMaxEmails) && parsedMaxEmails >= 0
+    ? parsedMaxEmails
+    : EMAIL_CONFIG.MAX_ACTIVE_EMAILS
+  const userId = await getUserId()
+  let effectiveMaxEmails = globalMaxEmails
+
+  if (userId) {
+    const db = createDb()
+    const user = await db.query.users.findFirst({
+      where: eq(users.id, userId),
+      columns: {
+        maxEmails: true,
+      },
+    })
+    effectiveMaxEmails = user?.maxEmails ?? globalMaxEmails
+  }
+
   return Response.json({
     defaultRole: defaultRole || ROLES.CIVILIAN,
     emailDomains: emailDomains || "moemail.app",
     adminContact: adminContact || "",
-    maxEmails: maxEmails || EMAIL_CONFIG.MAX_ACTIVE_EMAILS.toString(),
+    maxEmails: globalMaxEmails.toString(),
+    effectiveMaxEmails,
     turnstile: canManageConfig ? {
       enabled: turnstileEnabled === "true",
       siteKey: turnstileSiteKey || "",
@@ -81,12 +104,17 @@ export async function POST(request: Request) {
     return Response.json({ error: "Turnstile 启用时需要提供 Site Key 和 Secret Key" }, { status: 400 })
   }
 
+  const parsedMaxEmails = Number(maxEmails)
+  if (!Number.isInteger(parsedMaxEmails) || parsedMaxEmails < 0) {
+    return Response.json({ error: "每个用户最大邮箱数必须是大于等于 0 的整数" }, { status: 400 })
+  }
+
   const env = getRequestContext().env
   await Promise.all([
     env.SITE_CONFIG.put("DEFAULT_ROLE", defaultRole),
     env.SITE_CONFIG.put("EMAIL_DOMAINS", emailDomains),
     env.SITE_CONFIG.put("ADMIN_CONTACT", adminContact),
-    env.SITE_CONFIG.put("MAX_EMAILS", maxEmails),
+    env.SITE_CONFIG.put("MAX_EMAILS", parsedMaxEmails.toString()),
     env.SITE_CONFIG.put("TURNSTILE_ENABLED", turnstileConfig.enabled.toString()),
     env.SITE_CONFIG.put("TURNSTILE_SITE_KEY", turnstileConfig.siteKey),
     env.SITE_CONFIG.put("TURNSTILE_SECRET_KEY", turnstileConfig.secretKey)

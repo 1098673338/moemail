@@ -107,6 +107,7 @@
     "adminContact": "管理员联系方式",
     "adminContactPlaceholder": "邮箱或其他联系方式",
     "maxEmails": "每个用户最大邮箱数",
+    "maxEmailsHint": "设置为 0 表示无限制",
     "turnstile": {
       "enable": "启用 Cloudflare Turnstile",
       "enableDescription": "开启后，账号登录与注册将需要通过 Turnstile 验证",
@@ -129,6 +130,9 @@
     "username": "用户名",
     "email": "邮箱",
     "role": "角色",
+    "maxEmails": "最大邮箱数",
+    "maxEmailsHint": "输入正确的用户名或邮箱后会自动回填；0 表示无限制",
+    "maxEmailsInvalid": "最大邮箱数必须是大于等于 0 的整数",
     "actions": "操作",
     "promote": "设为",
     "noUsers": "未找到用户",

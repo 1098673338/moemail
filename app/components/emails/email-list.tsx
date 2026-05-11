@@ -59,6 +59,7 @@ export function EmailList({ onEmailSelect, selectedEmailId }: EmailListProps) {
   const [emailToDelete, setEmailToDelete] = useState<Email | null>(null)
   const { toast } = useToast()
   const { copyToClipboard } = useCopy()
+  const maxEmailsLimit = config?.maxEmails ?? EMAIL_CONFIG.MAX_ACTIVE_EMAILS
 
   const fetchEmails = async (cursor?: string) => {
     try {
@@ -177,10 +178,10 @@ export function EmailList({ onEmailSelect, selectedEmailId }: EmailListProps) {
               <RefreshCw className="h-4 w-4" />
             </Button>
             <span className="text-xs text-gray-500">
-              {role === ROLES.EMPEROR ? (
+              {role === ROLES.EMPEROR || maxEmailsLimit === 0 ? (
                 t("emailCountUnlimited", { count: total })
               ) : (
-                t("emailCount", { count: total, max: config?.maxEmails || EMAIL_CONFIG.MAX_ACTIVE_EMAILS })
+                t("emailCount", { count: total, max: maxEmailsLimit })
               )}
             </span>
           </div>

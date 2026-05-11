@@ -8,7 +8,7 @@ import { MessageView } from "./message-view"
 import { SendDialog } from "./send-dialog"
 import { useCopy } from "@/hooks/use-copy"
 import { useSendPermission } from "@/hooks/use-send-permission"
-import { Copy } from "lucide-react"
+import { Copy, Inbox, MailOpen } from "lucide-react"
 
 interface Email {
   id: string
@@ -89,7 +89,7 @@ export function ThreeColumnLayout() {
               )}
             </h2>
           </div>
-          {selectedEmail && (
+          {selectedEmail ? (
             <div className="flex-1 overflow-auto">
               <MessageListContainer
                 email={selectedEmail}
@@ -98,11 +98,16 @@ export function ThreeColumnLayout() {
                 refreshTrigger={refreshTrigger}
               />
             </div>
+          ) : (
+            <div className="flex flex-1 flex-col items-center justify-center px-6 text-center text-muted-foreground">
+              <Inbox className="mb-3 h-8 w-8 text-primary/40" />
+              <p className="text-sm">{t("selectEmail")}</p>
+            </div>
           )}
         </div>
 
         <div className={columnClass} style={contentColumnStyle}>
-          {selectedEmail && selectedMessageId && (
+          {selectedEmail && selectedMessageId ? (
             <div className="flex-1 overflow-auto">
               <MessageView
                 emailId={selectedEmail.id}
@@ -110,6 +115,11 @@ export function ThreeColumnLayout() {
                 messageType={selectedMessageType}
                 onClose={() => setSelectedMessageId(null)}
               />
+            </div>
+          ) : (
+            <div className="flex flex-1 flex-col items-center justify-center px-6 text-center text-muted-foreground">
+              <MailOpen className="mb-3 h-8 w-8 text-primary/40" />
+              <p className="text-sm">{t("selectMessage")}</p>
             </div>
           )}
         </div>

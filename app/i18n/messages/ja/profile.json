@@ -107,6 +107,7 @@
     "adminContact": "管理者連絡先",
     "adminContactPlaceholder": "メールまたはその他の連絡先",
     "maxEmails": "ユーザーあたりの最大メールボックス数",
+    "maxEmailsHint": "0 に設定すると無制限になります",
     "turnstile": {
       "enable": "Cloudflare Turnstile を有効化",
       "enableDescription": "有効にすると、ユーザー名とパスワードでのログイン・登録に Turnstile 認証が必要になります",
@@ -129,6 +130,9 @@
     "username": "ユーザー名",
     "email": "メール",
     "role": "ロール",
+    "maxEmails": "最大メールボックス数",
+    "maxEmailsHint": "有効なユーザー名またはメールを入力すると自動入力されます。0 は無制限です",
+    "maxEmailsInvalid": "最大メールボックス数は 0 以上の整数である必要があります",
     "actions": "操作",
     "promote": "設定",
     "noUsers": "ユーザーが見つかりません",

@@ -13,6 +13,7 @@ export const users = sqliteTable("user", {
   image: text("image"),
   username: text("username").unique(),
   password: text("password"),
+  maxEmails: integer("max_emails"),
 })
 export const accounts = sqliteTable(
   "account",
