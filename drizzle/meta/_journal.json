@@ -141,6 +141,13 @@
       "when": 1778479739164,
       "tag": "0019_user_max_emails",
       "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "6",
+      "when": 1778523277692,
+      "tag": "0020_user_send_limit",
+      "breakpoints": true
     }
   ]
 }

@@ -1,5 +1,5 @@
 import { createDb } from "@/lib/db"
-import { userRoles, roles, messages, emails } from "@/lib/schema"
+import { userRoles, roles, messages, emails, users } from "@/lib/schema"
 import { eq, and, gte } from "drizzle-orm"
 import { getRequestContext } from "@cloudflare/next-on-pages"
 import { EMAIL_CONFIG } from "@/config"
@@ -90,6 +90,12 @@ async function getUserDailyLimit(userId: string): Promise<number> {
       .where(eq(userRoles.userId, userId))
 
     const userRoleNames = userRoleData.map(r => r.roleName)
+    const user = await db.query.users.findFirst({
+      where: eq(users.id, userId),
+      columns: {
+        sendLimit: true,
+      },
+    })
 
     const finalLimits = {
       emperor: EMAIL_CONFIG.DEFAULT_DAILY_SEND_LIMITS.emperor,
@@ -100,6 +106,8 @@ async function getUserDailyLimit(userId: string): Promise<number> {
 
     if (userRoleNames.includes("emperor")) {
       return finalLimits.emperor
+    } else if (user?.sendLimit !== null && user?.sendLimit !== undefined) {
+      return user.sendLimit
     } else if (userRoleNames.includes("duke")) {
       return finalLimits.duke
     } else if (userRoleNames.includes("knight")) {

@@ -8,10 +8,11 @@ export const runtime = "edge";
 
 export async function POST(request: Request) {
   try {
-    const { userId, roleName, maxEmails } = await request.json() as {
+    const { userId, roleName, maxEmails, sendLimit } = await request.json() as {
       userId: string, 
       roleName: typeof ROLES.DUKE | typeof ROLES.KNIGHT | typeof ROLES.CIVILIAN
       maxEmails?: number
+      sendLimit?: number | null
     };
     if (!userId || !roleName) {
       return Response.json(
@@ -34,6 +35,13 @@ export async function POST(request: Request) {
       );
     }
 
+    if (sendLimit !== undefined && sendLimit !== null && (!Number.isInteger(sendLimit) || sendLimit < 0)) {
+      return Response.json(
+        { error: "发件限额必须是大于等于 0 的整数" },
+        { status: 400 }
+      );
+    }
+
     const db = createDb();
 
     const currentUserRole = await db.query.userRoles.findFirst({
@@ -44,7 +52,9 @@ export async function POST(request: Request) {
     });
 
     if (currentUserRole?.role.name === ROLES.EMPEROR) {
-      if (maxEmails === 0) {
+      const maxEmailsUnchanged = maxEmails === undefined || maxEmails === 0;
+      const sendLimitUnchanged = sendLimit === undefined || sendLimit === null || sendLimit === 0;
+      if (maxEmailsUnchanged && sendLimitUnchanged) {
         return Response.json({
           success: true,
         });
@@ -78,9 +88,17 @@ export async function POST(request: Request) {
 
     await assignRoleToUser(db, userId, targetRole.id);
 
+    const userUpdates: Partial<typeof users.$inferInsert> = {};
     if (maxEmails !== undefined) {
+      userUpdates.maxEmails = maxEmails;
+    }
+    if (sendLimit !== undefined) {
+      userUpdates.sendLimit = sendLimit;
+    }
+
+    if (Object.keys(userUpdates).length > 0) {
       await db.update(users)
-        .set({ maxEmails })
+        .set(userUpdates)
         .where(eq(users.id, userId));
     }
 

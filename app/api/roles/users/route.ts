@@ -57,7 +57,8 @@ export async function POST(request: Request) {
         username: user.username,
         email: user.email,
         role: roleName,
-        maxEmails: roleName === ROLES.EMPEROR ? 0 : user.maxEmails ?? defaultMaxEmails
+        maxEmails: roleName === ROLES.EMPEROR ? 0 : user.maxEmails ?? defaultMaxEmails,
+        sendLimit: roleName === ROLES.EMPEROR ? 0 : user.sendLimit ?? null
       }
     })
   } catch (error) {

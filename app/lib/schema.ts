@@ -14,6 +14,7 @@ export const users = sqliteTable("user", {
   username: text("username").unique(),
   password: text("password"),
   maxEmails: integer("max_emails"),
+  sendLimit: integer("send_limit"),
 })
 export const accounts = sqliteTable(
   "account",

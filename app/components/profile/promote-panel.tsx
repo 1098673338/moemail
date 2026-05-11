@@ -7,7 +7,6 @@ import { Input } from "@/components/ui/input"
 import { useEffect, useState } from "react"
 import { useToast } from "@/components/ui/use-toast"
 import { ROLES, Role } from "@/lib/permissions"
-import { Label } from "@/components/ui/label"
 import {
   Select,
   SelectContent,
@@ -25,6 +24,7 @@ interface TargetUser {
   email?: string
   role?: string
   maxEmails: number
+  sendLimit: number | null
 }
 
 export function PromotePanel() {
@@ -38,7 +38,9 @@ export function PromotePanel() {
   const [searching, setSearching] = useState(false)
   const [targetRole, setTargetRole] = useState<Role>(ROLES.KNIGHT)
   const [maxEmails, setMaxEmails] = useState("")
+  const [sendLimit, setSendLimit] = useState("")
   const { toast } = useToast()
+  const isTargetEmperor = targetUser?.role === ROLES.EMPEROR
   
   const roleNames = {
     [ROLES.EMPEROR]: tCard("roles.EMPEROR"),
@@ -53,12 +55,14 @@ export function PromotePanel() {
       setTargetUser(null)
       setSearchError("")
       setMaxEmails("")
+      setSendLimit("")
       return
     }
 
     setTargetUser(null)
     setSearchError("")
     setMaxEmails("")
+    setSendLimit("")
 
     let cancelled = false
     const timer = window.setTimeout(async () => {
@@ -79,12 +83,14 @@ export function PromotePanel() {
           setTargetUser(null)
           setSearchError(res.status === 404 ? userNotFoundText : "")
           setMaxEmails("")
+          setSendLimit("")
           return
         }
 
         setSearchError("")
         setTargetUser(data.user)
         setMaxEmails(data.user.maxEmails.toString())
+        setSendLimit(data.user.sendLimit == null ? "" : data.user.sendLimit.toString())
         if ([ROLES.EMPEROR, ROLES.DUKE, ROLES.KNIGHT, ROLES.CIVILIAN].includes(data.user.role as Role)) {
           setTargetRole(data.user.role as Role)
         }
@@ -93,6 +99,7 @@ export function PromotePanel() {
           setTargetUser(null)
           setSearchError("")
           setMaxEmails("")
+          setSendLimit("")
         }
       } finally {
         if (!cancelled) {
@@ -110,11 +117,22 @@ export function PromotePanel() {
   const handleAction = async () => {
     if (!targetUser) return
 
-    const parsedMaxEmails = Number(maxEmails)
-    if (!maxEmails.trim() || !Number.isInteger(parsedMaxEmails) || parsedMaxEmails < 0) {
+    const parsedMaxEmails = isTargetEmperor ? 0 : Number(maxEmails)
+    if (!isTargetEmperor && (!maxEmails.trim() || !Number.isInteger(parsedMaxEmails) || parsedMaxEmails < 0)) {
       toast({
         title: t("updateFailed"),
         description: t("maxEmailsInvalid"),
+        variant: "destructive"
+      })
+      return
+    }
+
+    const normalizedSendLimit = sendLimit.trim()
+    const parsedSendLimit = isTargetEmperor ? 0 : normalizedSendLimit ? Number(normalizedSendLimit) : null
+    if (!isTargetEmperor && parsedSendLimit !== null && (!Number.isInteger(parsedSendLimit) || parsedSendLimit < 0)) {
+      toast({
+        title: t("updateFailed"),
+        description: t("sendLimitInvalid"),
         variant: "destructive"
       })
       return
@@ -128,7 +146,8 @@ export function PromotePanel() {
         body: JSON.stringify({
           userId: targetUser.id,
           roleName: targetRole === ROLES.EMPEROR ? ROLES.CIVILIAN : targetRole,
-          maxEmails: parsedMaxEmails
+          maxEmails: parsedMaxEmails,
+          sendLimit: parsedSendLimit
         })
       })
 
@@ -144,6 +163,7 @@ export function PromotePanel() {
       setSearchText("")
       setTargetUser(null)
       setMaxEmails("")
+      setSendLimit("")
     } catch (error) {
       toast({
         title: t("updateFailed"),
@@ -163,75 +183,86 @@ export function PromotePanel() {
       </div>
 
       <div className="space-y-4">
-        <div className="grid grid-cols-[minmax(0,1fr)_8rem_9rem] gap-4">
-          <div className="space-y-2">
-            <Label className="text-sm font-medium">{t("search")}</Label>
-            <Input
-              value={searchText}
-              onChange={(e) => setSearchText(e.target.value)}
-              placeholder={t("searchPlaceholder")}
-              aria-invalid={!!searchError}
-              aria-describedby={searchError ? "user-search-error" : undefined}
-            />
-          </div>
-          <div className="space-y-2">
-            <Label className="text-sm font-medium">{t("role")}</Label>
-            <Select
-              value={targetRole}
-              onValueChange={(value) => setTargetRole(value as RoleWithoutEmperor)}
-              disabled={targetUser?.role === ROLES.EMPEROR}
-            >
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {targetUser?.role === ROLES.EMPEROR && (
-                  <SelectItem value={ROLES.EMPEROR}>
-                    <div className="flex items-center gap-2">
-                      <Crown className="w-4 h-4" />
-                      {roleNames[ROLES.EMPEROR]}
-                    </div>
-                  </SelectItem>
-                )}
-                <SelectItem value={ROLES.DUKE}>
+        <div className="grid grid-cols-[180px_minmax(0,1fr)] items-center gap-4">
+          <span className="text-left text-sm">{t("search")}:</span>
+          <Input
+            value={searchText}
+            onChange={(e) => setSearchText(e.target.value)}
+            placeholder={t("searchPlaceholder")}
+            aria-invalid={!!searchError}
+            aria-describedby={searchError ? "user-search-error" : undefined}
+          />
+        </div>
+
+        <div className="grid grid-cols-[180px_minmax(0,1fr)] items-center gap-4">
+          <span className="text-left text-sm">{t("role")}:</span>
+          <Select
+            value={targetRole}
+            onValueChange={(value) => setTargetRole(value as RoleWithoutEmperor)}
+            disabled={isTargetEmperor}
+          >
+            <SelectTrigger className="w-32">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {targetUser?.role === ROLES.EMPEROR && (
+                <SelectItem value={ROLES.EMPEROR}>
                   <div className="flex items-center gap-2">
-                    <Gem className="w-4 h-4" />
-                    {roleNames[ROLES.DUKE]}
+                    <Crown className="w-4 h-4" />
+                    {roleNames[ROLES.EMPEROR]}
                   </div>
                 </SelectItem>
-                <SelectItem value={ROLES.KNIGHT}>
-                  <div className="flex items-center gap-2">
-                    <Sword className="w-4 h-4" />
-                    {roleNames[ROLES.KNIGHT]}
-                  </div>
-                </SelectItem>
-                <SelectItem value={ROLES.CIVILIAN}>
-                  <div className="flex items-center gap-2">
-                    <User2 className="w-4 h-4" />
-                    {roleNames[ROLES.CIVILIAN]}
-                  </div>
-                </SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="user-max-emails" className="text-sm font-medium">
-              {t("maxEmails")}
-            </Label>
-            <Input
-              id="user-max-emails"
-              type="number"
-              min="0"
-              value={maxEmails}
-              onChange={(e) => setMaxEmails(e.target.value)}
-              placeholder="0"
-              disabled={targetUser?.role === ROLES.EMPEROR}
-            />
-          </div>
+              )}
+              <SelectItem value={ROLES.DUKE}>
+                <div className="flex items-center gap-2">
+                  <Gem className="w-4 h-4" />
+                  {roleNames[ROLES.DUKE]}
+                </div>
+              </SelectItem>
+              <SelectItem value={ROLES.KNIGHT}>
+                <div className="flex items-center gap-2">
+                  <Sword className="w-4 h-4" />
+                  {roleNames[ROLES.KNIGHT]}
+                </div>
+              </SelectItem>
+              <SelectItem value={ROLES.CIVILIAN}>
+                <div className="flex items-center gap-2">
+                  <User2 className="w-4 h-4" />
+                  {roleNames[ROLES.CIVILIAN]}
+                </div>
+              </SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+
+        <div className="grid grid-cols-[180px_minmax(0,1fr)] items-center gap-4">
+          <span className="text-left text-sm">{t("maxEmails")}:</span>
+          <Input
+            id="user-max-emails"
+            type={isTargetEmperor ? "text" : "number"}
+            min="0"
+            value={isTargetEmperor ? t("unlimited") : maxEmails}
+            onChange={(e) => setMaxEmails(e.target.value)}
+            placeholder="0"
+            disabled={isTargetEmperor}
+          />
+        </div>
+
+        <div className="grid grid-cols-[180px_minmax(0,1fr)] items-center gap-4">
+          <span className="text-left text-sm">{t("sendLimit")}:</span>
+          <Input
+            id="user-send-limit"
+            type={isTargetEmperor ? "text" : "number"}
+            min="0"
+            value={isTargetEmperor ? t("unlimited") : sendLimit}
+            onChange={(e) => setSendLimit(e.target.value)}
+            placeholder={t("sendLimitPlaceholder")}
+            disabled={isTargetEmperor}
+          />
         </div>
         <div className="flex h-4 items-center justify-between gap-4 text-xs leading-4">
           <p className="min-w-0 truncate text-muted-foreground">
-            {searching ? t("loading") : t("maxEmailsHint")}
+            {searching ? t("loading") : t("limitsHint")}
           </p>
           {searchError && (
             <p id="user-search-error" className="shrink-0 text-destructive">
@@ -242,7 +273,7 @@ export function PromotePanel() {
 
         <Button
           onClick={handleAction}
-          disabled={loading || searching || !targetUser || targetUser.role === ROLES.EMPEROR}
+          disabled={loading || searching || !targetUser || isTargetEmperor}
           className="w-full"
         >
           {loading ? (

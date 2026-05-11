@@ -1,0 +1,1 @@
+ALTER TABLE `user` ADD `send_limit` integer;
