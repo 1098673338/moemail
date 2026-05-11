@@ -2,7 +2,7 @@
 
 import { useTranslations } from "next-intl"
 import { Button } from "@/components/ui/button"
-import { Gem, Sword, User2, Loader2 } from "lucide-react"
+import { Crown, Gem, Sword, User2, Loader2 } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { useEffect, useState } from "react"
 import { useToast } from "@/components/ui/use-toast"
@@ -17,6 +17,7 @@ import {
 } from "@/components/ui/select"
 
 const roleIcons = {
+  [ROLES.EMPEROR]: Crown,
   [ROLES.DUKE]: Gem,
   [ROLES.KNIGHT]: Sword,
   [ROLES.CIVILIAN]: User2,
@@ -40,11 +41,12 @@ export function PromotePanel() {
   const [targetUser, setTargetUser] = useState<TargetUser | null>(null)
   const [loading, setLoading] = useState(false)
   const [searching, setSearching] = useState(false)
-  const [targetRole, setTargetRole] = useState<RoleWithoutEmperor>(ROLES.KNIGHT)
+  const [targetRole, setTargetRole] = useState<Role>(ROLES.KNIGHT)
   const [maxEmails, setMaxEmails] = useState("")
   const { toast } = useToast()
   
   const roleNames = {
+    [ROLES.EMPEROR]: tCard("roles.EMPEROR"),
     [ROLES.DUKE]: tCard("roles.DUKE"),
     [ROLES.KNIGHT]: tCard("roles.KNIGHT"),
     [ROLES.CIVILIAN]: tCard("roles.CIVILIAN"),
@@ -84,8 +86,8 @@ export function PromotePanel() {
 
         setTargetUser(data.user)
         setMaxEmails(data.user.maxEmails.toString())
-        if ([ROLES.DUKE, ROLES.KNIGHT, ROLES.CIVILIAN].includes(data.user.role as RoleWithoutEmperor)) {
-          setTargetRole(data.user.role as RoleWithoutEmperor)
+        if ([ROLES.EMPEROR, ROLES.DUKE, ROLES.KNIGHT, ROLES.CIVILIAN].includes(data.user.role as Role)) {
+          setTargetRole(data.user.role as Role)
         }
       } catch {
         if (!cancelled) {
@@ -125,7 +127,7 @@ export function PromotePanel() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           userId: targetUser.id,
-          roleName: targetRole,
+          roleName: targetRole === ROLES.EMPEROR ? ROLES.CIVILIAN : targetRole,
           maxEmails: parsedMaxEmails
         })
       })
@@ -174,11 +176,23 @@ export function PromotePanel() {
           </div>
           <div className="space-y-2">
             <Label className="text-sm font-medium">{t("role")}</Label>
-            <Select value={targetRole} onValueChange={(value) => setTargetRole(value as RoleWithoutEmperor)}>
+            <Select
+              value={targetRole}
+              onValueChange={(value) => setTargetRole(value as RoleWithoutEmperor)}
+              disabled={targetUser?.role === ROLES.EMPEROR}
+            >
               <SelectTrigger>
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
+                {targetUser?.role === ROLES.EMPEROR && (
+                  <SelectItem value={ROLES.EMPEROR}>
+                    <div className="flex items-center gap-2">
+                      <Crown className="w-4 h-4" />
+                      {roleNames[ROLES.EMPEROR]}
+                    </div>
+                  </SelectItem>
+                )}
                 <SelectItem value={ROLES.DUKE}>
                   <div className="flex items-center gap-2">
                     <Gem className="w-4 h-4" />
@@ -211,6 +225,7 @@ export function PromotePanel() {
               value={maxEmails}
               onChange={(e) => setMaxEmails(e.target.value)}
               placeholder="0"
+              disabled={targetUser?.role === ROLES.EMPEROR}
             />
           </div>
         </div>
