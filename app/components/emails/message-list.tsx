@@ -251,7 +251,7 @@ export function MessageList({ email, messageType, onMessageSelect, selectedMessa
                       {new Date(message.received_at || message.sent_at || 0).toLocaleString()}
                     </p>
                   </div>
-                  <div className="opacity-0 group-hover:opacity-100 flex gap-1" onClick={(e) => e.stopPropagation()}>
+                  <div className="hidden shrink-0 gap-1 group-hover:flex" onClick={(e) => e.stopPropagation()}>
                     <ShareMessageDialog
                       emailId={email.id}
                       messageId={message.id}
