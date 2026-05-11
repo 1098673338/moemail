@@ -153,7 +153,7 @@ export function ProfileCard({ user }: ProfileCardProps) {
       <div className="flex flex-col sm:flex-row gap-4 px-1">
         <Button
           onClick={() => router.push(`/${locale}/moe`)}
-          className="gap-2 flex-1"
+          className="flex-1 gap-2"
         >
           <Mail className="w-4 h-4" />
           {tNav("backToMailbox")}
@@ -161,7 +161,7 @@ export function ProfileCard({ user }: ProfileCardProps) {
         <Button
           variant="outline"
           onClick={() => signOut({ callbackUrl: `/${locale}` })}
-          className="flex-shrink-0"
+          className="flex-1"
         >
           {tAuth("logout")}
         </Button>
