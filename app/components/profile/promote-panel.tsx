@@ -41,6 +41,7 @@ export function PromotePanel() {
   const [sendLimit, setSendLimit] = useState("")
   const { toast } = useToast()
   const isTargetEmperor = targetUser?.role === ROLES.EMPEROR
+  const isUserFormDisabled = !targetUser || searching || isTargetEmperor
   
   const roleNames = {
     [ROLES.EMPEROR]: tCard("roles.EMPEROR"),
@@ -199,7 +200,7 @@ export function PromotePanel() {
           <Select
             value={targetRole}
             onValueChange={(value) => setTargetRole(value as RoleWithoutEmperor)}
-            disabled={isTargetEmperor}
+            disabled={isUserFormDisabled}
           >
             <SelectTrigger className="w-32">
               <SelectValue />
@@ -244,7 +245,7 @@ export function PromotePanel() {
             value={isTargetEmperor ? t("unlimited") : maxEmails}
             onChange={(e) => setMaxEmails(e.target.value)}
             placeholder="0"
-            disabled={isTargetEmperor}
+            disabled={isUserFormDisabled}
           />
         </div>
 
@@ -257,7 +258,7 @@ export function PromotePanel() {
             value={isTargetEmperor ? t("unlimited") : sendLimit}
             onChange={(e) => setSendLimit(e.target.value)}
             placeholder={t("sendLimitPlaceholder")}
-            disabled={isTargetEmperor}
+            disabled={isUserFormDisabled}
           />
         </div>
         <div className="flex h-4 items-center justify-between gap-4 text-xs leading-4">
@@ -273,7 +274,7 @@ export function PromotePanel() {
 
         <Button
           onClick={handleAction}
-          disabled={loading || searching || !targetUser || isTargetEmperor}
+          disabled={loading || isUserFormDisabled}
           className="w-full"
         >
           {loading ? (
