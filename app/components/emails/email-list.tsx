@@ -5,7 +5,7 @@ import { useSession } from "next-auth/react"
 import { useTranslations } from "next-intl"
 import { CreateDialog } from "./create-dialog"
 import { ShareDialog } from "./share-dialog"
-import { AtSign, Copy, RefreshCw, Trash2 } from "lucide-react"
+import { AtSign, Copy, Loader2, RefreshCw, Trash2 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { useThrottle } from "@/hooks/use-throttle"
@@ -191,12 +191,15 @@ export function EmailList({ onEmailSelect, selectedEmailId }: EmailListProps) {
         <div
           className={cn(
             "min-h-0 flex-1 overflow-auto p-2",
-            !loading && emails.length === 0 && "flex"
+            (loading || (!loading && emails.length === 0)) && "flex"
           )}
           onScroll={handleScroll}
         >
           {loading ? (
-            <div className="text-center text-sm text-gray-500">{t("loading")}</div>
+            <div className="flex flex-1 -translate-y-[52px] flex-col items-center justify-center px-6 text-center text-sm text-gray-500">
+              <Loader2 className="mb-3 h-8 w-8 animate-spin text-primary/40" />
+              <p>{t("loading")}</p>
+            </div>
           ) : emails.length > 0 ? (
             <div className="space-y-1">
               {emails.map(email => (
