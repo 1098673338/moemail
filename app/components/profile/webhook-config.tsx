@@ -114,10 +114,10 @@ export function WebhookConfig() {
     <form onSubmit={handleSubmit} className="space-y-4">
       <div className="flex items-center justify-between">
         <div className="space-y-0.5">
-          <Label>{t("enable")}</Label>
-          <div className="text-sm text-muted-foreground">
+          <Label className="text-sm font-medium">{t("enable")}</Label>
+          <p className="text-xs text-muted-foreground">
             {t("description")}
-          </div>
+          </p>
         </div>
         <Switch
           checked={enabled}
