@@ -9,7 +9,6 @@ import { AtSign, Copy, Loader2, RefreshCw, Trash2 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { useThrottle } from "@/hooks/use-throttle"
-import { EMAIL_CONFIG } from "@/config"
 import { useToast } from "@/components/ui/use-toast"
 import {
   AlertDialog,
@@ -59,7 +58,7 @@ export function EmailList({ onEmailSelect, selectedEmailId }: EmailListProps) {
   const [emailToDelete, setEmailToDelete] = useState<Email | null>(null)
   const { toast } = useToast()
   const { copyToClipboard } = useCopy()
-  const maxEmailsLimit = config?.maxEmails ?? EMAIL_CONFIG.MAX_ACTIVE_EMAILS
+  const maxEmailsLimit = config?.maxEmails
 
   const fetchEmails = async (cursor?: string) => {
     try {
@@ -180,6 +179,8 @@ export function EmailList({ onEmailSelect, selectedEmailId }: EmailListProps) {
             <span className="text-xs text-gray-500">
               {role === ROLES.EMPEROR || maxEmailsLimit === 0 ? (
                 t("emailCountUnlimited", { count: total })
+              ) : maxEmailsLimit === undefined ? (
+                t("emailCount", { count: total, max: "..." })
               ) : (
                 t("emailCount", { count: total, max: maxEmailsLimit })
               )}

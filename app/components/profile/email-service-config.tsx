@@ -180,8 +180,8 @@ export function EmailServiceConfig() {
                         key={role.value} 
                         className={`group relative p-4 border rounded-xl transition-all duration-200 ${
                           isEnabled
-                            ? 'border-gray-200 bg-gray-50 shadow-sm' 
-                            : 'border-gray-200 hover:border-gray-200 hover:shadow-sm'
+                            ? 'border-gray-200 bg-gray-50' 
+                            : 'border-gray-200 hover:border-gray-200'
                         }`}
                       >
                         <div className="flex items-center justify-between">
