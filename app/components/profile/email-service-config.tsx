@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from "react"
 import { useTranslations } from "next-intl"
 import { Button } from "@/components/ui/button"
-import { Zap, Eye, EyeOff } from "lucide-react"
+import { Zap, Eye, EyeOff, Loader2 } from "lucide-react"
 import { useToast } from "@/components/ui/use-toast"
 import { Input } from "@/components/ui/input"
 import { Switch } from "@/components/ui/switch"
@@ -21,6 +21,7 @@ export function EmailServiceConfig() {
     enabled: false,
     apiKey: "",
   })
+  const [initialLoading, setInitialLoading] = useState(true)
   const [loading, setLoading] = useState(false)
   const [showToken, setShowToken] = useState(false)
   const { toast } = useToast()
@@ -38,6 +39,8 @@ export function EmailServiceConfig() {
       }
     } catch (error) {
       console.error("Failed to fetch email service config:", error)
+    } finally {
+      setInitialLoading(false)
     }
   }
 
@@ -82,7 +85,14 @@ export function EmailServiceConfig() {
         <h2 className="text-lg font-semibold">{t("title")}</h2>
       </div>
 
-      <div className="space-y-4">
+      {initialLoading ? (
+        <div className="flex min-h-40 items-center justify-center">
+          <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center">
+            <Loader2 className="w-6 h-6 text-primary animate-spin" />
+          </div>
+        </div>
+      ) : (
+        <div className="space-y-4">
         <div className="flex items-center justify-between">
           <div className="space-y-0.5">
             <Label htmlFor="enabled" className="text-sm font-medium">
@@ -173,6 +183,7 @@ export function EmailServiceConfig() {
           {loading ? t("saving") : t("save")}
         </Button>
       </div>
+      )}
     </div>
   )
 } 
