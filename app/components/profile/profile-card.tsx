@@ -144,13 +144,9 @@ export function ProfileCard({ user }: ProfileCardProps) {
 
   if (canManageConfig && settingsLoading) {
     return (
-      <div className="max-w-2xl mx-auto">
-        <div className="bg-background rounded-lg border border-gray-200 p-6">
-          <div className="flex min-h-80 items-center justify-center">
-            <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center">
-              <Loader2 className="w-6 h-6 text-primary animate-spin" />
-            </div>
-          </div>
+      <div className="mx-auto flex min-h-[calc(100vh-10rem)] max-w-2xl items-center justify-center">
+        <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center">
+          <Loader2 className="w-6 h-6 text-primary animate-spin" />
         </div>
       </div>
     )

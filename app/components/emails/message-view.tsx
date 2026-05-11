@@ -17,6 +17,7 @@ interface Message {
   html?: string
   received_at?: number
   sent_at?: number
+  type?: 'received' | 'sent'
 }
 
 interface MessageViewProps {
@@ -185,6 +186,7 @@ export function MessageView({ emailId, messageId, messageType = 'received' }: Me
   }
 
   if (!message) return null
+  const isSentMessage = messageType === 'sent' || message.type === 'sent'
 
   return (
     <div className="h-full flex flex-col">
@@ -203,7 +205,7 @@ export function MessageView({ emailId, messageId, messageType = 'received' }: Me
           />
         </div>
         <div className="text-xs text-gray-500 space-y-1">
-          {message.from_address && (
+          {!isSentMessage && message.from_address && (
             <p>{t("from")}: {message.from_address}</p>
           )}
           {message.to_address && (

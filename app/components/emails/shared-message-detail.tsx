@@ -14,6 +14,7 @@ interface MessageDetail {
   html?: string
   received_at?: number
   sent_at?: number
+  type?: "received" | "sent"
 }
 
 interface SharedMessageDetailProps {
@@ -146,6 +147,7 @@ export function SharedMessageDetail({
       </div>
     )
   }
+  const isSentMessage = message.type === "sent"
 
   return (
     <div className="h-full flex flex-col">
@@ -154,7 +156,7 @@ export function SharedMessageDetail({
           <h3 className="text-base font-bold flex-1">{message.subject}</h3>
         </div>
         <div className="text-xs text-gray-500 space-y-1">
-          {message.from_address && (
+          {!isSentMessage && message.from_address && (
             <p>
               {t.from}: {message.from_address}
             </p>

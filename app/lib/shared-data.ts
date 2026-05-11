@@ -19,6 +19,7 @@ export interface SharedMessage {
   html?: string
   received_at?: Date
   sent_at?: Date
+  type?: "received" | "sent"
   expiresAt?: Date
   emailAddress?: string
   emailExpiresAt?: Date
@@ -132,7 +133,8 @@ export async function getSharedEmailMessages(token: string, limit = 20): Promise
         to_address: msg.toAddress ?? undefined,
         subject: msg.subject,
         received_at: msg.receivedAt,
-        sent_at: msg.sentAt
+        sent_at: msg.sentAt,
+        type: msg.type as "received" | "sent" | undefined
       })),
       nextCursor,
       total: totalCount
@@ -183,6 +185,7 @@ export async function getSharedMessage(token: string): Promise<SharedMessage | n
       html: message.html ?? undefined,
       received_at: message.receivedAt,
       sent_at: message.sentAt,
+      type: message.type as "received" | "sent" | undefined,
       expiresAt: share.expiresAt ?? undefined,
       emailAddress: email?.address,
       emailExpiresAt: email?.expiresAt

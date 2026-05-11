@@ -108,7 +108,8 @@ export async function GET(
         to_address: msg.toAddress,
         subject: msg.subject,
         received_at: msg.receivedAt,
-        sent_at: msg.sentAt
+        sent_at: msg.sentAt,
+        type: msg.type as "received" | "sent" | undefined
       })),
       nextCursor,
       total: totalCount
@@ -121,4 +122,3 @@ export async function GET(
     )
   }
 }
-

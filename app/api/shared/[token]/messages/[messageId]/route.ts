@@ -69,7 +69,8 @@ export async function GET(
         content: message.content,
         html: message.html,
         received_at: message.receivedAt,
-        sent_at: message.sentAt
+        sent_at: message.sentAt,
+        type: message.type as "received" | "sent" | undefined
       }
     })
   } catch (error) {
@@ -80,4 +81,3 @@ export async function GET(
     )
   }
 }
-

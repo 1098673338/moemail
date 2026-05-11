@@ -24,6 +24,7 @@ interface Message {
   subject: string
   received_at?: Date
   sent_at?: Date
+  type?: "received" | "sent"
 }
 
 interface MessageDetail extends Message {

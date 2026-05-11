@@ -15,6 +15,7 @@ interface MessageDetail {
   html?: string
   received_at?: Date
   sent_at?: Date
+  type?: "received" | "sent"
   expiresAt?: Date
   emailAddress?: string
   emailExpiresAt?: Date
@@ -26,12 +27,15 @@ interface SharedMessagePageClientProps {
 
 export function SharedMessagePageClient({ message }: SharedMessagePageClientProps) {
   const t = useTranslations("emails")
+  const title = message.type === "sent"
+    ? message.to_address || message.subject
+    : message.emailAddress || message.to_address || message.subject
 
   return (
     <div className="h-screen bg-gray-50">
       <div className="mx-auto flex h-full w-full max-w-[1720px] flex-col px-5 pb-5 pt-4">
         <BrandHeader
-          title={message.emailAddress || message.to_address || message.subject}
+          title={title}
           brandHref={null}
           subtitle={(() => {
             const expiresAt = message.expiresAt || message.emailExpiresAt
