@@ -1,6 +1,6 @@
 "use client"
 
-import { Mail, MailX, RefreshCw } from "lucide-react"
+import { Loader2, Mail, MailX, RefreshCw } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useThrottle } from "@/hooks/use-throttle"
 import { Button } from "@/components/ui/button"
@@ -25,6 +25,7 @@ interface SharedMessageListProps {
   refreshing?: boolean
   hasMore?: boolean
   total?: number
+  emptyStateOffsetClass?: string
   t: {
     received: string
     noMessages: string
@@ -45,6 +46,7 @@ export function SharedMessageList({
   refreshing = false,
   hasMore = false,
   total = 0,
+  emptyStateOffsetClass = "-translate-y-6",
   t,
 }: SharedMessageListProps) {
   const handleScroll = useThrottle((e: React.UIEvent<HTMLDivElement>) => {
@@ -60,8 +62,8 @@ export function SharedMessageList({
   }, 200)
 
   return (
-    <div className="h-full flex flex-col">
-      <div className="p-2 flex justify-between items-center border-b border-gray-200">
+    <div className="flex h-full min-h-0 flex-col">
+      <div className="flex h-12 shrink-0 items-center justify-between border-b border-gray-200 px-2">
         <Button
           variant="ghost"
           size="icon"
@@ -76,11 +78,17 @@ export function SharedMessageList({
         </span>
       </div>
 
-      <div className="flex-1 overflow-auto p-2" onScroll={handleScroll}>
+      <div
+        className={cn(
+          "min-h-0 flex-1 overflow-auto p-2",
+          (loading || messages.length === 0) && "flex"
+        )}
+        onScroll={handleScroll}
+      >
         {loading ? (
-          <div className="p-4 text-center text-sm text-gray-500">
-            <RefreshCw className="h-6 w-6 animate-spin mx-auto text-primary mb-2" />
-            {t.loading}
+          <div className={cn("flex flex-1 flex-col items-center justify-center px-6 text-center text-sm text-gray-500", emptyStateOffsetClass)}>
+            <Loader2 className="mb-3 h-8 w-8 animate-spin text-primary/40" />
+            <p>{t.loading}</p>
           </div>
         ) : messages.length > 0 ? (
           <div className="space-y-1">
@@ -124,7 +132,7 @@ export function SharedMessageList({
             )}
           </div>
         ) : (
-          <div className="flex h-full flex-col items-center justify-center px-6 text-center text-muted-foreground">
+          <div className={cn("flex flex-1 flex-col items-center justify-center px-6 text-center text-muted-foreground", emptyStateOffsetClass)}>
             <MailX className="mb-3 h-8 w-8 text-primary/40" />
             <p className="text-sm">{t.noMessages}</p>
           </div>
