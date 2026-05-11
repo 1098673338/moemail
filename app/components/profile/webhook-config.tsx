@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState } from "react"
 import { useTranslations } from "next-intl"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -15,27 +15,24 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip"
 
-export function WebhookConfig() {
+export interface WebhookConfigData {
+  enabled: boolean
+  url: string
+}
+
+interface WebhookConfigProps {
+  initialConfig: WebhookConfigData
+}
+
+export function WebhookConfig({ initialConfig }: WebhookConfigProps) {
   const t = useTranslations("profile.webhook")
   const tCommon = useTranslations("common.actions")
-  const [enabled, setEnabled] = useState(false)
-  const [url, setUrl] = useState("")
+  const [enabled, setEnabled] = useState(initialConfig.enabled)
+  const [url, setUrl] = useState(initialConfig.url)
   const [loading, setLoading] = useState(false)
   const [testing, setTesting] = useState(false)
   const [showDocs, setShowDocs] = useState(false)
-  const [initialLoading, setInitialLoading] = useState(true)
   const { toast } = useToast()
-
-  useEffect(() => {
-    fetch("/api/webhook")
-      .then(res => res.json() as Promise<{ enabled: boolean; url: string }>)
-      .then(data => {
-        setEnabled(data.enabled)
-        setUrl(data.url)
-      })
-      .catch(console.error)
-      .finally(() => setInitialLoading(false))
-  }, [])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -95,7 +92,7 @@ export function WebhookConfig() {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4" aria-busy={initialLoading}>
+    <form onSubmit={handleSubmit} className="space-y-4">
       <div className="flex items-center justify-between">
         <div className="space-y-0.5">
           <Label className="text-sm font-medium">{t("enable")}</Label>
@@ -103,17 +100,13 @@ export function WebhookConfig() {
             {t("description")}
           </p>
         </div>
-        {initialLoading ? (
-          <div className="h-5 w-9 shrink-0 rounded-full bg-input" />
-        ) : (
-          <Switch
-            checked={enabled}
-            onCheckedChange={setEnabled}
-          />
-        )}
+        <Switch
+          checked={enabled}
+          onCheckedChange={setEnabled}
+        />
       </div>
 
-      {!initialLoading && enabled && (
+      {enabled && (
         <div className="space-y-4">
           <div className="space-y-2">
             <Label htmlFor="webhook-url">{t("url")}</Label>

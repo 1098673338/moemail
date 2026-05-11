@@ -87,12 +87,12 @@ export function MessageListContainer({ email, onMessageSelect, selectedMessageId
               <SlidingTabsTrigger value="received">
                 <Inbox className="h-4 w-4" />
                 <span>{t("received")}</span>
-                <span className="text-current/60">{messageCounts.received}</span>
+                <span className="opacity-60">{messageCounts.received}</span>
               </SlidingTabsTrigger>
               <SlidingTabsTrigger value="sent">
                 <Send className="h-4 w-4" />
                 <span>{t("sent")}</span>
-                <span className="text-current/60">{messageCounts.sent}</span>
+                <span className="opacity-60">{messageCounts.sent}</span>
               </SlidingTabsTrigger>
             </SlidingTabsList>
           </div>

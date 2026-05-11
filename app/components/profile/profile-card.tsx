@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button"
 import { signOut } from "next-auth/react"
 import { Github, Settings, Crown, Sword, User2, Gem, Mail, Loader2 } from "lucide-react"
 import { useRouter } from "next/navigation"
-import { WebhookConfig } from "./webhook-config"
+import { WebhookConfig, type WebhookConfigData } from "./webhook-config"
 import { PromotePanel } from "./promote-panel"
 import { EmailServiceConfig, type EmailServiceConfigData } from "./email-service-config"
 import { hasPermission, PERMISSIONS, Permission, Role, ROLES } from "@/lib/permissions"
@@ -76,6 +76,11 @@ const defaultEmailServiceConfig: EmailServiceConfigData = {
   apiKey: "",
 }
 
+const defaultWebhookConfig: WebhookConfigData = {
+  enabled: false,
+  url: "",
+}
+
 export function ProfileCard({ user }: ProfileCardProps) {
   const t = useTranslations("profile.card")
   const tAuth = useTranslations("auth.signButton")
@@ -90,13 +95,16 @@ export function ProfileCard({ user }: ProfileCardProps) {
   const canManageWebhook = checkPermission(PERMISSIONS.MANAGE_WEBHOOK)
   const canPromote = checkPermission(PERMISSIONS.PROMOTE_USER)
   const canManageConfig = checkPermission(PERMISSIONS.MANAGE_CONFIG)
-  const [settingsLoading, setSettingsLoading] = useState(canManageConfig)
+  const shouldLoadSettings = canManageWebhook || canManageConfig
+  const [settingsLoading, setSettingsLoading] = useState(shouldLoadSettings)
+  const [webhookConfig, setWebhookConfig] = useState<WebhookConfigData | null>(null)
   const [websiteConfig, setWebsiteConfig] = useState<WebsiteConfigData | null>(null)
   const [emailServiceConfig, setEmailServiceConfig] = useState<EmailServiceConfigData | null>(null)
 
   useEffect(() => {
-    if (!canManageConfig) {
+    if (!shouldLoadSettings) {
       setSettingsLoading(false)
+      setWebhookConfig(null)
       setWebsiteConfig(null)
       setEmailServiceConfig(null)
       return
@@ -108,25 +116,38 @@ export function ProfileCard({ user }: ProfileCardProps) {
       setSettingsLoading(true)
 
       try {
-        const [websiteRes, emailServiceRes] = await Promise.all([
-          fetch("/api/config"),
-          fetch("/api/config/email-service"),
-        ])
+        const fetchConfig = async <T,>(url: string, fallback: T): Promise<T> => {
+          try {
+            const res = await fetch(url)
+            return res.ok ? await res.json() as T : fallback
+          } catch {
+            return fallback
+          }
+        }
 
-        const [websiteData, emailServiceData] = await Promise.all([
-          websiteRes.ok ? websiteRes.json() as Promise<WebsiteConfigData> : Promise.resolve(defaultWebsiteConfig),
-          emailServiceRes.ok ? emailServiceRes.json() as Promise<EmailServiceConfigData> : Promise.resolve(defaultEmailServiceConfig),
+        const [webhookData, websiteData, emailServiceData] = await Promise.all([
+          canManageWebhook
+            ? fetchConfig<WebhookConfigData>("/api/webhook", defaultWebhookConfig)
+            : Promise.resolve<WebhookConfigData | null>(null),
+          canManageConfig
+            ? fetchConfig<WebsiteConfigData>("/api/config", defaultWebsiteConfig)
+            : Promise.resolve<WebsiteConfigData | null>(null),
+          canManageConfig
+            ? fetchConfig<EmailServiceConfigData>("/api/config/email-service", defaultEmailServiceConfig)
+            : Promise.resolve<EmailServiceConfigData | null>(null),
         ])
 
         if (!cancelled) {
+          setWebhookConfig(webhookData)
           setWebsiteConfig(websiteData)
           setEmailServiceConfig(emailServiceData)
         }
       } catch (error) {
         console.error("Failed to fetch settings config:", error)
         if (!cancelled) {
-          setWebsiteConfig(defaultWebsiteConfig)
-          setEmailServiceConfig(defaultEmailServiceConfig)
+          setWebhookConfig(canManageWebhook ? defaultWebhookConfig : null)
+          setWebsiteConfig(canManageConfig ? defaultWebsiteConfig : null)
+          setEmailServiceConfig(canManageConfig ? defaultEmailServiceConfig : null)
         }
       } finally {
         if (!cancelled) {
@@ -140,9 +161,9 @@ export function ProfileCard({ user }: ProfileCardProps) {
     return () => {
       cancelled = true
     }
-  }, [canManageConfig])
+  }, [canManageConfig, canManageWebhook, shouldLoadSettings])
 
-  if (canManageConfig && settingsLoading) {
+  if (shouldLoadSettings && settingsLoading) {
     return (
       <div className="mx-auto flex min-h-[calc(100vh-10rem)] max-w-2xl items-center justify-center">
         <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center">
@@ -217,13 +238,13 @@ export function ProfileCard({ user }: ProfileCardProps) {
         </div>
       </div>
 
-      {canManageWebhook && (
+      {canManageWebhook && webhookConfig && (
         <div className="bg-background rounded-lg border border-gray-200 p-6">
           <div className="flex items-center gap-2 mb-6">
             <Settings className="w-5 h-5 text-primary" />
             <h2 className="text-lg font-semibold">{tWebhook("title")}</h2>
           </div>
-          <WebhookConfig />
+          <WebhookConfig initialConfig={webhookConfig} />
         </div>
       )}
 
