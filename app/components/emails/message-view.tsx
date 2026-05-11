@@ -163,9 +163,9 @@ export function MessageView({ emailId, messageId, messageType = 'received' }: Me
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-32">
-        <Loader2 className="w-5 h-5 animate-spin text-primary/60" />
-        <span className="ml-2 text-sm text-gray-500">{t("loading")}</span>
+      <div className="flex h-full flex-col items-center justify-center px-6 text-center text-sm text-gray-500">
+        <Loader2 className="mb-3 h-8 w-8 animate-spin text-primary/40" />
+        <p>{t("loading")}</p>
       </div>
     )
   }

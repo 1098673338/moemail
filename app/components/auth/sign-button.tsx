@@ -21,7 +21,17 @@ export function SignButton({ size = "default" }: SignButtonProps) {
   const loading = status === "loading"
 
   if (loading) {
-    return <div className="h-9" />
+    return (
+      <Button
+        aria-hidden="true"
+        tabIndex={-1}
+        className={cn("pointer-events-none gap-2 opacity-0", size === "lg" ? "px-8" : "")}
+        size={size}
+      >
+        <LogIn className={size === "lg" ? "w-5 h-5" : "w-4 h-4"} />
+        {t("login")}
+      </Button>
+    )
   }
 
   if (!session?.user) {

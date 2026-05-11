@@ -123,7 +123,7 @@
     "saveFailed": "設定の保存に失敗しました"
   },
   "promote": {
-    "title": "ロール管理",
+    "title": "ユーザー管理",
     "description": "ユーザーロールを管理（皇帝のみ利用可能）",
     "search": "ユーザーを検索",
     "searchPlaceholder": "ユーザー名またはメールを入力",

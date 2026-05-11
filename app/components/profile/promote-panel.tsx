@@ -2,7 +2,7 @@
 
 import { useTranslations } from "next-intl"
 import { Button } from "@/components/ui/button"
-import { Crown, Gem, Sword, User2, Loader2 } from "lucide-react"
+import { Crown, Gem, Sword, User2, Loader2, Users } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { useEffect, useState } from "react"
 import { useToast } from "@/components/ui/use-toast"
@@ -15,13 +15,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-
-const roleIcons = {
-  [ROLES.EMPEROR]: Crown,
-  [ROLES.DUKE]: Gem,
-  [ROLES.KNIGHT]: Sword,
-  [ROLES.CIVILIAN]: User2,
-} as const
 
 type RoleWithoutEmperor = Exclude<Role, typeof ROLES.EMPEROR>
 
@@ -155,12 +148,10 @@ export function PromotePanel() {
     }
   }
 
-  const Icon = roleIcons[targetRole]
-
   return (
     <div className="bg-background rounded-lg border border-gray-200 p-6">
       <div className="flex items-center gap-2 mb-6">
-        <Icon className="w-5 h-5 text-primary" />
+        <Users className="w-5 h-5 text-primary" />
         <h2 className="text-lg font-semibold">{t("title")}</h2>
       </div>
 

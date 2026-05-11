@@ -123,7 +123,7 @@
     "saveFailed": "儲存設定失敗"
   },
   "promote": {
-    "title": "角色管理",
+    "title": "使用者管理",
     "description": "管理使用者角色（僅皇帝可用）",
     "search": "搜尋使用者",
     "searchPlaceholder": "輸入使用者名稱或郵箱",

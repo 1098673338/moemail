@@ -123,7 +123,7 @@
     "saveFailed": "설정 저장에 실패했습니다"
   },
   "promote": {
-    "title": "역할 관리",
+    "title": "사용자 관리",
     "description": "사용자 역할 관리 (황제 전용)",
     "search": "사용자 검색",
     "searchPlaceholder": "사용자 이름 또는 이메일 입력",

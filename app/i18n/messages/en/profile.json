@@ -123,7 +123,7 @@
     "saveFailed": "Failed to save configuration"
   },
   "promote": {
-    "title": "Role Management",
+    "title": "User Management",
     "description": "Manage user roles (Emperor only)",
     "search": "Search Users",
     "searchPlaceholder": "Enter username or email",

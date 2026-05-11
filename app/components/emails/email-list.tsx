@@ -5,7 +5,7 @@ import { useSession } from "next-auth/react"
 import { useTranslations } from "next-intl"
 import { CreateDialog } from "./create-dialog"
 import { ShareDialog } from "./share-dialog"
-import { Copy, Inbox, RefreshCw, Trash2 } from "lucide-react"
+import { AtSign, Copy, RefreshCw, Trash2 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { useThrottle } from "@/hooks/use-throttle"
@@ -252,7 +252,7 @@ export function EmailList({ onEmailSelect, selectedEmailId }: EmailListProps) {
             </div>
           ) : (
             <div className="flex flex-1 -translate-y-[52px] flex-col items-center justify-center px-6 text-center text-muted-foreground">
-              <Inbox className="mb-3 h-8 w-8 text-primary/40" />
+              <AtSign className="mb-3 h-8 w-8 text-primary/40" />
               <p className="text-sm">{t("noEmails")}</p>
             </div>
           )}

@@ -1,6 +1,6 @@
 "use client"
 
-import { Inbox, Mail, RefreshCw } from "lucide-react"
+import { Mail, MailX, RefreshCw } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useThrottle } from "@/hooks/use-throttle"
 import { Button } from "@/components/ui/button"
@@ -121,7 +121,7 @@ export function SharedMessageList({
           </div>
         ) : (
           <div className="flex h-full flex-col items-center justify-center px-6 text-center text-muted-foreground">
-            <Inbox className="mb-3 h-8 w-8 text-primary/40" />
+            <MailX className="mb-3 h-8 w-8 text-primary/40" />
             <p className="text-sm">{t.noMessages}</p>
           </div>
         )}

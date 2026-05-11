@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from "react"
 import { useTranslations } from "next-intl"
-import { Inbox, Loader2, Mail, RefreshCw, Trash2, Share2 } from "lucide-react"
+import { Loader2, Mail, MailX, RefreshCw, Trash2, Share2 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { useThrottle } from "@/hooks/use-throttle"
@@ -299,7 +299,7 @@ export function MessageList({ email, messageType, onMessageSelect, selectedMessa
           </div>
         ) : (
           <div className={cn("flex flex-1 flex-col items-center justify-center px-6 text-center text-muted-foreground", emptyStateOffsetClass)}>
-            <Inbox className="mb-3 h-8 w-8 text-primary/40" />
+            <MailX className="mb-3 h-8 w-8 text-primary/40" />
             <p className="text-sm">{t("noMessages")}</p>
           </div>
         )}
