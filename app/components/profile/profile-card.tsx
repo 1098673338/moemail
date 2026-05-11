@@ -10,8 +10,7 @@ import { useRouter } from "next/navigation"
 import { WebhookConfig } from "./webhook-config"
 import { PromotePanel } from "./promote-panel"
 import { EmailServiceConfig, type EmailServiceConfigData } from "./email-service-config"
-import { useRolePermission } from "@/hooks/use-role-permission"
-import { PERMISSIONS, ROLES } from "@/lib/permissions"
+import { hasPermission, PERMISSIONS, Permission, Role, ROLES } from "@/lib/permissions"
 import { WebsiteConfigPanel, type WebsiteConfigData } from "./website-config-panel"
 import { ApiKeyPanel } from "./api-key-panel"
 import { EMAIL_CONFIG } from "@/config"
@@ -84,7 +83,10 @@ export function ProfileCard({ user }: ProfileCardProps) {
   const tNav = useTranslations("common.nav")
   const locale = useLocale()
   const router = useRouter()
-  const { checkPermission } = useRolePermission()
+  const userRoleNames = user.roles?.map((role) => role.name) as Role[] | undefined
+  const checkPermission = (permission: Permission) => {
+    return userRoleNames ? hasPermission(userRoleNames, permission) : false
+  }
   const canManageWebhook = checkPermission(PERMISSIONS.MANAGE_WEBHOOK)
   const canPromote = checkPermission(PERMISSIONS.PROMOTE_USER)
   const canManageConfig = checkPermission(PERMISSIONS.MANAGE_CONFIG)
@@ -139,6 +141,20 @@ export function ProfileCard({ user }: ProfileCardProps) {
       cancelled = true
     }
   }, [canManageConfig])
+
+  if (canManageConfig && settingsLoading) {
+    return (
+      <div className="max-w-2xl mx-auto">
+        <div className="bg-background rounded-lg border border-gray-200 p-6">
+          <div className="flex min-h-80 items-center justify-center">
+            <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center">
+              <Loader2 className="w-6 h-6 text-primary animate-spin" />
+            </div>
+          </div>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="max-w-2xl mx-auto space-y-6">
@@ -215,15 +231,6 @@ export function ProfileCard({ user }: ProfileCardProps) {
         </div>
       )}
 
-      {canManageConfig && settingsLoading && (
-        <div className="bg-background rounded-lg border border-gray-200 p-6">
-          <div className="flex min-h-40 items-center justify-center">
-            <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center">
-              <Loader2 className="w-6 h-6 text-primary animate-spin" />
-            </div>
-          </div>
-        </div>
-      )}
       {canManageConfig && !settingsLoading && websiteConfig && emailServiceConfig && (
         <>
           <WebsiteConfigPanel initialConfig={websiteConfig} />
