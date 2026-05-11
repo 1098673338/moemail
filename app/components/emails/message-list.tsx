@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from "react"
 import { useTranslations } from "next-intl"
-import { Inbox, Mail, RefreshCw, Trash2, Share2 } from "lucide-react"
+import { Inbox, Loader2, Mail, RefreshCw, Trash2, Share2 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { useThrottle } from "@/hooks/use-throttle"
@@ -233,8 +233,9 @@ export function MessageList({ email, messageType, onMessageSelect, selectedMessa
         onScroll={handleScroll}
       >
         {loading ? (
-          <div className={cn("flex flex-1 items-center justify-center px-6 text-center text-sm text-gray-500", emptyStateOffsetClass)}>
-            {t("loading")}
+          <div className={cn("flex flex-1 flex-col items-center justify-center px-6 text-center text-sm text-gray-500", emptyStateOffsetClass)}>
+            <Loader2 className="mb-3 h-8 w-8 animate-spin text-primary/40" />
+            <p>{t("loading")}</p>
           </div>
         ) : messages.length > 0 ? (
           <div className="space-y-1">
