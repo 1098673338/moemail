@@ -1,48 +1,30 @@
 "use client"
 
-import React, { useState, useEffect } from "react"
+import React, { useState } from "react"
 import { useTranslations } from "next-intl"
 import { Button } from "@/components/ui/button"
-import { Zap, Eye, EyeOff, Loader2 } from "lucide-react"
+import { Zap, Eye, EyeOff } from "lucide-react"
 import { useToast } from "@/components/ui/use-toast"
 import { Input } from "@/components/ui/input"
 import { Switch } from "@/components/ui/switch"
 import { Label } from "@/components/ui/label"
 
-interface EmailServiceConfig {
+export interface EmailServiceConfigData {
   enabled: boolean
   apiKey: string
 }
 
-export function EmailServiceConfig() {
+interface EmailServiceConfigProps {
+  initialConfig: EmailServiceConfigData
+}
+
+export function EmailServiceConfig({ initialConfig }: EmailServiceConfigProps) {
   const t = useTranslations("profile.emailService")
   const tCard = useTranslations("profile.card")
-  const [config, setConfig] = useState<EmailServiceConfig>({
-    enabled: false,
-    apiKey: "",
-  })
-  const [initialLoading, setInitialLoading] = useState(true)
+  const [config, setConfig] = useState<EmailServiceConfigData>(initialConfig)
   const [loading, setLoading] = useState(false)
   const [showToken, setShowToken] = useState(false)
   const { toast } = useToast()
-
-  useEffect(() => {
-    fetchConfig()
-  }, [])
-
-  const fetchConfig = async () => {
-    try {
-      const res = await fetch("/api/config/email-service")
-      if (res.ok) {
-        const data = await res.json() as EmailServiceConfig
-        setConfig(data)
-      }
-    } catch (error) {
-      console.error("Failed to fetch email service config:", error)
-    } finally {
-      setInitialLoading(false)
-    }
-  }
 
   const handleSave = async () => {
     setLoading(true)
@@ -85,14 +67,7 @@ export function EmailServiceConfig() {
         <h2 className="text-lg font-semibold">{t("title")}</h2>
       </div>
 
-      {initialLoading ? (
-        <div className="flex min-h-40 items-center justify-center">
-          <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center">
-            <Loader2 className="w-6 h-6 text-primary animate-spin" />
-          </div>
-        </div>
-      ) : (
-        <div className="space-y-4">
+      <div className="space-y-4">
         <div className="flex items-center justify-between">
           <div className="space-y-0.5">
             <Label htmlFor="enabled" className="text-sm font-medium">
@@ -106,7 +81,7 @@ export function EmailServiceConfig() {
             id="enabled"
             checked={config.enabled}
             onCheckedChange={(checked: boolean) =>
-              setConfig((prev: EmailServiceConfig) => ({ ...prev, enabled: checked }))
+              setConfig((prev: EmailServiceConfigData) => ({ ...prev, enabled: checked }))
             }
           />
         </div>
@@ -122,7 +97,7 @@ export function EmailServiceConfig() {
                   id="apiKey"
                   type={showToken ? "text" : "password"}
                   value={config.apiKey}
-                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => setConfig((prev: EmailServiceConfig) => ({ ...prev, apiKey: e.target.value }))}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => setConfig((prev: EmailServiceConfigData) => ({ ...prev, apiKey: e.target.value }))}
                   placeholder={t("apiKeyPlaceholder")}
                 />
                 <Button
@@ -183,7 +158,6 @@ export function EmailServiceConfig() {
           {loading ? t("saving") : t("save")}
         </Button>
       </div>
-      )}
     </div>
   )
 } 

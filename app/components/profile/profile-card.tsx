@@ -5,15 +5,17 @@ import { useTranslations, useLocale } from "next-intl"
 import Image from "next/image"
 import { Button } from "@/components/ui/button"
 import { signOut } from "next-auth/react"
-import { Github, Settings, Crown, Sword, User2, Gem, Mail } from "lucide-react"
+import { Github, Settings, Crown, Sword, User2, Gem, Mail, Loader2 } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { WebhookConfig } from "./webhook-config"
 import { PromotePanel } from "./promote-panel"
-import { EmailServiceConfig } from "./email-service-config"
+import { EmailServiceConfig, type EmailServiceConfigData } from "./email-service-config"
 import { useRolePermission } from "@/hooks/use-role-permission"
-import { PERMISSIONS } from "@/lib/permissions"
-import { WebsiteConfigPanel } from "./website-config-panel"
+import { PERMISSIONS, ROLES } from "@/lib/permissions"
+import { WebsiteConfigPanel, type WebsiteConfigData } from "./website-config-panel"
 import { ApiKeyPanel } from "./api-key-panel"
+import { EMAIL_CONFIG } from "@/config"
+import { useEffect, useState } from "react"
 
 interface ProfileCardProps {
   user: User
@@ -58,6 +60,23 @@ const providerConfigs = {
   },
 } as const
 
+const defaultWebsiteConfig: WebsiteConfigData = {
+  defaultRole: ROLES.CIVILIAN,
+  emailDomains: "moemail.app",
+  adminContact: "",
+  maxEmails: EMAIL_CONFIG.MAX_ACTIVE_EMAILS.toString(),
+  turnstile: {
+    enabled: false,
+    siteKey: "",
+    secretKey: "",
+  },
+}
+
+const defaultEmailServiceConfig: EmailServiceConfigData = {
+  enabled: false,
+  apiKey: "",
+}
+
 export function ProfileCard({ user }: ProfileCardProps) {
   const t = useTranslations("profile.card")
   const tAuth = useTranslations("auth.signButton")
@@ -69,6 +88,57 @@ export function ProfileCard({ user }: ProfileCardProps) {
   const canManageWebhook = checkPermission(PERMISSIONS.MANAGE_WEBHOOK)
   const canPromote = checkPermission(PERMISSIONS.PROMOTE_USER)
   const canManageConfig = checkPermission(PERMISSIONS.MANAGE_CONFIG)
+  const [settingsLoading, setSettingsLoading] = useState(canManageConfig)
+  const [websiteConfig, setWebsiteConfig] = useState<WebsiteConfigData | null>(null)
+  const [emailServiceConfig, setEmailServiceConfig] = useState<EmailServiceConfigData | null>(null)
+
+  useEffect(() => {
+    if (!canManageConfig) {
+      setSettingsLoading(false)
+      setWebsiteConfig(null)
+      setEmailServiceConfig(null)
+      return
+    }
+
+    let cancelled = false
+
+    const fetchSettingsConfig = async () => {
+      setSettingsLoading(true)
+
+      try {
+        const [websiteRes, emailServiceRes] = await Promise.all([
+          fetch("/api/config"),
+          fetch("/api/config/email-service"),
+        ])
+
+        const [websiteData, emailServiceData] = await Promise.all([
+          websiteRes.ok ? websiteRes.json() as Promise<WebsiteConfigData> : Promise.resolve(defaultWebsiteConfig),
+          emailServiceRes.ok ? emailServiceRes.json() as Promise<EmailServiceConfigData> : Promise.resolve(defaultEmailServiceConfig),
+        ])
+
+        if (!cancelled) {
+          setWebsiteConfig(websiteData)
+          setEmailServiceConfig(emailServiceData)
+        }
+      } catch (error) {
+        console.error("Failed to fetch settings config:", error)
+        if (!cancelled) {
+          setWebsiteConfig(defaultWebsiteConfig)
+          setEmailServiceConfig(defaultEmailServiceConfig)
+        }
+      } finally {
+        if (!cancelled) {
+          setSettingsLoading(false)
+        }
+      }
+    }
+
+    fetchSettingsConfig()
+
+    return () => {
+      cancelled = true
+    }
+  }, [canManageConfig])
 
   return (
     <div className="max-w-2xl mx-auto space-y-6">
@@ -145,8 +215,21 @@ export function ProfileCard({ user }: ProfileCardProps) {
         </div>
       )}
 
-      {canManageConfig && <WebsiteConfigPanel />}
-      {canManageConfig && <EmailServiceConfig />}
+      {canManageConfig && settingsLoading && (
+        <div className="bg-background rounded-lg border border-gray-200 p-6">
+          <div className="flex min-h-40 items-center justify-center">
+            <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center">
+              <Loader2 className="w-6 h-6 text-primary animate-spin" />
+            </div>
+          </div>
+        </div>
+      )}
+      {canManageConfig && !settingsLoading && websiteConfig && emailServiceConfig && (
+        <>
+          <WebsiteConfigPanel initialConfig={websiteConfig} />
+          <EmailServiceConfig initialConfig={emailServiceConfig} />
+        </>
+      )}
       {canPromote && <PromotePanel />}
       {canManageWebhook && <ApiKeyPanel />}
 
