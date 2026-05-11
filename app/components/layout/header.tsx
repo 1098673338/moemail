@@ -1,6 +1,5 @@
 import { SignButton } from "@/components/auth/sign-button"
 import { FontSwitcher } from "@/components/theme/font-switcher"
-import { LanguageSwitcher } from "@/components/layout/language-switcher"
 import { Logo } from "@/components/ui/logo"
 
 export function Header() {
@@ -10,7 +9,6 @@ export function Header() {
         <div className="h-full flex items-center justify-between">
           <Logo />
           <div className="flex items-center gap-y-4 gap-x-4">
-            <LanguageSwitcher />
             <FontSwitcher />
             <SignButton />
           </div>

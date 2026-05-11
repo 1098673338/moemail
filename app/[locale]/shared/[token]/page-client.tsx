@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from "react"
 import { useTranslations } from "next-intl"
 import { BrandHeader } from "@/components/ui/brand-header"
-import { FloatingLanguageSwitcher } from "@/components/layout/floating-language-switcher"
+import { FloatingFontSwitcher } from "@/components/layout/floating-font-switcher"
 import { SharedMessageList } from "@/components/emails/shared-message-list"
 import { SharedMessageDetail } from "@/components/emails/shared-message-detail"
 import { EMAIL_CONFIG } from "@/config"
@@ -279,7 +279,7 @@ export function SharedEmailPageClient({
         </div>
       </div>
 
-      <FloatingLanguageSwitcher />
+      <FloatingFontSwitcher />
     </div>
   )
 }

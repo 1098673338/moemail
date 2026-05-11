@@ -2,7 +2,7 @@
 
 import { useTranslations } from "next-intl"
 import { BrandHeader } from "@/components/ui/brand-header"
-import { FloatingLanguageSwitcher } from "@/components/layout/floating-language-switcher"
+import { FloatingFontSwitcher } from "@/components/layout/floating-font-switcher"
 import { SharedMessageDetail } from "@/components/emails/shared-message-detail"
 import { formatUtcPlus8DateTime, isPermanentDate } from "@/lib/date-format"
 
@@ -80,7 +80,7 @@ export function SharedMessagePageClient({ message }: SharedMessagePageClientProp
         </div>
       </div>
       
-      <FloatingLanguageSwitcher />
+      <FloatingFontSwitcher />
     </div>
   )
 }

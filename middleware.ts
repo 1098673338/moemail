@@ -62,9 +62,8 @@ export async function middleware(request: Request) {
   const maybeLocale = segments[1]
   const hasLocalePrefix = i18n.locales.includes(maybeLocale as any)
   if (!hasLocalePrefix) {
-    const cookieLocale = request.headers.get('Cookie')?.match(/NEXT_LOCALE=([^;]+)/)?.[1]
     const acceptLanguage = request.headers.get('Accept-Language')
-    const preferredLocale = resolvePreferredLocale(cookieLocale, acceptLanguage)
+    const preferredLocale = resolvePreferredLocale(acceptLanguage)
     const targetLocale = preferredLocale ?? i18n.defaultLocale
     const redirectURL = new URL(`/${targetLocale}${pathname}${url.search}`, request.url)
     return NextResponse.redirect(redirectURL)
@@ -73,11 +72,7 @@ export async function middleware(request: Request) {
   return NextResponse.next()
 }
 
-function resolvePreferredLocale(cookieLocale: string | undefined, acceptLanguageHeader: string | null): Locale | null {
-  if (cookieLocale && i18n.locales.includes(cookieLocale as Locale)) {
-    return cookieLocale as Locale
-  }
-
+function resolvePreferredLocale(acceptLanguageHeader: string | null): Locale | null {
   if (!acceptLanguageHeader) return null
 
   const candidates = parseAcceptLanguage(acceptLanguageHeader)
