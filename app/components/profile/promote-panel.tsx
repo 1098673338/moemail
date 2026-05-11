@@ -173,11 +173,6 @@ export function PromotePanel() {
               aria-invalid={!!searchError}
               aria-describedby={searchError ? "user-search-error" : undefined}
             />
-            {searchError && (
-              <p id="user-search-error" className="text-xs text-destructive text-right">
-                {searchError}
-              </p>
-            )}
           </div>
           <div className="space-y-2">
             <Label className="text-sm font-medium">{t("role")}</Label>
@@ -234,9 +229,16 @@ export function PromotePanel() {
             />
           </div>
         </div>
-        <p className="text-xs text-muted-foreground">
-          {searching ? t("loading") : t("maxEmailsHint")}
-        </p>
+        <div className="flex h-4 items-center justify-between gap-4 text-xs leading-4">
+          <p className="min-w-0 truncate text-muted-foreground">
+            {searching ? t("loading") : t("maxEmailsHint")}
+          </p>
+          {searchError && (
+            <p id="user-search-error" className="shrink-0 text-destructive">
+              {searchError}
+            </p>
+          )}
+        </div>
 
         <Button
           onClick={handleAction}
