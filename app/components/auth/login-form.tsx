@@ -2,7 +2,7 @@
 
 import { useCallback, useState } from "react"
 import { signIn } from "next-auth/react"
-import { useTranslations } from "next-intl"
+import { useLocale, useTranslations } from "next-intl"
 import { useToast } from "@/components/ui/use-toast"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -49,6 +49,8 @@ export function LoginForm({ turnstile }: LoginFormProps) {
   const [activeTab, setActiveTab] = useState<"login" | "register">("login")
   const { toast } = useToast()
   const t = useTranslations("auth.loginForm")
+  const locale = useLocale()
+  const mailboxPath = `/${locale}/moe`
 
   const turnstileSiteKey = turnstile?.siteKey ?? ""
   const turnstileEnabled = Boolean(turnstile?.enabled && turnstileSiteKey)
@@ -128,7 +130,7 @@ export function LoginForm({ turnstile }: LoginFormProps) {
         return
       }
 
-      window.location.href = "/"
+      window.location.href = mailboxPath
     } catch (error) {
       toast({
         title: t("toast.loginFailed"),
@@ -184,7 +186,7 @@ export function LoginForm({ turnstile }: LoginFormProps) {
         return
       }
 
-      window.location.href = "/"
+      window.location.href = mailboxPath
     } catch (error) {
       toast({
         title: t("toast.registerFailed"),
@@ -197,11 +199,11 @@ export function LoginForm({ turnstile }: LoginFormProps) {
   }
 
   const handleGithubLogin = () => {
-    signIn("github", { callbackUrl: "/" })
+    signIn("github", { callbackUrl: mailboxPath })
   }
 
   const handleGoogleLogin = () => {
-    signIn("google", { callbackUrl: "/" })
+    signIn("google", { callbackUrl: mailboxPath })
   }
 
   return (
