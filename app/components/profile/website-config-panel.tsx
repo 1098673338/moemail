@@ -113,7 +113,7 @@ export function WebsiteConfigPanel() {
         <div className="grid grid-cols-[180px_minmax(0,1fr)] items-center gap-4">
           <span className="text-left text-sm">{t("defaultRole")}:</span>
           <Select value={defaultRole} onValueChange={setDefaultRole}>
-            <SelectTrigger className="w-32">
+            <SelectTrigger className="w-44">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -168,7 +168,6 @@ export function WebsiteConfigPanel() {
             placeholder={`${EMAIL_CONFIG.MAX_ACTIVE_EMAILS}`}
           />
         </div>
-        <p className="text-xs text-muted-foreground">{t("maxEmailsHint")}</p>
 
         <div className="flex items-center justify-between">
           <div className="space-y-0.5">

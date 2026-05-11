@@ -30,13 +30,11 @@ interface TargetUser {
 export function PromotePanel() {
   const t = useTranslations("profile.promote")
   const tCard = useTranslations("profile.card")
-  const userNotFoundText = t("noUsers")
   const [searchText, setSearchText] = useState("")
-  const [searchError, setSearchError] = useState("")
   const [targetUser, setTargetUser] = useState<TargetUser | null>(null)
   const [loading, setLoading] = useState(false)
   const [searching, setSearching] = useState(false)
-  const [targetRole, setTargetRole] = useState<Role>(ROLES.KNIGHT)
+  const [targetRole, setTargetRole] = useState<Role | "">("")
   const [maxEmails, setMaxEmails] = useState("")
   const [sendLimit, setSendLimit] = useState("")
   const { toast } = useToast()
@@ -54,14 +52,14 @@ export function PromotePanel() {
     const search = searchText.trim()
     if (!search) {
       setTargetUser(null)
-      setSearchError("")
+      setTargetRole("")
       setMaxEmails("")
       setSendLimit("")
       return
     }
 
     setTargetUser(null)
-    setSearchError("")
+    setTargetRole("")
     setMaxEmails("")
     setSendLimit("")
 
@@ -82,23 +80,24 @@ export function PromotePanel() {
 
         if (!res.ok || !data.user) {
           setTargetUser(null)
-          setSearchError(res.status === 404 ? userNotFoundText : "")
+          setTargetRole("")
           setMaxEmails("")
           setSendLimit("")
           return
         }
 
-        setSearchError("")
         setTargetUser(data.user)
         setMaxEmails(data.user.maxEmails.toString())
         setSendLimit(data.user.sendLimit == null ? "" : data.user.sendLimit.toString())
         if ([ROLES.EMPEROR, ROLES.DUKE, ROLES.KNIGHT, ROLES.CIVILIAN].includes(data.user.role as Role)) {
           setTargetRole(data.user.role as Role)
+        } else {
+          setTargetRole("")
         }
       } catch {
         if (!cancelled) {
           setTargetUser(null)
-          setSearchError("")
+          setTargetRole("")
           setMaxEmails("")
           setSendLimit("")
         }
@@ -113,10 +112,10 @@ export function PromotePanel() {
       cancelled = true
       window.clearTimeout(timer)
     }
-  }, [searchText, userNotFoundText])
+  }, [searchText])
 
   const handleAction = async () => {
-    if (!targetUser) return
+    if (!targetUser || !targetRole) return
 
     const parsedMaxEmails = isTargetEmperor ? 0 : Number(maxEmails)
     if (!isTargetEmperor && (!maxEmails.trim() || !Number.isInteger(parsedMaxEmails) || parsedMaxEmails < 0)) {
@@ -163,6 +162,7 @@ export function PromotePanel() {
       })
       setSearchText("")
       setTargetUser(null)
+      setTargetRole("")
       setMaxEmails("")
       setSendLimit("")
     } catch (error) {
@@ -190,8 +190,6 @@ export function PromotePanel() {
             value={searchText}
             onChange={(e) => setSearchText(e.target.value)}
             placeholder={t("searchPlaceholder")}
-            aria-invalid={!!searchError}
-            aria-describedby={searchError ? "user-search-error" : undefined}
           />
         </div>
 
@@ -202,8 +200,8 @@ export function PromotePanel() {
             onValueChange={(value) => setTargetRole(value as RoleWithoutEmperor)}
             disabled={isUserFormDisabled}
           >
-            <SelectTrigger className="w-32">
-              <SelectValue />
+            <SelectTrigger className="w-44">
+              <SelectValue placeholder={t("rolePlaceholder")} />
             </SelectTrigger>
             <SelectContent>
               {targetUser?.role === ROLES.EMPEROR && (
@@ -261,20 +259,15 @@ export function PromotePanel() {
             disabled={isUserFormDisabled}
           />
         </div>
-        <div className="flex h-4 items-center justify-between gap-4 text-xs leading-4">
-          <p className="min-w-0 truncate text-muted-foreground">
-            {searching ? t("loading") : t("limitsHint")}
+        {searching && (
+          <p className="h-4 text-xs leading-4 text-muted-foreground">
+            {t("loading")}
           </p>
-          {searchError && (
-            <p id="user-search-error" className="shrink-0 text-destructive">
-              {searchError}
-            </p>
-          )}
-        </div>
+        )}
 
         <Button
           onClick={handleAction}
-          disabled={loading || isUserFormDisabled}
+          disabled={loading || isUserFormDisabled || !targetRole}
           className="w-full"
         >
           {loading ? (
