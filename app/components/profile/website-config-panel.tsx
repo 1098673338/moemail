@@ -2,14 +2,13 @@
 
 import { useTranslations } from "next-intl"
 import { Button } from "@/components/ui/button"
-import { Settings } from "lucide-react"
+import { Eye, EyeOff, Gem, Settings, Sword, User2 } from "lucide-react"
 import { useToast } from "@/components/ui/use-toast"
 import { useState, useEffect } from "react"
 import { Role, ROLES } from "@/lib/permissions"
 import { Input } from "@/components/ui/input"
 import { Switch } from "@/components/ui/switch"
 import { Label } from "@/components/ui/label"
-import { Eye, EyeOff } from "lucide-react"
 import {
   Select,
   SelectContent,
@@ -32,6 +31,12 @@ export function WebsiteConfigPanel() {
   const [showSecretKey, setShowSecretKey] = useState(false)
   const [loading, setLoading] = useState(false)
   const { toast } = useToast()
+
+  const roleNames = {
+    [ROLES.DUKE]: tCard("roles.DUKE"),
+    [ROLES.KNIGHT]: tCard("roles.KNIGHT"),
+    [ROLES.CIVILIAN]: tCard("roles.CIVILIAN"),
+  } as const
 
   useEffect(() => {
     fetchConfig()
@@ -112,9 +117,24 @@ export function WebsiteConfigPanel() {
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value={ROLES.DUKE}>{tCard("roles.DUKE")}</SelectItem>
-              <SelectItem value={ROLES.KNIGHT}>{tCard("roles.KNIGHT")}</SelectItem>
-              <SelectItem value={ROLES.CIVILIAN}>{tCard("roles.CIVILIAN")}</SelectItem>
+              <SelectItem value={ROLES.DUKE}>
+                <div className="flex items-center gap-2">
+                  <Gem className="w-4 h-4" />
+                  {roleNames[ROLES.DUKE]}
+                </div>
+              </SelectItem>
+              <SelectItem value={ROLES.KNIGHT}>
+                <div className="flex items-center gap-2">
+                  <Sword className="w-4 h-4" />
+                  {roleNames[ROLES.KNIGHT]}
+                </div>
+              </SelectItem>
+              <SelectItem value={ROLES.CIVILIAN}>
+                <div className="flex items-center gap-2">
+                  <User2 className="w-4 h-4" />
+                  {roleNames[ROLES.CIVILIAN]}
+                </div>
+              </SelectItem>
             </SelectContent>
           </Select>
         </div>
