@@ -136,7 +136,7 @@
     "actions": "操作",
     "promote": "设为",
     "saveConfig": "保存配置",
-    "noUsers": "未找到用户",
+    "noUsers": "用户不存在",
     "loading": "加载中...",
     "updateSuccess": "用户角色更新成功",
     "updateFailed": "更新用户角色失败"

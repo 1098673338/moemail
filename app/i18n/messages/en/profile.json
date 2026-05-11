@@ -136,7 +136,7 @@
     "actions": "Actions",
     "promote": "Set as",
     "saveConfig": "Save Configuration",
-    "noUsers": "No users found",
+    "noUsers": "User does not exist",
     "loading": "Loading...",
     "updateSuccess": "User role updated successfully",
     "updateFailed": "Failed to update user role"

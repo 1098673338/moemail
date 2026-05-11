@@ -30,7 +30,9 @@ interface TargetUser {
 export function PromotePanel() {
   const t = useTranslations("profile.promote")
   const tCard = useTranslations("profile.card")
+  const userNotFoundText = t("noUsers")
   const [searchText, setSearchText] = useState("")
+  const [searchError, setSearchError] = useState("")
   const [targetUser, setTargetUser] = useState<TargetUser | null>(null)
   const [loading, setLoading] = useState(false)
   const [searching, setSearching] = useState(false)
@@ -49,11 +51,13 @@ export function PromotePanel() {
     const search = searchText.trim()
     if (!search) {
       setTargetUser(null)
+      setSearchError("")
       setMaxEmails("")
       return
     }
 
     setTargetUser(null)
+    setSearchError("")
     setMaxEmails("")
 
     let cancelled = false
@@ -73,10 +77,12 @@ export function PromotePanel() {
 
         if (!res.ok || !data.user) {
           setTargetUser(null)
+          setSearchError(res.status === 404 ? userNotFoundText : "")
           setMaxEmails("")
           return
         }
 
+        setSearchError("")
         setTargetUser(data.user)
         setMaxEmails(data.user.maxEmails.toString())
         if ([ROLES.EMPEROR, ROLES.DUKE, ROLES.KNIGHT, ROLES.CIVILIAN].includes(data.user.role as Role)) {
@@ -85,6 +91,7 @@ export function PromotePanel() {
       } catch {
         if (!cancelled) {
           setTargetUser(null)
+          setSearchError("")
           setMaxEmails("")
         }
       } finally {
@@ -98,7 +105,7 @@ export function PromotePanel() {
       cancelled = true
       window.clearTimeout(timer)
     }
-  }, [searchText])
+  }, [searchText, userNotFoundText])
 
   const handleAction = async () => {
     if (!targetUser) return
@@ -163,7 +170,14 @@ export function PromotePanel() {
               value={searchText}
               onChange={(e) => setSearchText(e.target.value)}
               placeholder={t("searchPlaceholder")}
+              aria-invalid={!!searchError}
+              aria-describedby={searchError ? "user-search-error" : undefined}
             />
+            {searchError && (
+              <p id="user-search-error" className="text-xs text-destructive text-right">
+                {searchError}
+              </p>
+            )}
           </div>
           <div className="space-y-2">
             <Label className="text-sm font-medium">{t("role")}</Label>
