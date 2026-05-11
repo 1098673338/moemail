@@ -165,7 +165,7 @@ export function EmailList({ onEmailSelect, selectedEmailId }: EmailListProps) {
 
   return (
     <>
-      <div className="flex flex-col h-full">
+      <div className="flex h-full min-h-0 flex-col">
         <div className="flex h-14 shrink-0 items-center justify-between border-b border-gray-200 px-2">
           <div className="flex items-center gap-2">
             <Button
@@ -188,7 +188,7 @@ export function EmailList({ onEmailSelect, selectedEmailId }: EmailListProps) {
           <CreateDialog onEmailCreated={handleRefresh} />
         </div>
         
-        <div className="flex-1 overflow-auto p-2" onScroll={handleScroll}>
+        <div className="min-h-0 flex-1 overflow-auto p-2" onScroll={handleScroll}>
           {loading ? (
             <div className="text-center text-sm text-gray-500">{t("loading")}</div>
           ) : emails.length > 0 ? (

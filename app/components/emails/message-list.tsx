@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from "react"
 import { useTranslations } from "next-intl"
-import { Mail, RefreshCw, Trash2, Share2 } from "lucide-react"
+import { Inbox, Mail, RefreshCw, Trash2, Share2 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { useThrottle } from "@/hooks/use-throttle"
@@ -208,8 +208,8 @@ export function MessageList({ email, messageType, onMessageSelect, selectedMessa
 
   return (
   <>
-    <div className="h-full flex flex-col">
-      <div className="p-2 flex justify-between items-center border-b border-gray-200">
+    <div className="flex h-full min-h-0 flex-col">
+      <div className="flex h-14 shrink-0 items-center justify-between border-b border-gray-200 px-2">
         <Button
           variant="ghost"
           size="icon"
@@ -224,7 +224,7 @@ export function MessageList({ email, messageType, onMessageSelect, selectedMessa
         </span>
       </div>
 
-      <div className="flex-1 overflow-auto p-2" onScroll={handleScroll}>
+      <div className="min-h-0 flex-1 overflow-auto p-2" onScroll={handleScroll}>
         {loading ? (
           <div className="p-4 text-center text-sm text-gray-500">{t("loading")}</div>
         ) : messages.length > 0 ? (
@@ -288,8 +288,9 @@ export function MessageList({ email, messageType, onMessageSelect, selectedMessa
             )}
           </div>
         ) : (
-          <div className="p-4 text-center text-sm text-gray-500">
-            {t("noMessages")}
+          <div className="flex h-full flex-col items-center justify-center px-6 text-center text-muted-foreground">
+            <Inbox className="mb-3 h-8 w-8 text-primary/40" />
+            <p className="text-sm">{t("noMessages")}</p>
           </div>
         )}
       </div>

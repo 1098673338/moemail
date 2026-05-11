@@ -28,10 +28,10 @@ export function MessageListContainer({ email, onMessageSelect, selectedMessageId
   }
 
   return (
-    <div className="h-full flex flex-col">
+    <div className="flex h-full min-h-0 flex-col">
       {canSendEmails ? (
-        <Tabs value={activeTab} onValueChange={handleTabChange} className="h-full flex flex-col">
-          <div className="p-2 border-b border-gray-200">
+        <Tabs value={activeTab} onValueChange={handleTabChange} className="flex h-full min-h-0 flex-col">
+          <div className="shrink-0 p-2 border-b border-gray-200">
             <SlidingTabsList>
               <SlidingTabsTrigger value="received">
                 <Inbox className="h-4 w-4" />
@@ -44,7 +44,7 @@ export function MessageListContainer({ email, onMessageSelect, selectedMessageId
             </SlidingTabsList>
           </div>
           
-          <TabsContent value="received" className="flex-1 overflow-hidden m-0">
+          <TabsContent value="received" className="m-0 min-h-0 flex-1 overflow-hidden">
             <MessageList
               email={email}
               messageType="received"
@@ -53,7 +53,7 @@ export function MessageListContainer({ email, onMessageSelect, selectedMessageId
             />
           </TabsContent>
           
-          <TabsContent value="sent" className="flex-1 overflow-hidden m-0">
+          <TabsContent value="sent" className="m-0 min-h-0 flex-1 overflow-hidden">
             <MessageList
               email={email}
               messageType="sent"
@@ -64,7 +64,7 @@ export function MessageListContainer({ email, onMessageSelect, selectedMessageId
           </TabsContent>
         </Tabs>
       ) : (
-        <div className="flex-1 overflow-hidden">
+        <div className="min-h-0 flex-1 overflow-hidden">
           <MessageList
             email={email}
             messageType="received"

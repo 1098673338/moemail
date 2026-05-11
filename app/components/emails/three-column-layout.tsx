@@ -24,7 +24,7 @@ export function ThreeColumnLayout() {
   const { copyToClipboard } = useCopy()
   const { canSend: canSendEmails } = useSendPermission()
 
-  const columnClass = "border border-gray-200 bg-background rounded-lg overflow-hidden flex flex-col"
+  const columnClass = "min-h-0 border border-gray-200 bg-background rounded-lg overflow-hidden flex flex-col"
   const headerClass = "h-12 px-2 border-b border-gray-200 flex items-center justify-between shrink-0"
   const titleClass = "text-sm font-bold px-2 w-full overflow-hidden"
   const emailColumnStyle = { gridColumn: "span 4 / span 4" }
@@ -45,13 +45,13 @@ export function ThreeColumnLayout() {
   }
 
   return (
-    <div className="pb-5 pt-16 h-full flex flex-col">
-      <div className="grid gap-5 h-full min-h-0" style={{ gridTemplateColumns: "repeat(24, minmax(0, 1fr))" }}>
+    <div className="flex h-full min-h-0 flex-col pb-5 pt-16">
+      <div className="grid min-h-0 flex-1 gap-5" style={{ gridTemplateColumns: "repeat(24, minmax(0, 1fr))" }}>
         <div className={columnClass} style={emailColumnStyle}>
           <div className={headerClass}>
             <h2 className={titleClass}>{t("myEmails")}</h2>
           </div>
-          <div className="flex-1 overflow-auto">
+          <div className="min-h-0 flex-1 overflow-auto">
             <EmailList
               onEmailSelect={(email) => {
                 setSelectedEmail(email)
@@ -90,7 +90,7 @@ export function ThreeColumnLayout() {
             </h2>
           </div>
           {selectedEmail ? (
-            <div className="flex-1 overflow-auto">
+            <div className="min-h-0 flex-1 overflow-auto">
               <MessageListContainer
                 email={selectedEmail}
                 onMessageSelect={handleMessageSelect}
@@ -108,7 +108,7 @@ export function ThreeColumnLayout() {
 
         <div className={columnClass} style={contentColumnStyle}>
           {selectedEmail && selectedMessageId ? (
-            <div className="flex-1 overflow-auto">
+            <div className="min-h-0 flex-1 overflow-auto">
               <MessageView
                 emailId={selectedEmail.id}
                 messageId={selectedMessageId}
