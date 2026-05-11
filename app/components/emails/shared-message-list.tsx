@@ -87,7 +87,11 @@ export function SharedMessageList({
             {messages.map((message) => (
               <div
                 key={message.id}
-                onClick={() => onMessageSelect(message.id)}
+                onClick={() => {
+                  if (selectedMessageId !== message.id) {
+                    onMessageSelect(message.id)
+                  }
+                }}
                 className={cn(
                   "py-2 px-3 rounded cursor-pointer",
                   selectedMessageId === message.id

@@ -8,7 +8,7 @@ import { MessageView } from "./message-view"
 import { SendDialog } from "./send-dialog"
 import { useCopy } from "@/hooks/use-copy"
 import { useSendPermission } from "@/hooks/use-send-permission"
-import { AtSign, Copy, MailOpen } from "lucide-react"
+import { Copy, Inbox, MailOpen } from "lucide-react"
 
 interface Email {
   id: string
@@ -100,7 +100,7 @@ export function ThreeColumnLayout() {
             </div>
           ) : (
             <div className="flex flex-1 -translate-y-6 flex-col items-center justify-center px-6 text-center text-muted-foreground">
-              <AtSign className="mb-3 h-8 w-8 text-primary/40" />
+              <Inbox className="mb-3 h-8 w-8 text-primary/40" />
               <p className="text-sm">{t("selectEmail")}</p>
             </div>
           )}

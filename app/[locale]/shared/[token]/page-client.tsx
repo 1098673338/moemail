@@ -156,6 +156,10 @@ export function SharedEmailPageClient({
   }
 
   const fetchMessageDetail = async (messageId: string) => {
+    if (selectedMessage?.id === messageId) {
+      return
+    }
+
     try {
       setMessageLoading(true)
 
