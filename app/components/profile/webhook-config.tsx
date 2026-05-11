@@ -103,11 +103,14 @@ export function WebhookConfig() {
             {t("description")}
           </p>
         </div>
-        <Switch
-          checked={!initialLoading && enabled}
-          onCheckedChange={setEnabled}
-          disabled={initialLoading}
-        />
+        {initialLoading ? (
+          <div className="h-5 w-9 shrink-0 rounded-full bg-input" />
+        ) : (
+          <Switch
+            checked={enabled}
+            onCheckedChange={setEnabled}
+          />
+        )}
       </div>
 
       {!initialLoading && enabled && (
