@@ -64,12 +64,30 @@ export async function assignRoleToUser(db: Db, userId: string, roleId: string) {
     })
 }
 
-export async function getUserRole(userId: string) {
-  const db = createDb()
-  const userRoleRecords = await db.query.userRoles.findMany({
+export async function ensureUserRoleRecords(db: Db, userId: string) {
+  let userRoleRecords = await db.query.userRoles.findMany({
     where: eq(userRoles.userId, userId),
     with: { role: true },
   })
+
+  if (!userRoleRecords.length) {
+    const defaultRole = await getDefaultRole()
+    const role = await findOrCreateRole(db, defaultRole)
+    await assignRoleToUser(db, userId, role.id)
+    userRoleRecords = [{
+      userId,
+      roleId: role.id,
+      createdAt: new Date(),
+      role,
+    }]
+  }
+
+  return userRoleRecords
+}
+
+export async function getUserRole(userId: string) {
+  const db = createDb()
+  const userRoleRecords = await ensureUserRoleRecords(db, userId)
   return userRoleRecords[0].role.name
 }
 
@@ -79,10 +97,7 @@ export async function checkPermission(permission: Permission) {
   if (!userId) return false
 
   const db = createDb()
-  const userRoleRecords = await db.query.userRoles.findMany({
-    where: eq(userRoles.userId, userId),
-    with: { role: true },
-  })
+  const userRoleRecords = await ensureUserRoleRecords(db, userId)
 
   const userRoleNames = userRoleRecords.map(ur => ur.role.name)
   return hasPermission(userRoleNames as Role[], permission)
@@ -199,22 +214,7 @@ export const {
         session.user.image = token.image as string
 
         const db = createDb()
-        let userRoleRecords = await db.query.userRoles.findMany({
-          where: eq(userRoles.userId, session.user.id),
-          with: { role: true },
-        })
-
-        if (!userRoleRecords.length) {
-          const defaultRole = await getDefaultRole()
-          const role = await findOrCreateRole(db, defaultRole)
-          await assignRoleToUser(db, session.user.id, role.id)
-          userRoleRecords = [{
-            userId: session.user.id,
-            roleId: role.id,
-            createdAt: new Date(),
-            role: role
-          }]
-        }
+        const userRoleRecords = await ensureUserRoleRecords(db, session.user.id)
 
         session.user.roles = userRoleRecords.map(ur => ({
           name: ur.role.name,

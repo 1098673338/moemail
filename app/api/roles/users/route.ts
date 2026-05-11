@@ -1,7 +1,7 @@
 import { createDb } from "@/lib/db"
 import { users } from "@/lib/schema"
 import { eq } from "drizzle-orm"
-import { checkPermission } from "@/lib/auth"
+import { checkPermission, ensureUserRoleRecords } from "@/lib/auth"
 import { PERMISSIONS, ROLES } from "@/lib/permissions"
 import { getRequestContext } from "@cloudflare/next-on-pages"
 import { EMAIL_CONFIG } from "@/config"
@@ -45,7 +45,10 @@ export async function POST(request: Request) {
       ? siteMaxEmails
       : EMAIL_CONFIG.MAX_ACTIVE_EMAILS
 
-    const roleName = user.userRoles[0]?.role.name
+    const userRoleRecords = user.userRoles.length
+      ? user.userRoles
+      : await ensureUserRoleRecords(db, user.id)
+    const roleName = userRoleRecords[0]?.role.name
 
     return Response.json({
       user: {
