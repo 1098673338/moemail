@@ -149,69 +149,64 @@ export function WebsiteConfigPanel() {
           />
         </div>
 
-        <div className="space-y-4 rounded-lg border border-dashed border-gray-200 p-4">
-          <div className="grid grid-cols-[180px_minmax(0,1fr)] items-start gap-4">
-            <div className="space-y-1">
-              <Label htmlFor="turnstile-enabled" className="text-left text-sm font-medium">
-                {t("turnstile.enable")}
+        <div className="flex items-center justify-between">
+          <div className="space-y-0.5">
+            <Label htmlFor="turnstile-enabled" className="text-sm font-medium">
+              {t("turnstile.enable")}
+            </Label>
+            <p className="text-xs text-muted-foreground">
+              {t("turnstile.enableDescription")}
+            </p>
+          </div>
+          <Switch
+            id="turnstile-enabled"
+            checked={turnstileEnabled}
+            onCheckedChange={setTurnstileEnabled}
+          />
+        </div>
+
+        {turnstileEnabled && (
+          <>
+            <div className="space-y-2">
+              <Label htmlFor="turnstile-site-key" className="text-sm font-medium">
+                {t("turnstile.siteKey")}
               </Label>
+              <Input
+                id="turnstile-site-key"
+                value={turnstileSiteKey}
+                onChange={(e) => setTurnstileSiteKey(e.target.value)}
+                placeholder={t("turnstile.siteKeyPlaceholder")}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="turnstile-secret-key" className="text-sm font-medium">
+                {t("turnstile.secretKey")}
+              </Label>
+              <div className="relative">
+                <Input
+                  id="turnstile-secret-key"
+                  type={showSecretKey ? "text" : "password"}
+                  value={turnstileSecretKey}
+                  onChange={(e) => setTurnstileSecretKey(e.target.value)}
+                  placeholder={t("turnstile.secretKeyPlaceholder")}
+                />
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
+                  onClick={() => setShowSecretKey((prev) => !prev)}
+                >
+                  {showSecretKey ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </Button>
+              </div>
               <p className="text-xs text-muted-foreground">
-                {t("turnstile.enableDescription")}
+                {t("turnstile.secretKeyDescription")}
               </p>
             </div>
-            <Switch
-              id="turnstile-enabled"
-              className="justify-self-start"
-              checked={turnstileEnabled}
-              onCheckedChange={setTurnstileEnabled}
-            />
-          </div>
-
-          {turnstileEnabled && (
-            <>
-              <div className="grid grid-cols-[180px_minmax(0,1fr)] items-center gap-4">
-                <Label htmlFor="turnstile-site-key" className="text-left text-sm font-medium">
-                  {t("turnstile.siteKey")}
-                </Label>
-                <Input
-                  id="turnstile-site-key"
-                  value={turnstileSiteKey}
-                  onChange={(e) => setTurnstileSiteKey(e.target.value)}
-                  placeholder={t("turnstile.siteKeyPlaceholder")}
-                />
-              </div>
-
-              <div className="grid grid-cols-[180px_minmax(0,1fr)] items-start gap-4">
-                <Label htmlFor="turnstile-secret-key" className="pt-2 text-left text-sm font-medium">
-                  {t("turnstile.secretKey")}
-                </Label>
-                <div className="space-y-2">
-                  <div className="relative">
-                    <Input
-                      id="turnstile-secret-key"
-                      type={showSecretKey ? "text" : "password"}
-                      value={turnstileSecretKey}
-                      onChange={(e) => setTurnstileSecretKey(e.target.value)}
-                      placeholder={t("turnstile.secretKeyPlaceholder")}
-                    />
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
-                      onClick={() => setShowSecretKey((prev) => !prev)}
-                    >
-                      {showSecretKey ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                    </Button>
-                  </div>
-                  <p className="text-xs text-muted-foreground">
-                    {t("turnstile.secretKeyDescription")}
-                  </p>
-                </div>
-              </div>
-            </>
-          )}
-        </div>
+          </>
+        )}
 
         <Button 
           onClick={handleSave}
