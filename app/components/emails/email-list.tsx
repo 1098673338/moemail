@@ -188,7 +188,13 @@ export function EmailList({ onEmailSelect, selectedEmailId }: EmailListProps) {
           <CreateDialog onEmailCreated={handleRefresh} />
         </div>
         
-        <div className="min-h-0 flex-1 overflow-auto p-2" onScroll={handleScroll}>
+        <div
+          className={cn(
+            "min-h-0 flex-1 overflow-auto p-2",
+            !loading && emails.length === 0 && "flex"
+          )}
+          onScroll={handleScroll}
+        >
           {loading ? (
             <div className="text-center text-sm text-gray-500">{t("loading")}</div>
           ) : emails.length > 0 ? (
@@ -245,7 +251,7 @@ export function EmailList({ onEmailSelect, selectedEmailId }: EmailListProps) {
               )}
             </div>
           ) : (
-            <div className="flex h-full flex-col items-center justify-center px-6 text-center text-muted-foreground">
+            <div className="flex flex-1 flex-col items-center justify-end px-6 pb-6 text-center text-muted-foreground">
               <Inbox className="mb-3 h-8 w-8 text-primary/40" />
               <p className="text-sm">{t("noEmails")}</p>
             </div>

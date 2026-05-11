@@ -224,7 +224,13 @@ export function MessageList({ email, messageType, onMessageSelect, selectedMessa
         </span>
       </div>
 
-      <div className="min-h-0 flex-1 overflow-auto p-2" onScroll={handleScroll}>
+      <div
+        className={cn(
+          "min-h-0 flex-1 overflow-auto p-2",
+          !loading && messages.length === 0 && "flex"
+        )}
+        onScroll={handleScroll}
+      >
         {loading ? (
           <div className="p-4 text-center text-sm text-gray-500">{t("loading")}</div>
         ) : messages.length > 0 ? (
@@ -288,7 +294,7 @@ export function MessageList({ email, messageType, onMessageSelect, selectedMessa
             )}
           </div>
         ) : (
-          <div className="flex h-full flex-col items-center justify-center px-6 text-center text-muted-foreground">
+          <div className="flex flex-1 flex-col items-center justify-end px-6 pb-6 text-center text-muted-foreground">
             <Inbox className="mb-3 h-8 w-8 text-primary/40" />
             <p className="text-sm">{t("noMessages")}</p>
           </div>

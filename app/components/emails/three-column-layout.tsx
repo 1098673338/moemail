@@ -99,7 +99,7 @@ export function ThreeColumnLayout() {
               />
             </div>
           ) : (
-            <div className="flex flex-1 flex-col items-center justify-center px-6 text-center text-muted-foreground">
+            <div className="flex flex-1 flex-col items-center justify-end px-6 pb-6 text-center text-muted-foreground">
               <Inbox className="mb-3 h-8 w-8 text-primary/40" />
               <p className="text-sm">{t("selectEmail")}</p>
             </div>
