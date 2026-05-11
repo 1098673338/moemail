@@ -228,12 +228,14 @@ export function MessageList({ email, messageType, onMessageSelect, selectedMessa
       <div
         className={cn(
           "min-h-0 flex-1 overflow-auto p-2",
-          !loading && messages.length === 0 && "flex"
+          (loading || (!loading && messages.length === 0)) && "flex"
         )}
         onScroll={handleScroll}
       >
         {loading ? (
-          <div className="p-4 text-center text-sm text-gray-500">{t("loading")}</div>
+          <div className={cn("flex flex-1 items-center justify-center px-6 text-center text-sm text-gray-500", emptyStateOffsetClass)}>
+            {t("loading")}
+          </div>
         ) : messages.length > 0 ? (
           <div className="space-y-1">
             {messages.map(message => (
