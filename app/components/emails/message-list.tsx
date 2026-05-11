@@ -41,6 +41,7 @@ interface MessageListProps {
   selectedMessageId?: string | null
   refreshTrigger?: number
   emptyStateOffsetClass?: string
+  onTotalChange?: (messageType: 'received' | 'sent', total: number) => void
 }
 
 interface MessageResponse {
@@ -49,7 +50,7 @@ interface MessageResponse {
   total: number
 }
 
-export function MessageList({ email, messageType, onMessageSelect, selectedMessageId, refreshTrigger, emptyStateOffsetClass }: MessageListProps) {
+export function MessageList({ email, messageType, onMessageSelect, selectedMessageId, refreshTrigger, emptyStateOffsetClass, onTotalChange }: MessageListProps) {
   const t = useTranslations("emails.messages")
   const tList = useTranslations("emails.list")
   const tCommon = useTranslations("common.actions")
@@ -63,6 +64,11 @@ export function MessageList({ email, messageType, onMessageSelect, selectedMessa
   const [total, setTotal] = useState(0)
   const [messageToDelete, setMessageToDelete] = useState<Message | null>(null)
   const { toast } = useToast()
+
+  const updateTotal = (nextTotal: number) => {
+    setTotal(nextTotal)
+    onTotalChange?.(messageType, nextTotal)
+  }
 
   // 当 messages 改变时更新 ref
   useEffect(() => {
@@ -92,17 +98,17 @@ export function MessageList({ email, messageType, onMessageSelect, selectedMessa
         if (lastDuplicateIndex === -1) {
           setMessages(newMessages)
           setNextCursor(data.nextCursor)
-          setTotal(data.total)
+          updateTotal(data.total)
           return
         }
         const uniqueNewMessages = newMessages.slice(0, lastDuplicateIndex)
         setMessages([...uniqueNewMessages, ...oldMessages])
-        setTotal(data.total)
+        updateTotal(data.total)
         return
       }
       setMessages(prev => [...prev, ...data.messages])
       setNextCursor(data.nextCursor)
-      setTotal(data.total)
+      updateTotal(data.total)
     } catch (error) {
       console.error("Failed to fetch messages:", error)
     } finally {
@@ -163,7 +169,11 @@ export function MessageList({ email, messageType, onMessageSelect, selectedMessa
       }
 
       setMessages(prev => prev.filter(e => e.id !== message.id))
-      setTotal(prev => prev - 1)
+      setTotal(prev => {
+        const nextTotal = Math.max(prev - 1, 0)
+        onTotalChange?.(messageType, nextTotal)
+        return nextTotal
+      })
 
       toast({
         title: tList("success"),

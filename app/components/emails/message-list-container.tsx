@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { useTranslations } from "next-intl"
 import { Send, Inbox } from "lucide-react"
 import { Tabs, SlidingTabsList, SlidingTabsTrigger, TabsContent } from "@/components/ui/tabs"
@@ -20,11 +20,62 @@ interface MessageListContainerProps {
 export function MessageListContainer({ email, onMessageSelect, selectedMessageId, refreshTrigger }: MessageListContainerProps) {
   const t = useTranslations("emails.messages")
   const [activeTab, setActiveTab] = useState<'received' | 'sent'>('received')
+  const [messageCounts, setMessageCounts] = useState<Record<'received' | 'sent', number>>({
+    received: 0,
+    sent: 0,
+  })
   const { canSend: canSendEmails } = useSendPermission()
+
+  useEffect(() => {
+    if (!email.id) return
+
+    let cancelled = false
+
+    const fetchCount = async (messageType: 'received' | 'sent') => {
+      const url = new URL(`/api/emails/${email.id}`, window.location.origin)
+      if (messageType === 'sent') {
+        url.searchParams.set('type', 'sent')
+      }
+
+      const response = await fetch(url)
+      if (!response.ok) return 0
+
+      const data = await response.json() as { total?: number }
+      return Number.isFinite(data.total) ? data.total! : 0
+    }
+
+    const fetchCounts = async () => {
+      try {
+        const [received, sent] = await Promise.all([
+          fetchCount('received'),
+          canSendEmails ? fetchCount('sent') : Promise.resolve(0),
+        ])
+
+        if (!cancelled) {
+          setMessageCounts({ received, sent })
+        }
+      } catch (error) {
+        console.error("Failed to fetch message counts:", error)
+      }
+    }
+
+    fetchCounts()
+
+    return () => {
+      cancelled = true
+    }
+  }, [email.id, canSendEmails, refreshTrigger])
 
   const handleTabChange = (tabId: string) => {
     setActiveTab(tabId as 'received' | 'sent')
     onMessageSelect(null)
+  }
+
+  const handleTotalChange = (messageType: 'received' | 'sent', total: number) => {
+    setMessageCounts(prev => ({
+      ...prev,
+      [messageType]: total,
+    }))
   }
 
   return (
@@ -35,11 +86,13 @@ export function MessageListContainer({ email, onMessageSelect, selectedMessageId
             <SlidingTabsList>
               <SlidingTabsTrigger value="received">
                 <Inbox className="h-4 w-4" />
-                {t("received")}
+                <span>{t("received")}</span>
+                <span className="text-current/60">{messageCounts.received}</span>
               </SlidingTabsTrigger>
               <SlidingTabsTrigger value="sent">
                 <Send className="h-4 w-4" />
-                {t("sent")}
+                <span>{t("sent")}</span>
+                <span className="text-current/60">{messageCounts.sent}</span>
               </SlidingTabsTrigger>
             </SlidingTabsList>
           </div>
@@ -51,6 +104,7 @@ export function MessageListContainer({ email, onMessageSelect, selectedMessageId
               onMessageSelect={onMessageSelect}
               selectedMessageId={selectedMessageId}
               emptyStateOffsetClass="-translate-y-[80px]"
+              onTotalChange={handleTotalChange}
             />
           </TabsContent>
           
@@ -62,6 +116,7 @@ export function MessageListContainer({ email, onMessageSelect, selectedMessageId
               selectedMessageId={selectedMessageId}
               refreshTrigger={refreshTrigger}
               emptyStateOffsetClass="-translate-y-[80px]"
+              onTotalChange={handleTotalChange}
             />
           </TabsContent>
         </Tabs>
