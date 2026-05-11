@@ -5,6 +5,7 @@ import { useTranslations } from "next-intl"
 import { EmailList } from "./email-list"
 import { MessageListContainer } from "./message-list-container"
 import { MessageView } from "./message-view"
+import { CreateDialog } from "./create-dialog"
 import { SendDialog } from "./send-dialog"
 import { useCopy } from "@/hooks/use-copy"
 import { useSendPermission } from "@/hooks/use-send-permission"
@@ -21,12 +22,14 @@ export function ThreeColumnLayout() {
   const [selectedMessageId, setSelectedMessageId] = useState<string | null>(null)
   const [selectedMessageType, setSelectedMessageType] = useState<'received' | 'sent'>('received')
   const [refreshTrigger, setRefreshTrigger] = useState(0)
+  const [emailRefreshTrigger, setEmailRefreshTrigger] = useState(0)
   const { copyToClipboard } = useCopy()
   const { canSend: canSendEmails } = useSendPermission()
 
   const columnClass = "min-h-0 border border-gray-200 bg-background rounded-lg overflow-hidden flex flex-col"
   const headerClass = "h-12 px-2 border-b border-gray-200 flex items-center justify-between shrink-0"
   const titleClass = "text-sm font-bold px-2 w-full overflow-hidden"
+  const actionTitleClass = "text-sm font-bold pl-2 pr-0 w-full min-w-0 overflow-hidden"
   const emailColumnStyle = { gridColumn: "span 4 / span 4" }
   const messageListColumnStyle = { gridColumn: "span 6 / span 6" }
   const contentColumnStyle = { gridColumn: "span 14 / span 14" }
@@ -44,12 +47,21 @@ export function ThreeColumnLayout() {
     setRefreshTrigger(prev => prev + 1)
   }
 
+  const handleEmailCreated = () => {
+    setEmailRefreshTrigger(prev => prev + 1)
+  }
+
   return (
     <div className="flex h-full min-h-0 flex-col pb-5 pt-16">
       <div className="grid min-h-0 flex-1 gap-5" style={{ gridTemplateColumns: "repeat(24, minmax(0, 1fr))" }}>
         <div className={columnClass} style={emailColumnStyle}>
           <div className={headerClass}>
-            <h2 className={titleClass}>{t("myEmails")}</h2>
+            <h2 className={actionTitleClass}>
+              <div className="flex w-full items-center justify-between gap-2">
+                <span className="min-w-0 truncate">{t("myEmails")}</span>
+                <CreateDialog onEmailCreated={handleEmailCreated} />
+              </div>
+            </h2>
           </div>
           <div className="min-h-0 flex-1 overflow-auto">
             <EmailList
@@ -58,13 +70,14 @@ export function ThreeColumnLayout() {
                 setSelectedMessageId(null)
               }}
               selectedEmailId={selectedEmail?.id}
+              refreshTrigger={emailRefreshTrigger}
             />
           </div>
         </div>
 
         <div className={columnClass} style={messageListColumnStyle}>
           <div className={headerClass}>
-            <h2 className={titleClass}>
+            <h2 className={selectedEmail ? actionTitleClass : titleClass}>
               {selectedEmail ? (
                 <div className="w-full flex justify-between items-center gap-2">
                   <div className="flex items-center gap-2">

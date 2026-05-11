@@ -3,7 +3,6 @@
 import { useEffect, useState } from "react"
 import { useSession } from "next-auth/react"
 import { useTranslations } from "next-intl"
-import { CreateDialog } from "./create-dialog"
 import { ShareDialog } from "./share-dialog"
 import { AtSign, Copy, Loader2, RefreshCw, Trash2 } from "lucide-react"
 import { cn } from "@/lib/utils"
@@ -35,6 +34,7 @@ interface Email {
 interface EmailListProps {
   onEmailSelect: (email: Email | null) => void
   selectedEmailId?: string
+  refreshTrigger?: number
 }
 
 interface EmailResponse {
@@ -43,7 +43,7 @@ interface EmailResponse {
   total: number
 }
 
-export function EmailList({ onEmailSelect, selectedEmailId }: EmailListProps) {
+export function EmailList({ onEmailSelect, selectedEmailId, refreshTrigger }: EmailListProps) {
   const { data: session } = useSession()
   const { config } = useConfig()
   const { role } = useUserRole()
@@ -122,6 +122,13 @@ export function EmailList({ onEmailSelect, selectedEmailId }: EmailListProps) {
     if (session) fetchEmails()
   }, [session])
 
+  useEffect(() => {
+    if (!session || !refreshTrigger) return
+    setRefreshing(true)
+    fetchEmails()
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [refreshTrigger])
+
   const handleDelete = async (email: Email) => {
     try {
       const response = await fetch(`/api/emails/${email.id}`, {
@@ -165,7 +172,7 @@ export function EmailList({ onEmailSelect, selectedEmailId }: EmailListProps) {
   return (
     <>
       <div className="flex h-full min-h-0 flex-col">
-        <div className="flex h-14 shrink-0 items-center justify-between border-b border-gray-200 px-2">
+        <div className="flex h-14 shrink-0 items-center border-b border-gray-200 px-2">
           <div className="flex items-center gap-2">
             <Button
               variant="ghost"
@@ -186,7 +193,6 @@ export function EmailList({ onEmailSelect, selectedEmailId }: EmailListProps) {
               )}
             </span>
           </div>
-          <CreateDialog onEmailCreated={handleRefresh} />
         </div>
         
         <div

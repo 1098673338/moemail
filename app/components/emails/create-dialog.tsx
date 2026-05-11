@@ -88,9 +88,13 @@ export function CreateDialog({ onEmailCreated }: CreateDialogProps) {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button className="h-8 gap-2">
+        <Button
+          variant="ghost"
+          size="sm"
+          className="h-8 gap-2 text-foreground hover:text-foreground transition-colors"
+        >
           <Plus className="w-4 h-4" />
-          {t("title")}
+          <span className="hidden sm:inline">{t("title")}</span>
         </Button>
       </DialogTrigger>
       <DialogContent>
