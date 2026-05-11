@@ -11,11 +11,12 @@ import { Switch } from "@/components/ui/switch"
 import { Label } from "@/components/ui/label"
 import { Eye, EyeOff } from "lucide-react"
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 import { EMAIL_CONFIG } from "@/config"
 
 export function WebsiteConfigPanel() {
@@ -31,14 +32,6 @@ export function WebsiteConfigPanel() {
   const [showSecretKey, setShowSecretKey] = useState(false)
   const [loading, setLoading] = useState(false)
   const { toast } = useToast()
-
-  const defaultRoleOptions = [
-    { value: ROLES.DUKE, label: tCard("roles.DUKE") },
-    { value: ROLES.KNIGHT, label: tCard("roles.KNIGHT") },
-    { value: ROLES.CIVILIAN, label: tCard("roles.CIVILIAN") },
-  ]
-  const defaultRoleLabel =
-    defaultRoleOptions.find((role) => role.value === defaultRole)?.label ?? tCard("roles.CIVILIAN")
 
   useEffect(() => {
     fetchConfig()
@@ -114,24 +107,16 @@ export function WebsiteConfigPanel() {
       <div className="space-y-4">
         <div className="grid grid-cols-[180px_minmax(0,1fr)] items-center gap-4">
           <span className="text-left text-sm">{t("defaultRole")}:</span>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" className="h-9 justify-self-start px-3">
-                {defaultRoleLabel}
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="center">
-              {defaultRoleOptions.map((role) => (
-                <DropdownMenuItem
-                  key={role.value}
-                  onClick={() => setDefaultRole(role.value)}
-                  className={defaultRole === role.value ? "bg-accent" : ""}
-                >
-                  {role.label}
-                </DropdownMenuItem>
-              ))}
-            </DropdownMenuContent>
-          </DropdownMenu>
+          <Select value={defaultRole} onValueChange={setDefaultRole}>
+            <SelectTrigger className="w-32">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value={ROLES.DUKE}>{tCard("roles.DUKE")}</SelectItem>
+              <SelectItem value={ROLES.KNIGHT}>{tCard("roles.KNIGHT")}</SelectItem>
+              <SelectItem value={ROLES.CIVILIAN}>{tCard("roles.CIVILIAN")}</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
 
         <div className="grid grid-cols-[180px_minmax(0,1fr)] items-center gap-4">
