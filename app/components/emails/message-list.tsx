@@ -40,6 +40,7 @@ interface MessageListProps {
   onMessageSelect: (messageId: string | null, messageType?: 'received' | 'sent') => void
   selectedMessageId?: string | null
   refreshTrigger?: number
+  emptyStateOffsetClass?: string
 }
 
 interface MessageResponse {
@@ -48,7 +49,7 @@ interface MessageResponse {
   total: number
 }
 
-export function MessageList({ email, messageType, onMessageSelect, selectedMessageId, refreshTrigger }: MessageListProps) {
+export function MessageList({ email, messageType, onMessageSelect, selectedMessageId, refreshTrigger, emptyStateOffsetClass }: MessageListProps) {
   const t = useTranslations("emails.messages")
   const tList = useTranslations("emails.list")
   const tCommon = useTranslations("common.actions")
@@ -294,7 +295,7 @@ export function MessageList({ email, messageType, onMessageSelect, selectedMessa
             )}
           </div>
         ) : (
-          <div className="flex flex-1 flex-col items-center justify-end px-6 pb-6 text-center text-muted-foreground">
+          <div className={cn("flex flex-1 flex-col items-center justify-center px-6 text-center text-muted-foreground", emptyStateOffsetClass)}>
             <Inbox className="mb-3 h-8 w-8 text-primary/40" />
             <p className="text-sm">{t("noMessages")}</p>
           </div>

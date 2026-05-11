@@ -50,6 +50,7 @@ export function MessageListContainer({ email, onMessageSelect, selectedMessageId
               messageType="received"
               onMessageSelect={onMessageSelect}
               selectedMessageId={selectedMessageId}
+              emptyStateOffsetClass="-translate-y-20"
             />
           </TabsContent>
           
@@ -60,6 +61,7 @@ export function MessageListContainer({ email, onMessageSelect, selectedMessageId
               onMessageSelect={onMessageSelect}
               selectedMessageId={selectedMessageId}
               refreshTrigger={refreshTrigger}
+              emptyStateOffsetClass="-translate-y-20"
             />
           </TabsContent>
         </Tabs>
@@ -70,6 +72,7 @@ export function MessageListContainer({ email, onMessageSelect, selectedMessageId
             messageType="received"
             onMessageSelect={onMessageSelect}
             selectedMessageId={selectedMessageId}
+            emptyStateOffsetClass="-translate-y-[52px]"
           />
         </div>
       )}
