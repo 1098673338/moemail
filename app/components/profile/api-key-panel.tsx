@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState } from "react"
 import { useTranslations } from "next-intl"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -19,25 +19,31 @@ import {
 import { Switch } from "@/components/ui/switch"
 import { Label } from "@/components/ui/label"
 import { useCopy } from "@/hooks/use-copy"
-import { useRolePermission } from "@/hooks/use-role-permission"
-import { PERMISSIONS } from "@/lib/permissions"
-import { useConfig } from "@/hooks/use-config"
 
-type ApiKey = {
+export type ApiKeyData = {
   id: string
   name: string
-  key: string
+  key?: string
   createdAt: string
   expiresAt: string | null
   enabled: boolean
 }
 
-export function ApiKeyPanel() {
+interface ApiKeyPanelProps {
+  initialApiKeys: ApiKeyData[]
+  canManageApiKey: boolean
+  adminContact: string
+}
+
+export function ApiKeyPanel({
+  initialApiKeys,
+  canManageApiKey,
+  adminContact,
+}: ApiKeyPanelProps) {
   const t = useTranslations("profile.apiKey")
   const tCommon = useTranslations("common.actions")
   const tNoPermission = useTranslations("emails.noPermission")
-  const tMessages = useTranslations("emails.messages")
-  const [apiKeys, setApiKeys] = useState<ApiKey[]>([])
+  const [apiKeys, setApiKeys] = useState<ApiKeyData[]>(initialApiKeys)
   const [loading, setLoading] = useState(false)
   const [createDialogOpen, setCreateDialogOpen] = useState(false)
   const [newKeyName, setNewKeyName] = useState("")
@@ -45,15 +51,12 @@ export function ApiKeyPanel() {
   const { toast } = useToast()
   const { copyToClipboard } = useCopy()
   const [showExamples, setShowExamples] = useState(false)
-  const [isLoading, setIsLoading] = useState(true)
-  const { checkPermission } = useRolePermission()
-  const canManageApiKey = checkPermission(PERMISSIONS.MANAGE_API_KEY)
 
   const fetchApiKeys = async () => {
     try {
       const res = await fetch("/api/api-keys")
       if (!res.ok) throw new Error(t("createFailed"))
-      const data = await res.json() as { apiKeys: ApiKey[] }
+      const data = await res.json() as { apiKeys: ApiKeyData[] }
       setApiKeys(data.apiKeys)
     } catch (error) {
       console.error(error)
@@ -62,18 +65,8 @@ export function ApiKeyPanel() {
         description: t("createFailed"),
         variant: "destructive"
       })
-    } finally {
-      setIsLoading(false)
     }
   }
-
-  useEffect(() => {
-    if (canManageApiKey) {
-      fetchApiKeys()
-    }
-  }, [canManageApiKey])
-
-  const { config } = useConfig()
 
   const createApiKey = async () => {
     if (!newKeyName.trim()) return
@@ -90,7 +83,7 @@ export function ApiKeyPanel() {
 
       const data = await res.json() as { key: string }
       setNewKey(data.key)
-      fetchApiKeys()
+      await fetchApiKeys()
     } catch (error) {
       toast({
         title: t("createFailed"),
@@ -253,23 +246,14 @@ export function ApiKeyPanel() {
             <p>{tNoPermission("needPermission")}</p>
             <p className="mt-2">{tNoPermission("contactAdmin")}</p>
             {
-              config?.adminContact && (
-                <p className="mt-2">{tNoPermission("adminContact")}: {config.adminContact}</p>
+              adminContact && (
+                <p className="mt-2">{tNoPermission("adminContact")}: {adminContact}</p>
               )
             }
           </div>
         ) : (
           <div className="space-y-4">
-            {isLoading ? (
-              <div className="text-center py-8 space-y-3">
-                <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center mx-auto">
-                  <Loader2 className="w-6 h-6 text-primary animate-spin" />
-                </div>
-                <div>
-                  <p className="text-sm text-muted-foreground">{tMessages("loading")}</p>
-                </div>
-              </div>
-            ) : apiKeys.length === 0 ? (
+            {apiKeys.length === 0 ? (
               <div className="text-center py-8 space-y-3">
                 <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center mx-auto">
                   <Key className="w-6 h-6 text-primary" />

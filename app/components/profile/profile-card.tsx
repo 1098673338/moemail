@@ -12,7 +12,7 @@ import { PromotePanel } from "./promote-panel"
 import { EmailServiceConfig, type EmailServiceConfigData } from "./email-service-config"
 import { hasPermission, PERMISSIONS, Permission, Role, ROLES } from "@/lib/permissions"
 import { WebsiteConfigPanel, type WebsiteConfigData } from "./website-config-panel"
-import { ApiKeyPanel } from "./api-key-panel"
+import { ApiKeyPanel, type ApiKeyData } from "./api-key-panel"
 import { EMAIL_CONFIG } from "@/config"
 import { useEffect, useState } from "react"
 
@@ -81,6 +81,15 @@ const defaultWebhookConfig: WebhookConfigData = {
   url: "",
 }
 
+const defaultApiKeys: ApiKeyData[] = []
+
+type SettingsData = {
+  webhookConfig: WebhookConfigData | null
+  websiteConfig: WebsiteConfigData | null
+  emailServiceConfig: EmailServiceConfigData | null
+  apiKeys: ApiKeyData[]
+}
+
 export function ProfileCard({ user }: ProfileCardProps) {
   const t = useTranslations("profile.card")
   const tAuth = useTranslations("auth.signButton")
@@ -95,18 +104,17 @@ export function ProfileCard({ user }: ProfileCardProps) {
   const canManageWebhook = checkPermission(PERMISSIONS.MANAGE_WEBHOOK)
   const canPromote = checkPermission(PERMISSIONS.PROMOTE_USER)
   const canManageConfig = checkPermission(PERMISSIONS.MANAGE_CONFIG)
-  const shouldLoadSettings = canManageWebhook || canManageConfig
+  const canManageApiKey = checkPermission(PERMISSIONS.MANAGE_API_KEY)
+  const shouldShowApiKeyPanel = canManageWebhook || canManageApiKey
+  const shouldLoadSiteConfig = canManageConfig || shouldShowApiKeyPanel
+  const shouldLoadSettings = canManageWebhook || canManageConfig || shouldShowApiKeyPanel
   const [settingsLoading, setSettingsLoading] = useState(shouldLoadSettings)
-  const [webhookConfig, setWebhookConfig] = useState<WebhookConfigData | null>(null)
-  const [websiteConfig, setWebsiteConfig] = useState<WebsiteConfigData | null>(null)
-  const [emailServiceConfig, setEmailServiceConfig] = useState<EmailServiceConfigData | null>(null)
+  const [settingsData, setSettingsData] = useState<SettingsData | null>(null)
 
   useEffect(() => {
     if (!shouldLoadSettings) {
       setSettingsLoading(false)
-      setWebhookConfig(null)
-      setWebsiteConfig(null)
-      setEmailServiceConfig(null)
+      setSettingsData(null)
       return
     }
 
@@ -114,6 +122,7 @@ export function ProfileCard({ user }: ProfileCardProps) {
 
     const fetchSettingsConfig = async () => {
       setSettingsLoading(true)
+      setSettingsData(null)
 
       try {
         const fetchConfig = async <T,>(url: string, fallback: T): Promise<T> => {
@@ -125,29 +134,38 @@ export function ProfileCard({ user }: ProfileCardProps) {
           }
         }
 
-        const [webhookData, websiteData, emailServiceData] = await Promise.all([
+        const [webhookData, websiteData, emailServiceData, apiKeyData] = await Promise.all([
           canManageWebhook
             ? fetchConfig<WebhookConfigData>("/api/webhook", defaultWebhookConfig)
             : Promise.resolve<WebhookConfigData | null>(null),
-          canManageConfig
+          shouldLoadSiteConfig
             ? fetchConfig<WebsiteConfigData>("/api/config", defaultWebsiteConfig)
             : Promise.resolve<WebsiteConfigData | null>(null),
           canManageConfig
             ? fetchConfig<EmailServiceConfigData>("/api/config/email-service", defaultEmailServiceConfig)
             : Promise.resolve<EmailServiceConfigData | null>(null),
+          canManageApiKey
+            ? fetchConfig<{ apiKeys: ApiKeyData[] }>("/api/api-keys", { apiKeys: defaultApiKeys })
+            : Promise.resolve<{ apiKeys: ApiKeyData[] }>({ apiKeys: defaultApiKeys }),
         ])
 
         if (!cancelled) {
-          setWebhookConfig(webhookData)
-          setWebsiteConfig(websiteData)
-          setEmailServiceConfig(emailServiceData)
+          setSettingsData({
+            webhookConfig: webhookData,
+            websiteConfig: websiteData,
+            emailServiceConfig: emailServiceData,
+            apiKeys: apiKeyData.apiKeys,
+          })
         }
       } catch (error) {
         console.error("Failed to fetch settings config:", error)
         if (!cancelled) {
-          setWebhookConfig(canManageWebhook ? defaultWebhookConfig : null)
-          setWebsiteConfig(canManageConfig ? defaultWebsiteConfig : null)
-          setEmailServiceConfig(canManageConfig ? defaultEmailServiceConfig : null)
+          setSettingsData({
+            webhookConfig: canManageWebhook ? defaultWebhookConfig : null,
+            websiteConfig: shouldLoadSiteConfig ? defaultWebsiteConfig : null,
+            emailServiceConfig: canManageConfig ? defaultEmailServiceConfig : null,
+            apiKeys: defaultApiKeys,
+          })
         }
       } finally {
         if (!cancelled) {
@@ -161,9 +179,14 @@ export function ProfileCard({ user }: ProfileCardProps) {
     return () => {
       cancelled = true
     }
-  }, [canManageConfig, canManageWebhook, shouldLoadSettings])
+  }, [canManageApiKey, canManageConfig, canManageWebhook, shouldLoadSettings, shouldLoadSiteConfig])
 
-  if (shouldLoadSettings && settingsLoading) {
+  const webhookConfig = settingsData?.webhookConfig ?? null
+  const websiteConfig = settingsData?.websiteConfig ?? null
+  const emailServiceConfig = settingsData?.emailServiceConfig ?? null
+  const apiKeys = settingsData?.apiKeys ?? defaultApiKeys
+
+  if (shouldLoadSettings && (settingsLoading || !settingsData)) {
     return (
       <div className="mx-auto flex min-h-[calc(100vh-10rem)] max-w-2xl items-center justify-center">
         <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center">
@@ -248,14 +271,20 @@ export function ProfileCard({ user }: ProfileCardProps) {
         </div>
       )}
 
-      {canManageConfig && !settingsLoading && websiteConfig && emailServiceConfig && (
+      {canManageConfig && websiteConfig && emailServiceConfig && (
         <>
           <WebsiteConfigPanel initialConfig={websiteConfig} />
           <EmailServiceConfig initialConfig={emailServiceConfig} />
         </>
       )}
       {canPromote && <PromotePanel />}
-      {canManageWebhook && <ApiKeyPanel />}
+      {shouldShowApiKeyPanel && websiteConfig && (
+        <ApiKeyPanel
+          initialApiKeys={apiKeys}
+          canManageApiKey={canManageApiKey}
+          adminContact={websiteConfig.adminContact}
+        />
+      )}
 
       <div className="flex flex-col sm:flex-row gap-4 px-1">
         <Button
