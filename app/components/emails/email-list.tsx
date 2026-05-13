@@ -840,7 +840,7 @@ export function EmailList({ onEmailSelect, onGroupChange, selectedEmailId, refre
                   </div>
                   <div
                     className={cn(
-                      "shrink-0 gap-1",
+                      "shrink-0 items-center justify-center gap-1 self-center",
                       openMoreEmailId === email.id ? "flex" : "hidden group-hover:flex"
                     )}
                     onClick={(e) => e.stopPropagation()}
@@ -853,17 +853,6 @@ export function EmailList({ onEmailSelect, onGroupChange, selectedEmailId, refre
                       onClick={() => copyToClipboard(email.address)}
                     >
                       <Copy className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-8 w-8 hover:bg-black/10"
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        setEmailToDelete(email)
-                      }}
-                    >
-                      <Trash2 className="h-4 w-4" />
                     </Button>
                     <DropdownMenu
                       open={openMoreEmailId === email.id}
@@ -884,6 +873,15 @@ export function EmailList({ onEmailSelect, onGroupChange, selectedEmailId, refre
                         <DropdownMenuItem onClick={() => setEmailToShare(email)}>
                           <Share2 className="mr-2 h-4 w-4" />
                           {tShare("shareButton")}
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          onClick={() => {
+                            setEmailToDelete(email)
+                            setOpenMoreEmailId(null)
+                          }}
+                        >
+                          <Trash2 className="mr-2 h-4 w-4" />
+                          {tCommon("delete")}
                         </DropdownMenuItem>
                         <div className="my-1 h-px bg-border" />
                         <DropdownMenuItem disabled className="text-xs text-gray-500">
