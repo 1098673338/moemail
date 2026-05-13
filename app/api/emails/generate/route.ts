@@ -81,7 +81,7 @@ export async function POST(request: Request) {
 
     if (existingEmail) {
       return NextResponse.json(
-        { error: "该邮箱地址已被使用" },
+        { error: "已经有这个邮箱地址了，请换一个名称或域名" },
         { status: 409 }
       )
     }

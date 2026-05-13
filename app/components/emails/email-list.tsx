@@ -66,7 +66,7 @@ interface EmailGroup {
   emailCount: number
 }
 
-const EMPTY_STATE_OFFSET_CLASS = "-translate-y-[76px]"
+const EMPTY_STATE_CLASS = "pointer-events-none absolute inset-0 flex -translate-y-6 flex-col items-center justify-center px-6 text-center"
 
 export function EmailList({ onEmailSelect, selectedEmailId, refreshTrigger, onRefresh }: EmailListProps) {
   const { data: session } = useSession()
@@ -502,7 +502,7 @@ export function EmailList({ onEmailSelect, selectedEmailId, refreshTrigger, onRe
 
   return (
     <>
-      <div className="flex h-full min-h-0 flex-col">
+      <div className="relative flex h-full min-h-0 flex-col">
         <div className="flex h-14 shrink-0 items-center justify-between border-b border-gray-200 px-2">
           <div className="flex items-center gap-2">
             <Button
@@ -636,18 +636,10 @@ export function EmailList({ onEmailSelect, selectedEmailId, refreshTrigger, onRe
         </div>
         
         <div
-          className={cn(
-            "min-h-0 flex-1 overflow-auto p-2",
-            (loading || refreshing || (!loading && emails.length === 0)) && "flex"
-          )}
+          className="min-h-0 flex-1 overflow-auto p-2"
           onScroll={handleScroll}
         >
-          {loading || refreshing ? (
-            <div className={cn("flex flex-1 flex-col items-center justify-center px-6 text-center text-sm text-gray-500", EMPTY_STATE_OFFSET_CLASS)}>
-              <Loader2 className="mb-3 h-8 w-8 animate-spin text-primary/40" />
-              <p>{t("loading")}</p>
-            </div>
-          ) : emails.length > 0 ? (
+          {!loading && !refreshing && emails.length > 0 && (
             <div className="space-y-1">
               {emails.map(email => (
                 <div
@@ -753,13 +745,22 @@ export function EmailList({ onEmailSelect, selectedEmailId, refreshTrigger, onRe
                 </div>
               )}
             </div>
-          ) : (
-            <div className={cn("flex flex-1 flex-col items-center justify-center px-6 text-center text-muted-foreground", EMPTY_STATE_OFFSET_CLASS)}>
-              <AtSign className="mb-3 h-8 w-8 text-primary/40" />
-              <p className="text-sm">{t("noEmails")}</p>
-            </div>
           )}
         </div>
+
+        {(loading || refreshing) && (
+          <div className={cn(EMPTY_STATE_CLASS, "text-sm text-gray-500")}>
+            <Loader2 className="mb-3 h-8 w-8 animate-spin text-primary/40" />
+            <p>{t("loading")}</p>
+          </div>
+        )}
+
+        {!loading && !refreshing && emails.length === 0 && (
+          <div className={cn(EMPTY_STATE_CLASS, "text-muted-foreground")}>
+            <AtSign className="mb-3 h-8 w-8 text-primary/40" />
+            <p className="text-sm">{t("noEmails")}</p>
+          </div>
+        )}
       </div>
 
       <AlertDialog open={!!emailToDelete} onOpenChange={() => setEmailToDelete(null)}>
