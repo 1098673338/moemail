@@ -19,6 +19,8 @@ interface CreateDialogProps {
   onEmailCreated: () => void
 }
 
+const DEFAULT_EXPIRY_TIME = "0"
+
 export function CreateDialog({ onEmailCreated }: CreateDialogProps) {
   const { config } = useConfig()
   const t = useTranslations("emails.create")
@@ -28,11 +30,18 @@ export function CreateDialog({ onEmailCreated }: CreateDialogProps) {
   const [loading, setLoading] = useState(false)
   const [emailName, setEmailName] = useState("")
   const [currentDomain, setCurrentDomain] = useState("")
-  const [expiryTime, setExpiryTime] = useState(EXPIRY_OPTIONS[1].value.toString())
+  const [expiryTime, setExpiryTime] = useState(DEFAULT_EXPIRY_TIME)
   const { toast } = useToast()
   const { copyToClipboard } = useCopy()
 
   const generateRandomName = () => setEmailName(nanoid(8))
+
+  const handleOpenChange = (nextOpen: boolean) => {
+    setOpen(nextOpen)
+    if (!nextOpen) {
+      setExpiryTime(DEFAULT_EXPIRY_TIME)
+    }
+  }
 
   const copyEmailAddress = () => {
     copyToClipboard(`${emailName}@${currentDomain}`)
@@ -68,6 +77,7 @@ export function CreateDialog({ onEmailCreated }: CreateDialogProps) {
       onEmailCreated()
       setOpen(false)
       setEmailName("")
+      setExpiryTime(DEFAULT_EXPIRY_TIME)
     } catch {
       toast({
         title: tList("error"),
@@ -86,7 +96,7 @@ export function CreateDialog({ onEmailCreated }: CreateDialogProps) {
   }, [config])
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogTrigger asChild>
         <Button
           variant="ghost"
@@ -170,7 +180,7 @@ export function CreateDialog({ onEmailCreated }: CreateDialogProps) {
           </div>
         </div>
         <div className="flex justify-end gap-2">
-          <Button variant="outline" onClick={() => setOpen(false)} disabled={loading}>
+          <Button variant="outline" onClick={() => handleOpenChange(false)} disabled={loading}>
             {tCommon("cancel")}
           </Button>
           <Button onClick={createEmail} disabled={loading}>
