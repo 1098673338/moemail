@@ -94,15 +94,15 @@ export function MessageListContainer({ email, onMessageSelect, onMessagePrefetch
   }
 
   const tabControls = (
-    <SlidingTabsList className="w-44 shrink-0">
+    <SlidingTabsList className="w-56 shrink-0">
       <SlidingTabsTrigger value="received">
-        <Inbox className="h-4 w-4" />
-        <span>{t("received")}</span>
+        <Inbox className="h-4 w-4 shrink-0" />
+        <span className="whitespace-nowrap">{t("received")}</span>
         <span className="opacity-60">{messageCounts.received}</span>
       </SlidingTabsTrigger>
       <SlidingTabsTrigger value="sent">
-        <Send className="h-4 w-4" />
-        <span>{t("sent")}</span>
+        <Send className="h-4 w-4 shrink-0" />
+        <span className="whitespace-nowrap">{t("sent")}</span>
         <span className="opacity-60">{messageCounts.sent}</span>
       </SlidingTabsTrigger>
     </SlidingTabsList>
