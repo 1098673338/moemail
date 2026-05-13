@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server"
 import { createDb } from "@/lib/db"
-import { emailGroups, emails } from "@/lib/schema"
+import { emailGroups, emails, messages } from "@/lib/schema"
 import { getUserId } from "@/lib/apiKey"
-import { and, eq } from "drizzle-orm"
+import { and, eq, inArray } from "drizzle-orm"
 
 export const runtime = "edge"
 
@@ -57,7 +57,7 @@ export async function PATCH(
 }
 
 export async function DELETE(
-  _request: Request,
+  request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
   const userId = await getUserId()
@@ -70,6 +70,10 @@ export async function DELETE(
   const { id } = await params
 
   try {
+    const { deleteEmails = false } = await request.json().catch(() => ({})) as {
+      deleteEmails?: boolean
+    }
+
     const group = await db.query.emailGroups.findFirst({
       where: and(
         eq(emailGroups.id, id),
@@ -84,12 +88,31 @@ export async function DELETE(
       )
     }
 
-    await db.update(emails)
-      .set({ groupId: null })
-      .where(and(
-        eq(emails.groupId, id),
-        eq(emails.userId, userId)
-      ))
+    if (deleteEmails) {
+      const groupedEmails = await db.select({ id: emails.id })
+        .from(emails)
+        .where(and(
+          eq(emails.groupId, id),
+          eq(emails.userId, userId)
+        ))
+
+      const emailIds = groupedEmails.map(email => email.id)
+
+      if (emailIds.length > 0) {
+        await db.delete(messages)
+          .where(inArray(messages.emailId, emailIds))
+
+        await db.delete(emails)
+          .where(inArray(emails.id, emailIds))
+      }
+    } else {
+      await db.update(emails)
+        .set({ groupId: null })
+        .where(and(
+          eq(emails.groupId, id),
+          eq(emails.userId, userId)
+        ))
+    }
 
     await db.delete(emailGroups)
       .where(eq(emailGroups.id, id))

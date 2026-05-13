@@ -262,12 +262,16 @@ export function EmailList({ onEmailSelect, selectedEmailId, refreshTrigger }: Em
     }
   }
 
-  const deleteGroup = async (group: EmailGroup) => {
+  const deleteGroup = async (group: EmailGroup, deleteEmails: boolean) => {
     setDeletingGroup(true)
 
     try {
       const response = await fetch(`/api/email-groups/${group.id}`, {
         method: "DELETE",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ deleteEmails }),
       })
       const data = await response.json() as { error?: string }
 
@@ -281,18 +285,36 @@ export function EmailList({ onEmailSelect, selectedEmailId, refreshTrigger }: Em
       }
 
       setGroups(prev => prev.filter(item => item.id !== group.id))
-      setEmails(prev => prev.map(email => (
-        email.groupId === group.id ? { ...email, groupId: null } : email
-      )))
 
+      const selectedEmailWasInGroup = emails.some(email => (
+        email.id === selectedEmailId && email.groupId === group.id
+      ))
+      const nextGroupId = selectedGroupId === group.id ? null : selectedGroupId
+
+      if (deleteEmails) {
+        setEmails(prev => prev.filter(email => email.groupId !== group.id))
+      } else {
+        setEmails(prev => prev.map(email => (
+          email.groupId === group.id ? { ...email, groupId: null } : email
+        )))
+      }
+
+      if (deleteEmails) {
+        await fetchEmails(undefined, nextGroupId, true)
+      }
+      
       if (selectedGroupId === group.id) {
         setSelectedGroupId(null)
+        onEmailSelect(null)
+      } else if (deleteEmails && selectedEmailWasInGroup) {
         onEmailSelect(null)
       }
 
       toast({
         title: t("success"),
-        description: tGroups("deleteSuccess"),
+        description: deleteEmails
+          ? tGroups("deleteWithEmailsSuccess")
+          : tGroups("deleteSuccess"),
       })
     } catch {
       toast({
@@ -754,11 +776,17 @@ export function EmailList({ onEmailSelect, selectedEmailId, refreshTrigger }: Em
           <AlertDialogFooter>
             <AlertDialogCancel>{tCommon("cancel")}</AlertDialogCancel>
             <AlertDialogAction
+              disabled={deletingGroup}
+              onClick={() => groupToDelete && deleteGroup(groupToDelete, false)}
+            >
+              {tGroups("moveEmailsToUngrouped")}
+            </AlertDialogAction>
+            <AlertDialogAction
               className="bg-destructive hover:bg-destructive/90"
               disabled={deletingGroup}
-              onClick={() => groupToDelete && deleteGroup(groupToDelete)}
+              onClick={() => groupToDelete && deleteGroup(groupToDelete, true)}
             >
-              {tCommon("delete")}
+              {tGroups("deleteWithEmails")}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
