@@ -85,6 +85,7 @@ export function EmailList({ onEmailSelect, selectedEmailId, refreshTrigger }: Em
   const [groupName, setGroupName] = useState("")
   const [creatingGroup, setCreatingGroup] = useState(false)
   const [movingEmailId, setMovingEmailId] = useState<string | null>(null)
+  const [openMoreEmailId, setOpenMoreEmailId] = useState<string | null>(null)
   const [emailToShare, setEmailToShare] = useState<Email | null>(null)
   const [editingGroup, setEditingGroup] = useState<EmailGroup | null>(null)
   const [editGroupName, setEditGroupName] = useState("")
@@ -617,7 +618,10 @@ export function EmailList({ onEmailSelect, selectedEmailId, refreshTrigger }: Em
                     </div>
                   </div>
                   <div
-                    className="flex shrink-0 gap-1 opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100"
+                    className={cn(
+                      "shrink-0 gap-1",
+                      openMoreEmailId === email.id ? "flex" : "hidden group-hover:flex"
+                    )}
                     onClick={(e) => e.stopPropagation()}
                   >
                     <Button
@@ -640,7 +644,10 @@ export function EmailList({ onEmailSelect, selectedEmailId, refreshTrigger }: Em
                     >
                       <Trash2 className="h-4 w-4" />
                     </Button>
-                    <DropdownMenu>
+                    <DropdownMenu
+                      open={openMoreEmailId === email.id}
+                      onOpenChange={(open) => setOpenMoreEmailId(open ? email.id : null)}
+                    >
                       <DropdownMenuTrigger asChild>
                         <Button
                           variant="ghost"
@@ -652,7 +659,7 @@ export function EmailList({ onEmailSelect, selectedEmailId, refreshTrigger }: Em
                           <MoreHorizontal className="h-4 w-4" />
                         </Button>
                       </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end" sideOffset={6} className="w-48">
+                      <DropdownMenuContent side="right" align="start" sideOffset={8} className="w-48">
                         <DropdownMenuItem onClick={() => setEmailToShare(email)}>
                           <Share2 className="mr-2 h-4 w-4" />
                           {tShare("shareButton")}
@@ -662,7 +669,10 @@ export function EmailList({ onEmailSelect, selectedEmailId, refreshTrigger }: Em
                           <FolderInput className="mr-2 h-4 w-4" />
                           {tGroups("moveTo")}
                         </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => moveEmailToGroup(email, null)}>
+                        <DropdownMenuItem
+                          disabled={!email.groupId}
+                          onClick={() => moveEmailToGroup(email, null)}
+                        >
                           <Check className={cn("mr-2 h-4 w-4", !email.groupId ? "opacity-100" : "opacity-0")} />
                           {tGroups("ungrouped")}
                         </DropdownMenuItem>
@@ -670,6 +680,7 @@ export function EmailList({ onEmailSelect, selectedEmailId, refreshTrigger }: Em
                           groups.map(group => (
                             <DropdownMenuItem
                               key={group.id}
+                              disabled={email.groupId === group.id}
                               onClick={() => moveEmailToGroup(email, group.id)}
                             >
                               <Check className={cn("mr-2 h-4 w-4", email.groupId === group.id ? "opacity-100" : "opacity-0")} />
