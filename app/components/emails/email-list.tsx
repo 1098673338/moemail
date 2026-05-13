@@ -524,7 +524,7 @@ export function EmailList({ onEmailSelect, selectedEmailId, refreshTrigger }: Em
 
         <div className="shrink-0 border-b border-gray-200 p-2">
           <div className="space-y-2">
-            <div className="grid grid-cols-2 gap-1">
+            <div className="grid grid-cols-2 gap-2">
               <button
                 type="button"
                 className={cn(
@@ -550,7 +550,7 @@ export function EmailList({ onEmailSelect, selectedEmailId, refreshTrigger }: Em
             </div>
 
             {groups.length > 0 && (
-              <div className="max-h-28 space-y-1 overflow-auto pr-1">
+              <div className="max-h-28 space-y-1 overflow-auto">
                 {groups.map(group => (
                 <div
                   key={group.id}

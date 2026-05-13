@@ -50,7 +50,7 @@
     "deleteConfirm": "確認刪除分組",
     "deleteDescription": "刪除分組 {name} 時，要如何處理該分組裡的郵箱？",
     "moveEmailsToUngrouped": "移到未分組",
-    "deleteWithEmails": "一起刪除郵箱",
+    "deleteWithEmails": "全部刪除",
     "deleteSuccess": "分組已刪除",
     "deleteWithEmailsSuccess": "分組和郵箱已刪除",
     "deleteFailed": "刪除分組失敗",

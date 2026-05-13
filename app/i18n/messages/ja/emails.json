@@ -50,7 +50,7 @@
     "deleteConfirm": "グループを削除しますか？",
     "deleteDescription": "{name} を削除するとき、このグループ内のメールボックスをどうしますか？",
     "moveEmailsToUngrouped": "未分類に移動",
-    "deleteWithEmails": "メールボックスも削除",
+    "deleteWithEmails": "すべて削除",
     "deleteSuccess": "グループを削除しました",
     "deleteWithEmailsSuccess": "グループとメールボックスを削除しました",
     "deleteFailed": "グループの削除に失敗しました",

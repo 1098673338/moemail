@@ -50,7 +50,7 @@
     "deleteConfirm": "Delete group?",
     "deleteDescription": "How should emails in {name} be handled when deleting this group?",
     "moveEmailsToUngrouped": "Move to Ungrouped",
-    "deleteWithEmails": "Delete emails too",
+    "deleteWithEmails": "Delete all",
     "deleteSuccess": "Group deleted",
     "deleteWithEmailsSuccess": "Group and emails deleted",
     "deleteFailed": "Failed to delete group",

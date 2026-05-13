@@ -50,7 +50,7 @@
     "deleteConfirm": "确认删除分组",
     "deleteDescription": "删除分组 {name} 时，要如何处理该分组里的邮箱？",
     "moveEmailsToUngrouped": "移到未分组",
-    "deleteWithEmails": "一起删除邮箱",
+    "deleteWithEmails": "全部删除",
     "deleteSuccess": "分组已删除",
     "deleteWithEmailsSuccess": "分组和邮箱已删除",
     "deleteFailed": "删除分组失败",
