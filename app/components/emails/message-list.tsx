@@ -244,18 +244,12 @@ export function MessageList({ email, messageType, onMessageSelect, selectedMessa
 
       <div
         className={cn(
-          "relative min-h-0 flex-1 overflow-auto p-2",
-          (loading || (!loading && messages.length === 0)) && "flex"
+          "min-h-0 flex-1 overflow-auto p-2",
+          (loading || refreshing || (!loading && messages.length === 0)) && "flex"
         )}
         onScroll={handleScroll}
       >
-        {refreshing && !loading && (
-          <div className="pointer-events-none absolute left-2 right-2 top-2 z-10 flex items-center justify-center gap-2 rounded border border-gray-200 bg-background/95 py-2 text-xs text-gray-500 shadow-sm">
-            <Loader2 className="h-4 w-4 animate-spin text-primary/50" />
-            <span>{t("loading")}</span>
-          </div>
-        )}
-        {loading ? (
+        {loading || refreshing ? (
           <div className={cn("flex flex-1 flex-col items-center justify-center px-6 text-center text-sm text-gray-500", emptyStateOffsetClass)}>
             <Loader2 className="mb-3 h-8 w-8 animate-spin text-primary/40" />
             <p>{t("loading")}</p>
