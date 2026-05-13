@@ -680,13 +680,12 @@ export function EmailList({ onEmailSelect, selectedEmailId, refreshTrigger }: Em
                           <FolderInput className="mr-2 h-4 w-4" />
                           {tGroups("moveTo")}
                         </DropdownMenuItem>
-                        <DropdownMenuItem
-                          disabled={!email.groupId}
-                          onClick={() => moveEmailToGroup(email, null)}
-                        >
-                          <Check className="mr-2 h-4 w-4 opacity-0" />
-                          {tGroups("removeFromGroup")}
-                        </DropdownMenuItem>
+                        {email.groupId && (
+                          <DropdownMenuItem onClick={() => moveEmailToGroup(email, null)}>
+                            <Check className="mr-2 h-4 w-4 opacity-0" />
+                            {tGroups("removeFromGroup")}
+                          </DropdownMenuItem>
+                        )}
                         {groups.map(group => (
                           <DropdownMenuItem
                             key={group.id}
