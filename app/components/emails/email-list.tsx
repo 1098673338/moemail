@@ -66,6 +66,8 @@ interface EmailGroup {
   emailCount: number
 }
 
+const EMPTY_STATE_OFFSET_CLASS = "-translate-y-[76px]"
+
 export function EmailList({ onEmailSelect, selectedEmailId, refreshTrigger, onRefresh }: EmailListProps) {
   const { data: session } = useSession()
   const { config } = useConfig()
@@ -641,7 +643,7 @@ export function EmailList({ onEmailSelect, selectedEmailId, refreshTrigger, onRe
           onScroll={handleScroll}
         >
           {loading || refreshing ? (
-            <div className="flex flex-1 -translate-y-[52px] flex-col items-center justify-center px-6 text-center text-sm text-gray-500">
+            <div className={cn("flex flex-1 flex-col items-center justify-center px-6 text-center text-sm text-gray-500", EMPTY_STATE_OFFSET_CLASS)}>
               <Loader2 className="mb-3 h-8 w-8 animate-spin text-primary/40" />
               <p>{t("loading")}</p>
             </div>
@@ -752,7 +754,7 @@ export function EmailList({ onEmailSelect, selectedEmailId, refreshTrigger, onRe
               )}
             </div>
           ) : (
-            <div className="flex flex-1 -translate-y-[52px] flex-col items-center justify-center px-6 text-center text-muted-foreground">
+            <div className={cn("flex flex-1 flex-col items-center justify-center px-6 text-center text-muted-foreground", EMPTY_STATE_OFFSET_CLASS)}>
               <AtSign className="mb-3 h-8 w-8 text-primary/40" />
               <p className="text-sm">{t("noEmails")}</p>
             </div>
