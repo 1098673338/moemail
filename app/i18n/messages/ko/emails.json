@@ -32,7 +32,7 @@
   },
   "groups": {
     "title": "이메일 그룹",
-    "all": "전체 이메일",
+    "all": "전체",
     "ungrouped": "미분류",
     "create": "그룹 생성",
     "creating": "생성 중...",

@@ -134,8 +134,6 @@ export function EmailList({ onEmailSelect, onGroupChange, selectedEmailId, refre
   }
 
   const toggleGroupSortMode = () => {
-    if (savingGroupOrder) return
-
     setGroupSortMode(prev => !prev)
     setDraggingGroupId(null)
     setDragOverGroup(null)
@@ -682,7 +680,7 @@ export function EmailList({ onEmailSelect, onGroupChange, selectedEmailId, refre
               variant="ghost"
               size="icon"
               onClick={toggleGroupSortMode}
-              disabled={savingGroupOrder || groups.length < 2}
+              disabled={groups.length < 2}
               className={cn(
                 "h-8 w-8",
                 groupSortMode && "bg-gray-200 hover:bg-gray-200"
@@ -729,7 +727,7 @@ export function EmailList({ onEmailSelect, onGroupChange, selectedEmailId, refre
                 )}
                 onClick={() => handleGroupSelect("none")}
               >
-                <Folder className="h-4 w-4 shrink-0 text-primary/60" />
+                <FolderOpen className="h-4 w-4 shrink-0 text-primary/60" />
                 <span className="min-w-0 flex-1 truncate">{tGroups("ungrouped")}</span>
               </button>
             </div>

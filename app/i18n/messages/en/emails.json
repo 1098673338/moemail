@@ -32,7 +32,7 @@
   },
   "groups": {
     "title": "Email Groups",
-    "all": "All Emails",
+    "all": "All",
     "ungrouped": "Ungrouped",
     "create": "Create Group",
     "creating": "Creating...",

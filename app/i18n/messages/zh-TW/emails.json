@@ -32,7 +32,7 @@
   },
   "groups": {
     "title": "郵箱分組",
-    "all": "全部郵箱",
+    "all": "全部",
     "ungrouped": "未分組",
     "create": "建立分組",
     "creating": "建立中...",

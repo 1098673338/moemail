@@ -32,7 +32,7 @@
   },
   "groups": {
     "title": "邮箱分组",
-    "all": "全部邮箱",
+    "all": "全部",
     "ungrouped": "未分组",
     "create": "创建分组",
     "creating": "创建中...",
