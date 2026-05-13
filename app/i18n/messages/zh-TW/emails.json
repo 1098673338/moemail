@@ -66,6 +66,7 @@
     "namePlaceholder": "留空則隨機生成",
     "group": "分組",
     "addressPreview": "地址預覽",
+    "addressPreviewEmpty": "輸入郵箱前綴後顯示預覽地址",
     "domain": "網域",
     "domainPlaceholder": "選擇網域",
     "expiryTime": "有效期",

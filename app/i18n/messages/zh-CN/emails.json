@@ -66,6 +66,7 @@
     "namePlaceholder": "留空则随机生成",
     "group": "分组",
     "addressPreview": "地址预览",
+    "addressPreviewEmpty": "输入邮箱前缀后显示预览地址",
     "domain": "域名",
     "domainPlaceholder": "选择域名",
     "expiryTime": "有效期",

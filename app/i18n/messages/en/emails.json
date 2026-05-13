@@ -66,6 +66,7 @@
     "namePlaceholder": "Leave empty for random generation",
     "group": "Group",
     "addressPreview": "Address Preview",
+    "addressPreviewEmpty": "Enter a prefix to preview the address",
     "domain": "Domain",
     "domainPlaceholder": "Select a domain",
     "expiryTime": "Validity Period",

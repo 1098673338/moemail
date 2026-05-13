@@ -66,6 +66,7 @@
     "namePlaceholder": "空白の場合はランダムに生成",
     "group": "グループ",
     "addressPreview": "アドレスプレビュー",
+    "addressPreviewEmpty": "プレフィックスを入力するとアドレスをプレビューできます",
     "domain": "ドメイン",
     "domainPlaceholder": "ドメインを選択",
     "expiryTime": "有効期間",

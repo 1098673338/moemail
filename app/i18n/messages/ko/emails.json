@@ -66,6 +66,7 @@
     "namePlaceholder": "비워두면 무작위로 생성됩니다",
     "group": "그룹",
     "addressPreview": "주소 미리보기",
+    "addressPreviewEmpty": "접두사를 입력하면 주소가 미리 표시됩니다",
     "domain": "도메인",
     "domainPlaceholder": "도메인 선택",
     "expiryTime": "유효 기간",
