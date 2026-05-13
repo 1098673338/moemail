@@ -58,6 +58,8 @@
     "moveTo": "移動到分組",
     "moveSuccess": "郵箱已移動",
     "moveFailed": "移動郵箱失敗",
+    "sortMode": "開啟分組排序",
+    "sortDone": "完成分組排序",
     "sortHandle": "拖拽排序分組",
     "sortFailed": "儲存分組排序失敗",
     "noGroups": "暫無分組"

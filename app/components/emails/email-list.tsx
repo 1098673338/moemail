@@ -68,6 +68,8 @@ interface EmailGroup {
   sortOrder: number
 }
 
+type GroupDropPosition = "before" | "after"
+
 const EMPTY_STATE_CLASS = "pointer-events-none absolute inset-0 flex -translate-y-6 flex-col items-center justify-center px-6 text-center"
 
 export function EmailList({ onEmailSelect, onGroupChange, selectedEmailId, refreshTrigger, onRefresh }: EmailListProps) {
@@ -98,14 +100,23 @@ export function EmailList({ onEmailSelect, onGroupChange, selectedEmailId, refre
   const [savingGroup, setSavingGroup] = useState(false)
   const [groupToDelete, setGroupToDelete] = useState<EmailGroup | null>(null)
   const [deletingGroup, setDeletingGroup] = useState(false)
+  const [groupSortMode, setGroupSortMode] = useState(false)
   const [draggingGroupId, setDraggingGroupId] = useState<string | null>(null)
-  const [dragOverGroupId, setDragOverGroupId] = useState<string | null>(null)
+  const [dragOverGroup, setDragOverGroup] = useState<{
+    groupId: string
+    position: GroupDropPosition
+  } | null>(null)
   const [savingGroupOrder, setSavingGroupOrder] = useState(false)
   const { toast } = useToast()
   const { copyToClipboard } = useCopy()
   const maxEmailsLimit = config?.maxEmails
 
-  const reorderGroups = (groupList: EmailGroup[], sourceGroupId: string, targetGroupId: string) => {
+  const reorderGroups = (
+    groupList: EmailGroup[],
+    sourceGroupId: string,
+    targetGroupId: string,
+    position: GroupDropPosition
+  ) => {
     const sourceIndex = groupList.findIndex(group => group.id === sourceGroupId)
     const targetIndex = groupList.findIndex(group => group.id === targetGroupId)
 
@@ -115,9 +126,19 @@ export function EmailList({ onEmailSelect, onGroupChange, selectedEmailId, refre
 
     const nextGroups = [...groupList]
     const [sourceGroup] = nextGroups.splice(sourceIndex, 1)
-    nextGroups.splice(targetIndex, 0, sourceGroup)
+    const nextTargetIndex = nextGroups.findIndex(group => group.id === targetGroupId)
+    const insertIndex = position === "after" ? nextTargetIndex + 1 : nextTargetIndex
+    nextGroups.splice(insertIndex, 0, sourceGroup)
 
     return nextGroups
+  }
+
+  const toggleGroupSortMode = () => {
+    if (savingGroupOrder) return
+
+    setGroupSortMode(prev => !prev)
+    setDraggingGroupId(null)
+    setDragOverGroup(null)
   }
 
   const saveGroupOrder = async (orderedGroups: EmailGroup[], previousGroups: EmailGroup[]) => {
@@ -151,7 +172,7 @@ export function EmailList({ onEmailSelect, onGroupChange, selectedEmailId, refre
   }
 
   const handleGroupDragStart = (event: React.DragEvent<HTMLButtonElement>, groupId: string) => {
-    if (savingGroupOrder) {
+    if (!groupSortMode || savingGroupOrder) {
       event.preventDefault()
       return
     }
@@ -162,26 +183,34 @@ export function EmailList({ onEmailSelect, onGroupChange, selectedEmailId, refre
   }
 
   const handleGroupDragOver = (event: React.DragEvent<HTMLDivElement>, groupId: string) => {
-    if (savingGroupOrder) return
+    if (!groupSortMode || savingGroupOrder) return
 
     event.preventDefault()
     event.dataTransfer.dropEffect = "move"
-    if (draggingGroupId && draggingGroupId !== groupId) {
-      setDragOverGroupId(groupId)
+    if (!draggingGroupId || draggingGroupId === groupId) {
+      setDragOverGroup(null)
+      return
     }
+
+    const rect = event.currentTarget.getBoundingClientRect()
+    const position = event.clientY < rect.top + rect.height / 2 ? "before" : "after"
+    setDragOverGroup({ groupId, position })
   }
 
   const handleGroupDrop = (event: React.DragEvent<HTMLDivElement>, targetGroupId: string) => {
     event.preventDefault()
 
+    if (!groupSortMode) return
+
     const sourceGroupId = draggingGroupId || event.dataTransfer.getData("text/plain")
+    const position = dragOverGroup?.groupId === targetGroupId ? dragOverGroup.position : "before"
     setDraggingGroupId(null)
-    setDragOverGroupId(null)
+    setDragOverGroup(null)
 
     if (!sourceGroupId || sourceGroupId === targetGroupId || savingGroupOrder) return
 
     const previousGroups = groups
-    const orderedGroups = reorderGroups(groups, sourceGroupId, targetGroupId)
+    const orderedGroups = reorderGroups(groups, sourceGroupId, targetGroupId, position)
     if (orderedGroups === groups) return
 
     setGroups(orderedGroups)
@@ -190,7 +219,7 @@ export function EmailList({ onEmailSelect, onGroupChange, selectedEmailId, refre
 
   const handleGroupDragEnd = () => {
     setDraggingGroupId(null)
-    setDragOverGroupId(null)
+    setDragOverGroup(null)
   }
 
   const fetchGroups = async () => {
@@ -649,6 +678,23 @@ export function EmailList({ onEmailSelect, onGroupChange, selectedEmailId, refre
                 </DialogFooter>
               </DialogContent>
             </Dialog>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={toggleGroupSortMode}
+              disabled={savingGroupOrder || groups.length < 2}
+              className={cn(
+                "h-8 w-8",
+                groupSortMode && "bg-gray-200 hover:bg-gray-200"
+              )}
+              aria-label={groupSortMode ? tGroups("sortDone") : tGroups("sortMode")}
+            >
+              {groupSortMode ? (
+                <Check className="h-4 w-4" />
+              ) : (
+                <GripVertical className="h-4 w-4" />
+              )}
+            </Button>
           </div>
           <span className="shrink-0 text-xs text-gray-500">
             {role === ROLES.EMPEROR || maxEmailsLimit === 0 ? (
@@ -689,38 +735,50 @@ export function EmailList({ onEmailSelect, onGroupChange, selectedEmailId, refre
             </div>
 
             {groups.length > 0 && (
-              <div className="max-h-28 space-y-1 overflow-auto">
+              <div className="max-h-[104px] space-y-1 overflow-auto">
                 {groups.map(group => (
                 <div
                   key={group.id}
                   onDragOver={(event) => handleGroupDragOver(event, group.id)}
-                  onDragLeave={() => {
-                    if (dragOverGroupId === group.id) {
-                      setDragOverGroupId(null)
+                  onDragLeave={(event) => {
+                    const nextTarget = event.relatedTarget as Node | null
+                    if (nextTarget && event.currentTarget.contains(nextTarget)) {
+                      return
+                    }
+
+                    if (dragOverGroup?.groupId === group.id) {
+                      setDragOverGroup(null)
                     }
                   }}
                   onDrop={(event) => handleGroupDrop(event, group.id)}
                   className={cn(
-                    "group flex h-8 w-full items-center gap-1 rounded px-2 text-sm transition-colors",
+                    "group relative flex h-8 w-full items-center gap-1 rounded px-2 text-sm transition-colors",
                     selectedGroupId === group.id ? "bg-gray-200" : "hover:bg-gray-100",
-                    draggingGroupId === group.id && "opacity-50",
-                    dragOverGroupId === group.id && draggingGroupId !== group.id && "bg-gray-100 ring-1 ring-gray-300"
+                    draggingGroupId === group.id && "opacity-50"
                   )}
                 >
-                  <button
-                    type="button"
-                    draggable={!savingGroupOrder}
-                    className={cn(
-                      "flex h-6 w-4 shrink-0 cursor-grab items-center justify-center rounded text-gray-400 hover:bg-black/10 hover:text-gray-600 active:cursor-grabbing",
-                      savingGroupOrder && "cursor-not-allowed opacity-50"
-                    )}
-                    aria-label={tGroups("sortHandle")}
-                    onDragStart={(event) => handleGroupDragStart(event, group.id)}
-                    onDragEnd={handleGroupDragEnd}
-                    onClick={(event) => event.stopPropagation()}
-                  >
-                    <GripVertical className="h-3.5 w-3.5" />
-                  </button>
+                  {dragOverGroup?.groupId === group.id && dragOverGroup.position === "before" && (
+                    <div className="pointer-events-none absolute left-2 right-2 top-0 h-0.5 rounded-full bg-gray-500" />
+                  )}
+                  {dragOverGroup?.groupId === group.id && dragOverGroup.position === "after" && (
+                    <div className="pointer-events-none absolute bottom-0 left-2 right-2 h-0.5 rounded-full bg-gray-500" />
+                  )}
+                  {groupSortMode && (
+                    <button
+                      type="button"
+                      draggable={!savingGroupOrder}
+                      className={cn(
+                        "flex h-6 w-4 shrink-0 cursor-grab items-center justify-center rounded text-gray-400 hover:bg-black/10 hover:text-gray-600 active:cursor-grabbing",
+                        savingGroupOrder && "cursor-not-allowed opacity-50"
+                      )}
+                      aria-label={tGroups("sortHandle")}
+                      onDragStart={(event) => handleGroupDragStart(event, group.id)}
+                      onDragEnd={handleGroupDragEnd}
+                      onClick={(event) => event.stopPropagation()}
+                    >
+                      <GripVertical className="h-3.5 w-3.5" />
+                    </button>
+                  )}
                   <button
                     type="button"
                     className="flex min-w-0 flex-1 items-center gap-2 text-left"

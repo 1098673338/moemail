@@ -58,6 +58,8 @@
     "moveTo": "Move to group",
     "moveSuccess": "Email moved",
     "moveFailed": "Failed to move email",
+    "sortMode": "Enable group sorting",
+    "sortDone": "Finish group sorting",
     "sortHandle": "Drag to sort group",
     "sortFailed": "Failed to save group order",
     "noGroups": "No groups yet"
