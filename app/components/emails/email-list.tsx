@@ -616,7 +616,10 @@ export function EmailList({ onEmailSelect, selectedEmailId, refreshTrigger }: Em
                       )}
                     </div>
                   </div>
-                  <div className="hidden shrink-0 gap-1 group-hover:flex" onClick={(e) => e.stopPropagation()}>
+                  <div
+                    className="flex shrink-0 gap-1 opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100"
+                    onClick={(e) => e.stopPropagation()}
+                  >
                     <Button
                       variant="ghost"
                       size="icon"
@@ -625,6 +628,17 @@ export function EmailList({ onEmailSelect, selectedEmailId, refreshTrigger }: Em
                       onClick={() => copyToClipboard(email.address)}
                     >
                       <Copy className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8 hover:bg-black/10"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        setEmailToDelete(email)
+                      }}
+                    >
+                      <Trash2 className="h-4 w-4" />
                     </Button>
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
@@ -669,17 +683,6 @@ export function EmailList({ onEmailSelect, selectedEmailId, refreshTrigger }: Em
                         )}
                       </DropdownMenuContent>
                     </DropdownMenu>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-8 w-8 hover:bg-black/10"
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        setEmailToDelete(email)
-                      }}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
                   </div>
                 </div>
               ))}
