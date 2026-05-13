@@ -459,17 +459,6 @@ export function EmailList({ onEmailSelect, selectedEmailId, refreshTrigger }: Em
 
   if (!session) return null
 
-  const groupFilters: {
-    id: string | null
-    label: string
-    icon: typeof Folder
-    group?: EmailGroup
-  }[] = [
-    { id: null, label: tGroups("all"), icon: FolderOpen },
-    { id: "none", label: tGroups("ungrouped"), icon: Folder },
-    ...groups.map(group => ({ id: group.id, label: group.name, icon: Folder, group })),
-  ]
-
   return (
     <>
       <div className="flex h-full min-h-0 flex-col">
@@ -534,17 +523,40 @@ export function EmailList({ onEmailSelect, selectedEmailId, refreshTrigger }: Em
         </div>
 
         <div className="shrink-0 border-b border-gray-200 p-2">
-          <div className="max-h-36 space-y-1 overflow-auto pr-1">
-            {groupFilters.map(group => {
-              const Icon = group.icon
-              const selected = selectedGroupId === group.id
+          <div className="space-y-2">
+            <div className="grid grid-cols-2 gap-1">
+              <button
+                type="button"
+                className={cn(
+                  "flex h-8 min-w-0 items-center gap-2 rounded px-2 text-left text-sm transition-colors",
+                  selectedGroupId === null ? "bg-gray-200" : "hover:bg-gray-100"
+                )}
+                onClick={() => handleGroupSelect(null)}
+              >
+                <FolderOpen className="h-4 w-4 shrink-0 text-primary/60" />
+                <span className="min-w-0 flex-1 truncate">{tGroups("all")}</span>
+              </button>
+              <button
+                type="button"
+                className={cn(
+                  "flex h-8 min-w-0 items-center gap-2 rounded px-2 text-left text-sm transition-colors",
+                  selectedGroupId === "none" ? "bg-gray-200" : "hover:bg-gray-100"
+                )}
+                onClick={() => handleGroupSelect("none")}
+              >
+                <Folder className="h-4 w-4 shrink-0 text-primary/60" />
+                <span className="min-w-0 flex-1 truncate">{tGroups("ungrouped")}</span>
+              </button>
+            </div>
 
-              return (
+            {groups.length > 0 && (
+              <div className="max-h-28 space-y-1 overflow-auto pr-1">
+                {groups.map(group => (
                 <div
-                  key={group.id ?? "all"}
+                  key={group.id}
                   className={cn(
                     "group flex h-8 w-full items-center gap-1 rounded px-2 text-sm transition-colors",
-                    selected ? "bg-gray-200" : "hover:bg-gray-100"
+                    selectedGroupId === group.id ? "bg-gray-200" : "hover:bg-gray-100"
                   )}
                 >
                   <button
@@ -552,34 +564,33 @@ export function EmailList({ onEmailSelect, selectedEmailId, refreshTrigger }: Em
                     className="flex min-w-0 flex-1 items-center gap-2 text-left"
                     onClick={() => handleGroupSelect(group.id)}
                   >
-                    <Icon className="h-4 w-4 shrink-0 text-primary/60" />
-                    <span className="min-w-0 flex-1 truncate">{group.label}</span>
+                    <Folder className="h-4 w-4 shrink-0 text-primary/60" />
+                    <span className="min-w-0 flex-1 truncate">{group.name}</span>
                   </button>
-                  {group.group && (
-                    <div className="hidden shrink-0 items-center gap-1 group-hover:flex">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-6 w-6 hover:bg-black/10"
-                        aria-label={tGroups("rename")}
-                        onClick={() => openEditGroupDialog(group.group!)}
-                      >
-                        <Pencil className="h-3.5 w-3.5" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-6 w-6 hover:bg-black/10"
-                        aria-label={tGroups("delete")}
-                        onClick={() => setGroupToDelete(group.group!)}
-                      >
-                        <Trash2 className="h-3.5 w-3.5" />
-                      </Button>
-                    </div>
-                  )}
+                  <div className="hidden shrink-0 items-center gap-1 group-hover:flex">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-6 w-6 hover:bg-black/10"
+                      aria-label={tGroups("rename")}
+                      onClick={() => openEditGroupDialog(group)}
+                    >
+                      <Pencil className="h-3.5 w-3.5" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-6 w-6 hover:bg-black/10"
+                      aria-label={tGroups("delete")}
+                      onClick={() => setGroupToDelete(group)}
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </Button>
+                  </div>
                 </div>
-              )
-            })}
+                ))}
+              </div>
+            )}
           </div>
         </div>
         
