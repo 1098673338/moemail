@@ -29,7 +29,7 @@ interface EmailGroup {
 
 const DEFAULT_EXPIRY_TIME = "0"
 const UNGROUPED_GROUP_VALUE = "__ungrouped__"
-const getEmailNamePrefix = (value: string) => value.trim().split("@")[0].trim()
+const getEmailNamePrefix = (value: string) => value.replace(/\s+/g, "").split("@")[0]
 
 export function CreateDialog({ onEmailCreated, selectedGroupId, selectedGroupName }: CreateDialogProps) {
   const { config } = useConfig()
@@ -49,6 +49,7 @@ export function CreateDialog({ onEmailCreated, selectedGroupId, selectedGroupNam
   const selectedGroupExists = createGroupId === UNGROUPED_GROUP_VALUE
     || groups.some(group => group.id === createGroupId)
   const emailNamePrefix = getEmailNamePrefix(emailName)
+  const formLabelClass = "w-24 shrink-0 text-muted-foreground"
 
   const generateRandomName = () => setEmailName(nanoid(8))
   const getDefaultGroupId = () => (
@@ -149,38 +150,42 @@ export function CreateDialog({ onEmailCreated, selectedGroupId, selectedGroupNam
         <DialogHeader>
           <DialogTitle>{t("title")}</DialogTitle>
         </DialogHeader>
-        <div className="space-y-4 py-4">
-          <div className="flex gap-2">
-            <Input
-              value={emailName}
-              onChange={(e) => setEmailName(e.target.value)}
-              placeholder={t("namePlaceholder")}
-              className="flex-1"
-            />
-            {(config?.emailDomainsArray?.length ?? 0) > 1 && (
-              <Select value={currentDomain} onValueChange={setCurrentDomain}>
-                <SelectTrigger className="w-[180px]">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {config?.emailDomainsArray?.map(d => (
-                    <SelectItem key={d} value={d}>@{d}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            )}
-            <Button
-              variant="outline"
-              size="icon"
-              onClick={generateRandomName}
-              type="button"
-            >
-              <RefreshCw className="w-4 h-4" />
-            </Button>
+        <div className="flex flex-col gap-4 py-4">
+          <div className="flex items-center gap-4">
+            <Label className={formLabelClass}>{t("name")}</Label>
+            <div className="flex min-w-0 flex-1 gap-2">
+              <Input
+                value={emailName}
+                onChange={(e) => setEmailName(e.target.value)}
+                placeholder={t("namePlaceholder")}
+                className="min-w-0 flex-1"
+              />
+              {(config?.emailDomainsArray?.length ?? 0) > 1 && (
+                <Select value={currentDomain} onValueChange={setCurrentDomain}>
+                  <SelectTrigger className="w-[180px]">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {config?.emailDomainsArray?.map(d => (
+                      <SelectItem key={d} value={d}>@{d}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+              <Button
+                variant="outline"
+                size="icon"
+                onClick={generateRandomName}
+                type="button"
+                className="shrink-0"
+              >
+                <RefreshCw className="w-4 h-4" />
+              </Button>
+            </div>
           </div>
 
           <div className="flex items-center gap-4">
-            <Label className="shrink-0 text-muted-foreground">{t("group")}</Label>
+            <Label className={formLabelClass}>{t("group")}</Label>
             <Select value={createGroupId} onValueChange={setCreateGroupId}>
               <SelectTrigger className="flex-1">
                 <SelectValue />
@@ -200,7 +205,7 @@ export function CreateDialog({ onEmailCreated, selectedGroupId, selectedGroupNam
           </div>
 
           <div className="flex items-center gap-4">
-            <Label className="shrink-0 text-muted-foreground">{t("expiryTime")}</Label>
+            <Label className={formLabelClass}>{t("expiryTime")}</Label>
             <RadioGroup
               value={expiryTime}
               onValueChange={setExpiryTime}
@@ -220,20 +225,28 @@ export function CreateDialog({ onEmailCreated, selectedGroupId, selectedGroupNam
             </RadioGroup>
           </div>
 
-          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            <span className="shrink-0">{t("domain")}:</span>
+          <div className="flex items-center gap-4 text-sm text-muted-foreground">
+            <span className={formLabelClass}>{t("addressPreview")}</span>
             {emailNamePrefix ? (
-              <div className="flex items-center gap-2 min-w-0">
-                <span className="truncate">{`${emailNamePrefix}@${currentDomain}`}</span>
-                <div
-                  className="shrink-0 cursor-pointer hover:text-primary transition-colors"
+              <div className="flex min-w-0 flex-1 items-center gap-2 rounded-md border border-dashed border-primary/30 bg-primary/5 px-3 py-2 text-foreground">
+                <span className="min-w-0 flex-1 truncate font-mono text-sm text-primary">
+                  {`${emailNamePrefix}@${currentDomain}`}
+                </span>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  type="button"
+                  className="h-7 w-7 shrink-0 hover:bg-primary/10"
+                  aria-label={tCommon("copy")}
                   onClick={copyEmailAddress}
                 >
                   <Copy className="size-4" />
-                </div>
+                </Button>
               </div>
             ) : (
-              <span className="text-gray-400">...</span>
+              <div className="flex min-h-9 flex-1 items-center rounded-md border border-dashed bg-muted/40 px-3 py-2">
+                <span className="text-muted-foreground/60">{t("addressPreviewEmpty")}</span>
+              </div>
             )}
           </div>
         </div>

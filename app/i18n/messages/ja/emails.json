@@ -65,6 +65,7 @@
     "name": "メールボックスのプレフィックス",
     "namePlaceholder": "空白の場合はランダムに生成",
     "group": "グループ",
+    "addressPreview": "アドレスプレビュー",
     "domain": "ドメイン",
     "domainPlaceholder": "ドメインを選択",
     "expiryTime": "有効期間",

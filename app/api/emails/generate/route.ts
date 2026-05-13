@@ -12,7 +12,7 @@ import { ROLES } from "@/lib/permissions"
 
 export const runtime = "edge"
 
-const getEmailNamePrefix = (value: string) => value.trim().split("@")[0].trim()
+const getEmailNamePrefix = (value: string) => value.replace(/\s+/g, "").split("@")[0]
 
 export async function POST(request: Request) {
   const db = createDb()

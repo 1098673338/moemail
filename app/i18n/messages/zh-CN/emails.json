@@ -65,6 +65,7 @@
     "name": "邮箱前缀",
     "namePlaceholder": "留空则随机生成",
     "group": "分组",
+    "addressPreview": "地址预览",
     "domain": "域名",
     "domainPlaceholder": "选择域名",
     "expiryTime": "有效期",
