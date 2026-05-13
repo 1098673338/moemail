@@ -58,6 +58,8 @@
     "moveTo": "グループへ移動",
     "moveSuccess": "メールボックスを移動しました",
     "moveFailed": "メールボックスの移動に失敗しました",
+    "sortHandle": "ドラッグしてグループを並べ替え",
+    "sortFailed": "グループの順序保存に失敗しました",
     "noGroups": "グループはまだありません"
   },
   "create": {

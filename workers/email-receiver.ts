@@ -6,6 +6,10 @@ import PostalMime, { type Attachment } from 'postal-mime'
 import { WEBHOOK_CONFIG } from '../app/config/webhook'
 import { EmailMessage } from '../app/lib/webhook'
 
+const MAX_EMAIL_BYTES = 2 * 1024 * 1024
+const MAX_INLINE_IMAGE_BYTES = 256 * 1024
+const MAX_TOTAL_INLINE_IMAGE_BYTES = 768 * 1024
+
 const arrayBufferToBase64 = (buffer: ArrayBuffer) => {
   const bytes = new Uint8Array(buffer)
   let binary = ''
@@ -32,6 +36,7 @@ const inlineCidImages = (html: string, attachments: Attachment[]) => {
   }
 
   let nextHtml = html
+  let inlinedBytes = 0
 
   for (const attachment of attachments) {
     if (
@@ -47,9 +52,18 @@ const inlineCidImages = (html: string, attachments: Attachment[]) => {
       continue
     }
 
+    const byteLength = attachment.content.byteLength
+    if (
+      byteLength > MAX_INLINE_IMAGE_BYTES ||
+      inlinedBytes + byteLength > MAX_TOTAL_INLINE_IMAGE_BYTES
+    ) {
+      continue
+    }
+
     const dataUrl = `data:${attachment.mimeType};base64,${arrayBufferToBase64(
       attachment.content
     )}`
+    inlinedBytes += byteLength
     const cidVariants = Array.from(new Set([
       contentId,
       encodeURI(contentId),
@@ -73,10 +87,14 @@ const inlineCidImages = (html: string, attachments: Attachment[]) => {
 const handleEmail = async (message: ForwardableEmailMessage, env: Env) => {
   const db = drizzle(env.DB, { schema: { messages, emails, webhooks } })
 
+  if (message.rawSize > MAX_EMAIL_BYTES) {
+    message.setReject('Email exceeds the supported size limit')
+    console.warn(`Rejected oversized email: ${message.rawSize} bytes`)
+    return
+  }
+
   const parsedMessage = await PostalMime.parse(message.raw)
   const html = inlineCidImages(parsedMessage.html || '', parsedMessage.attachments)
-
-  console.log("parsedMessage:", parsedMessage)
 
   try {
     const targetEmail = await db.query.emails.findFirst({

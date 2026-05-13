@@ -155,6 +155,13 @@
       "when": 1778638086211,
       "tag": "0021_wooden_rhino",
       "breakpoints": true
+    },
+    {
+      "idx": 22,
+      "version": "6",
+      "when": 1778693985926,
+      "tag": "0022_awesome_nekra",
+      "breakpoints": true
     }
   ]
 }

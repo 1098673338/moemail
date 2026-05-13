@@ -25,6 +25,7 @@ interface EmailGroup {
   id: string
   name: string
   emailCount: number
+  sortOrder: number
 }
 
 const DEFAULT_EXPIRY_TIME = "0"

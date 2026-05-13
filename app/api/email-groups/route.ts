@@ -20,6 +20,7 @@ export async function GET() {
       id: emailGroups.id,
       name: emailGroups.name,
       userId: emailGroups.userId,
+      sortOrder: emailGroups.sortOrder,
       createdAt: emailGroups.createdAt,
       emailCount: sql<number>`count(${emails.id})`,
     })
@@ -27,7 +28,7 @@ export async function GET() {
       .leftJoin(emails, eq(emails.groupId, emailGroups.id))
       .where(eq(emailGroups.userId, userId))
       .groupBy(emailGroups.id)
-      .orderBy(asc(emailGroups.createdAt), asc(emailGroups.name))
+      .orderBy(asc(emailGroups.sortOrder), asc(emailGroups.createdAt), asc(emailGroups.name))
 
     return NextResponse.json({ groups })
   } catch (error) {
@@ -56,10 +57,17 @@ export async function POST(request: Request) {
   const db = createDb()
 
   try {
+    const [maxSortOrderRow] = await db.select({
+      sortOrder: sql<number>`coalesce(max(${emailGroups.sortOrder}), -1)`,
+    })
+      .from(emailGroups)
+      .where(eq(emailGroups.userId, userId))
+
     const [group] = await db.insert(emailGroups)
       .values({
         userId,
         name: groupName,
+        sortOrder: Number(maxSortOrderRow?.sortOrder ?? -1) + 1,
       })
       .returning()
 

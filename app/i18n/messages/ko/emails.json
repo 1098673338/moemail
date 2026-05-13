@@ -58,6 +58,8 @@
     "moveTo": "그룹으로 이동",
     "moveSuccess": "이메일이 이동되었습니다",
     "moveFailed": "이메일 이동에 실패했습니다",
+    "sortHandle": "드래그하여 그룹 정렬",
+    "sortFailed": "그룹 순서 저장에 실패했습니다",
     "noGroups": "아직 그룹이 없습니다"
   },
   "create": {

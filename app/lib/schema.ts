@@ -47,11 +47,13 @@ export const emailGroups = sqliteTable("email_group", {
     .notNull()
     .references(() => users.id, { onDelete: "cascade" }),
   name: text("name").notNull(),
+  sortOrder: integer("sort_order").notNull().default(0),
   createdAt: integer("created_at", { mode: "timestamp_ms" })
     .notNull()
     .$defaultFn(() => new Date()),
 }, (table) => ({
   userIdIdx: index("email_group_user_id_idx").on(table.userId),
+  userSortOrderIdx: index("email_group_user_sort_order_idx").on(table.userId, table.sortOrder),
   userNameUnique: uniqueIndex("email_group_user_name_unique").on(table.userId, table.name),
 }))
 

@@ -4,7 +4,7 @@ import { useEffect, useState } from "react"
 import { useSession } from "next-auth/react"
 import { useTranslations } from "next-intl"
 import { ShareDialog } from "./share-dialog"
-import { AtSign, Check, Copy, Folder, FolderInput, FolderOpen, FolderPlus, Loader2, MoreHorizontal, Pencil, RefreshCw, Share2, Trash2 } from "lucide-react"
+import { AtSign, Check, Copy, Folder, FolderInput, FolderOpen, FolderPlus, GripVertical, Loader2, MoreHorizontal, Pencil, RefreshCw, Share2, Trash2 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -65,6 +65,7 @@ interface EmailGroup {
   id: string
   name: string
   emailCount: number
+  sortOrder: number
 }
 
 const EMPTY_STATE_CLASS = "pointer-events-none absolute inset-0 flex -translate-y-6 flex-col items-center justify-center px-6 text-center"
@@ -97,9 +98,100 @@ export function EmailList({ onEmailSelect, onGroupChange, selectedEmailId, refre
   const [savingGroup, setSavingGroup] = useState(false)
   const [groupToDelete, setGroupToDelete] = useState<EmailGroup | null>(null)
   const [deletingGroup, setDeletingGroup] = useState(false)
+  const [draggingGroupId, setDraggingGroupId] = useState<string | null>(null)
+  const [dragOverGroupId, setDragOverGroupId] = useState<string | null>(null)
+  const [savingGroupOrder, setSavingGroupOrder] = useState(false)
   const { toast } = useToast()
   const { copyToClipboard } = useCopy()
   const maxEmailsLimit = config?.maxEmails
+
+  const reorderGroups = (groupList: EmailGroup[], sourceGroupId: string, targetGroupId: string) => {
+    const sourceIndex = groupList.findIndex(group => group.id === sourceGroupId)
+    const targetIndex = groupList.findIndex(group => group.id === targetGroupId)
+
+    if (sourceIndex < 0 || targetIndex < 0 || sourceIndex === targetIndex) {
+      return groupList
+    }
+
+    const nextGroups = [...groupList]
+    const [sourceGroup] = nextGroups.splice(sourceIndex, 1)
+    nextGroups.splice(targetIndex, 0, sourceGroup)
+
+    return nextGroups
+  }
+
+  const saveGroupOrder = async (orderedGroups: EmailGroup[], previousGroups: EmailGroup[]) => {
+    setSavingGroupOrder(true)
+
+    try {
+      const response = await fetch("/api/email-groups/order", {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          groupIds: orderedGroups.map(group => group.id),
+        }),
+      })
+      const data = await response.json().catch(() => ({})) as { error?: string }
+
+      if (!response.ok) {
+        throw new Error(data.error || tGroups("sortFailed"))
+      }
+    } catch (error) {
+      setGroups(previousGroups)
+      toast({
+        title: t("error"),
+        description: error instanceof Error ? error.message : tGroups("sortFailed"),
+        variant: "destructive",
+      })
+    } finally {
+      setSavingGroupOrder(false)
+    }
+  }
+
+  const handleGroupDragStart = (event: React.DragEvent<HTMLButtonElement>, groupId: string) => {
+    if (savingGroupOrder) {
+      event.preventDefault()
+      return
+    }
+
+    event.dataTransfer.effectAllowed = "move"
+    event.dataTransfer.setData("text/plain", groupId)
+    setDraggingGroupId(groupId)
+  }
+
+  const handleGroupDragOver = (event: React.DragEvent<HTMLDivElement>, groupId: string) => {
+    if (savingGroupOrder) return
+
+    event.preventDefault()
+    event.dataTransfer.dropEffect = "move"
+    if (draggingGroupId && draggingGroupId !== groupId) {
+      setDragOverGroupId(groupId)
+    }
+  }
+
+  const handleGroupDrop = (event: React.DragEvent<HTMLDivElement>, targetGroupId: string) => {
+    event.preventDefault()
+
+    const sourceGroupId = draggingGroupId || event.dataTransfer.getData("text/plain")
+    setDraggingGroupId(null)
+    setDragOverGroupId(null)
+
+    if (!sourceGroupId || sourceGroupId === targetGroupId || savingGroupOrder) return
+
+    const previousGroups = groups
+    const orderedGroups = reorderGroups(groups, sourceGroupId, targetGroupId)
+    if (orderedGroups === groups) return
+
+    setGroups(orderedGroups)
+    saveGroupOrder(orderedGroups, previousGroups)
+  }
+
+  const handleGroupDragEnd = () => {
+    setDraggingGroupId(null)
+    setDragOverGroupId(null)
+  }
 
   const fetchGroups = async () => {
     try {
@@ -601,11 +693,34 @@ export function EmailList({ onEmailSelect, onGroupChange, selectedEmailId, refre
                 {groups.map(group => (
                 <div
                   key={group.id}
+                  onDragOver={(event) => handleGroupDragOver(event, group.id)}
+                  onDragLeave={() => {
+                    if (dragOverGroupId === group.id) {
+                      setDragOverGroupId(null)
+                    }
+                  }}
+                  onDrop={(event) => handleGroupDrop(event, group.id)}
                   className={cn(
                     "group flex h-8 w-full items-center gap-1 rounded px-2 text-sm transition-colors",
-                    selectedGroupId === group.id ? "bg-gray-200" : "hover:bg-gray-100"
+                    selectedGroupId === group.id ? "bg-gray-200" : "hover:bg-gray-100",
+                    draggingGroupId === group.id && "opacity-50",
+                    dragOverGroupId === group.id && draggingGroupId !== group.id && "bg-gray-100 ring-1 ring-gray-300"
                   )}
                 >
+                  <button
+                    type="button"
+                    draggable={!savingGroupOrder}
+                    className={cn(
+                      "flex h-6 w-4 shrink-0 cursor-grab items-center justify-center rounded text-gray-400 hover:bg-black/10 hover:text-gray-600 active:cursor-grabbing",
+                      savingGroupOrder && "cursor-not-allowed opacity-50"
+                    )}
+                    aria-label={tGroups("sortHandle")}
+                    onDragStart={(event) => handleGroupDragStart(event, group.id)}
+                    onDragEnd={handleGroupDragEnd}
+                    onClick={(event) => event.stopPropagation()}
+                  >
+                    <GripVertical className="h-3.5 w-3.5" />
+                  </button>
                   <button
                     type="button"
                     className="flex min-w-0 flex-1 items-center gap-2 text-left"

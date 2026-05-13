@@ -58,6 +58,8 @@
     "moveTo": "移动到分组",
     "moveSuccess": "邮箱已移动",
     "moveFailed": "移动邮箱失败",
+    "sortHandle": "拖拽排序分组",
+    "sortFailed": "保存分组排序失败",
     "noGroups": "暂无分组"
   },
   "create": {

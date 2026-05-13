@@ -1,5 +1,4 @@
 import { Header } from "@/components/layout/header"
-import { auth } from "@/lib/auth"
 import { Shield, Share2, Clock, Code2 } from "lucide-react"
 import { ActionButton } from "@/components/home/action-button"
 import { FeatureCard } from "@/components/home/feature-card"
@@ -15,7 +14,6 @@ export default async function Home({
 }) {
   const { locale: localeFromParams } = await params
   const locale = localeFromParams as Locale
-  const session = await auth()
   const t = await getTranslations({ locale, namespace: "home" })
 
   return (
@@ -62,7 +60,7 @@ export default async function Home({
               </div>
 
               <div className="flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-4 px-2 sm:px-0">
-                <ActionButton isLoggedIn={!!session} />
+                <ActionButton />
               </div>
             </div>
           </div>
@@ -71,4 +69,3 @@ export default async function Home({
     </div>
   )
 }
-

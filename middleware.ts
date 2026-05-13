@@ -55,7 +55,15 @@ export async function middleware(request: Request) {
         break
       }
     }
-    return NextResponse.next()
+
+    const requestHeaders = new Headers(request.headers)
+    requestHeaders.set("X-User-Id", session.user.id)
+
+    return NextResponse.next({
+      request: {
+        headers: requestHeaders
+      }
+    })
   }
 
   // Pages: 语言前缀
