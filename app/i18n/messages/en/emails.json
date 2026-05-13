@@ -64,6 +64,7 @@
     "title": "Create Email",
     "name": "Email Prefix",
     "namePlaceholder": "Leave empty for random generation",
+    "group": "Group",
     "domain": "Domain",
     "domainPlaceholder": "Select a domain",
     "expiryTime": "Validity Period",

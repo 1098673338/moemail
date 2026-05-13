@@ -35,6 +35,8 @@ export function ThreeColumnLayout() {
   const [selectedMessageId, setSelectedMessageId] = useState<string | null>(null)
   const [selectedMessageType, setSelectedMessageType] = useState<MessageType>('received')
   const [selectedMessagePreview, setSelectedMessagePreview] = useState<MessageSummary | null>(null)
+  const [selectedGroupId, setSelectedGroupId] = useState<string | null>(null)
+  const [selectedGroupName, setSelectedGroupName] = useState<string | undefined>()
   const [refreshTrigger, setRefreshTrigger] = useState(0)
   const [emailRefreshTrigger, setEmailRefreshTrigger] = useState(0)
   const { copyToClipboard } = useCopy()
@@ -79,6 +81,11 @@ export function ThreeColumnLayout() {
     }
   }
 
+  const handleGroupChange = (groupId: string | null, groupName?: string) => {
+    setSelectedGroupId(groupId)
+    setSelectedGroupName(groupName)
+  }
+
   return (
     <div className="flex h-full min-h-0 flex-col pb-5 pt-16">
       <div className="grid min-h-0 flex-1 gap-5" style={{ gridTemplateColumns: "repeat(24, minmax(0, 1fr))" }}>
@@ -87,7 +94,11 @@ export function ThreeColumnLayout() {
             <h2 className={actionTitleClass}>
               <div className="flex w-full items-center justify-between gap-2">
                 <span className="min-w-0 truncate">{t("myEmails")}</span>
-                <CreateDialog onEmailCreated={handleEmailCreated} />
+                <CreateDialog
+                  onEmailCreated={handleEmailCreated}
+                  selectedGroupId={selectedGroupId}
+                  selectedGroupName={selectedGroupName}
+                />
               </div>
             </h2>
           </div>
@@ -99,6 +110,7 @@ export function ThreeColumnLayout() {
                 setSelectedMessagePreview(null)
               }}
               selectedEmailId={selectedEmail?.id}
+              onGroupChange={handleGroupChange}
               refreshTrigger={emailRefreshTrigger}
               onRefresh={handleEmailListRefresh}
             />

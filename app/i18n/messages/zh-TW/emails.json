@@ -64,6 +64,7 @@
     "title": "建立郵箱",
     "name": "郵箱前綴",
     "namePlaceholder": "留空則隨機生成",
+    "group": "分組",
     "domain": "網域",
     "domainPlaceholder": "選擇網域",
     "expiryTime": "有效期",

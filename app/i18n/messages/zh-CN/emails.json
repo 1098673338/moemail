@@ -64,6 +64,7 @@
     "title": "创建邮箱",
     "name": "邮箱前缀",
     "namePlaceholder": "留空则随机生成",
+    "group": "分组",
     "domain": "域名",
     "domainPlaceholder": "选择域名",
     "expiryTime": "有效期",

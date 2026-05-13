@@ -49,6 +49,7 @@ interface Email {
 
 interface EmailListProps {
   onEmailSelect: (email: Email | null) => void
+  onGroupChange?: (groupId: string | null, groupName?: string) => void
   selectedEmailId?: string
   refreshTrigger?: number
   onRefresh?: () => void
@@ -68,7 +69,7 @@ interface EmailGroup {
 
 const EMPTY_STATE_CLASS = "pointer-events-none absolute inset-0 flex -translate-y-6 flex-col items-center justify-center px-6 text-center"
 
-export function EmailList({ onEmailSelect, selectedEmailId, refreshTrigger, onRefresh }: EmailListProps) {
+export function EmailList({ onEmailSelect, onGroupChange, selectedEmailId, refreshTrigger, onRefresh }: EmailListProps) {
   const { data: session } = useSession()
   const { config } = useConfig()
   const { role } = useUserRole()
@@ -214,8 +215,9 @@ export function EmailList({ onEmailSelect, selectedEmailId, refreshTrigger, onRe
     }
   }
 
-  const handleGroupSelect = (groupId: string | null) => {
+  const handleGroupSelect = (groupId: string | null, groupName?: string) => {
     setSelectedGroupId(groupId)
+    onGroupChange?.(groupId, groupName)
     onEmailSelect(null)
   }
 
@@ -256,6 +258,9 @@ export function EmailList({ onEmailSelect, selectedEmailId, refreshTrigger, onRe
           ? { ...group, name: data.group!.name }
           : group
       )))
+      if (selectedGroupId === data.group.id) {
+        onGroupChange?.(data.group.id, data.group.name)
+      }
       setEditingGroup(null)
       setEditGroupName("")
       toast({
@@ -316,6 +321,7 @@ export function EmailList({ onEmailSelect, selectedEmailId, refreshTrigger, onRe
       
       if (selectedGroupId === group.id) {
         setSelectedGroupId(null)
+        onGroupChange?.(null)
         onEmailSelect(null)
       } else if (deleteEmails && selectedEmailWasInGroup) {
         onEmailSelect(null)
@@ -603,7 +609,7 @@ export function EmailList({ onEmailSelect, selectedEmailId, refreshTrigger, onRe
                   <button
                     type="button"
                     className="flex min-w-0 flex-1 items-center gap-2 text-left"
-                    onClick={() => handleGroupSelect(group.id)}
+                    onClick={() => handleGroupSelect(group.id, group.name)}
                   >
                     <Folder className="h-4 w-4 shrink-0 text-primary/60" />
                     <span className="min-w-0 flex-1 truncate">{group.name}</span>

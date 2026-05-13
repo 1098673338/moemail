@@ -64,6 +64,7 @@
     "title": "이메일 생성",
     "name": "이메일 접두사",
     "namePlaceholder": "비워두면 무작위로 생성됩니다",
+    "group": "그룹",
     "domain": "도메인",
     "domainPlaceholder": "도메인 선택",
     "expiryTime": "유효 기간",

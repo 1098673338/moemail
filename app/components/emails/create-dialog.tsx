@@ -17,13 +17,24 @@ import { useConfig } from "@/hooks/use-config"
 
 interface CreateDialogProps {
   onEmailCreated: () => void
+  selectedGroupId?: string | null
+  selectedGroupName?: string
+}
+
+interface EmailGroup {
+  id: string
+  name: string
+  emailCount: number
 }
 
 const DEFAULT_EXPIRY_TIME = "0"
+const UNGROUPED_GROUP_VALUE = "__ungrouped__"
+const getEmailNamePrefix = (value: string) => value.trim().split("@")[0].trim()
 
-export function CreateDialog({ onEmailCreated }: CreateDialogProps) {
+export function CreateDialog({ onEmailCreated, selectedGroupId, selectedGroupName }: CreateDialogProps) {
   const { config } = useConfig()
   const t = useTranslations("emails.create")
+  const tGroups = useTranslations("emails.groups")
   const tList = useTranslations("emails.list")
   const tCommon = useTranslations("common.actions")
   const [open, setOpen] = useState(false)
@@ -31,20 +42,45 @@ export function CreateDialog({ onEmailCreated }: CreateDialogProps) {
   const [emailName, setEmailName] = useState("")
   const [currentDomain, setCurrentDomain] = useState("")
   const [expiryTime, setExpiryTime] = useState(DEFAULT_EXPIRY_TIME)
+  const [groups, setGroups] = useState<EmailGroup[]>([])
+  const [createGroupId, setCreateGroupId] = useState(UNGROUPED_GROUP_VALUE)
   const { toast } = useToast()
   const { copyToClipboard } = useCopy()
+  const selectedGroupExists = createGroupId === UNGROUPED_GROUP_VALUE
+    || groups.some(group => group.id === createGroupId)
+  const emailNamePrefix = getEmailNamePrefix(emailName)
 
   const generateRandomName = () => setEmailName(nanoid(8))
+  const getDefaultGroupId = () => (
+    selectedGroupId && selectedGroupId !== "none" ? selectedGroupId : UNGROUPED_GROUP_VALUE
+  )
+
+  const fetchGroups = async () => {
+    try {
+      const response = await fetch("/api/email-groups")
+      if (!response.ok) return
+
+      const data = await response.json() as { groups: EmailGroup[] }
+      setGroups(data.groups)
+    } catch (error) {
+      console.error("Failed to fetch email groups:", error)
+    }
+  }
 
   const handleOpenChange = (nextOpen: boolean) => {
     setOpen(nextOpen)
+    if (nextOpen) {
+      setCreateGroupId(getDefaultGroupId())
+      fetchGroups()
+    }
     if (!nextOpen) {
       setExpiryTime(DEFAULT_EXPIRY_TIME)
+      setCreateGroupId(UNGROUPED_GROUP_VALUE)
     }
   }
 
   const copyEmailAddress = () => {
-    copyToClipboard(`${emailName}@${currentDomain}`)
+    copyToClipboard(`${emailNamePrefix}@${currentDomain}`)
   }
 
   const createEmail = async () => {
@@ -54,9 +90,10 @@ export function CreateDialog({ onEmailCreated }: CreateDialogProps) {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          name: emailName.trim(),
+          name: emailNamePrefix,
           domain: currentDomain,
-          expiryTime: parseInt(expiryTime)
+          expiryTime: parseInt(expiryTime),
+          groupId: createGroupId === UNGROUPED_GROUP_VALUE ? null : createGroupId
         })
       })
 
@@ -78,6 +115,7 @@ export function CreateDialog({ onEmailCreated }: CreateDialogProps) {
       setOpen(false)
       setEmailName("")
       setExpiryTime(DEFAULT_EXPIRY_TIME)
+      setCreateGroupId(UNGROUPED_GROUP_VALUE)
     } catch {
       toast({
         title: tList("error"),
@@ -142,6 +180,26 @@ export function CreateDialog({ onEmailCreated }: CreateDialogProps) {
           </div>
 
           <div className="flex items-center gap-4">
+            <Label className="shrink-0 text-muted-foreground">{t("group")}</Label>
+            <Select value={createGroupId} onValueChange={setCreateGroupId}>
+              <SelectTrigger className="flex-1">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent className="max-h-64">
+                <SelectItem value={UNGROUPED_GROUP_VALUE}>{tGroups("ungrouped")}</SelectItem>
+                {!selectedGroupExists && selectedGroupName && (
+                  <SelectItem value={createGroupId}>{selectedGroupName}</SelectItem>
+                )}
+                {groups.map(group => (
+                  <SelectItem key={group.id} value={group.id}>
+                    {group.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="flex items-center gap-4">
             <Label className="shrink-0 text-muted-foreground">{t("expiryTime")}</Label>
             <RadioGroup
               value={expiryTime}
@@ -164,9 +222,9 @@ export function CreateDialog({ onEmailCreated }: CreateDialogProps) {
 
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
             <span className="shrink-0">{t("domain")}:</span>
-            {emailName ? (
+            {emailNamePrefix ? (
               <div className="flex items-center gap-2 min-w-0">
-                <span className="truncate">{`${emailName}@${currentDomain}`}</span>
+                <span className="truncate">{`${emailNamePrefix}@${currentDomain}`}</span>
                 <div
                   className="shrink-0 cursor-pointer hover:text-primary transition-colors"
                   onClick={copyEmailAddress}

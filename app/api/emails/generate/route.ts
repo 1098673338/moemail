@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server"
 import { nanoid } from "nanoid"
 import { createDb } from "@/lib/db"
-import { emails, users } from "@/lib/schema"
+import { emailGroups, emails, users } from "@/lib/schema"
 import { eq, and, gt, sql } from "drizzle-orm"
 import { EXPIRY_OPTIONS } from "@/types/email"
 import { EMAIL_CONFIG } from "@/config"
@@ -11,6 +11,8 @@ import { getUserRole } from "@/lib/auth"
 import { ROLES } from "@/lib/permissions"
 
 export const runtime = "edge"
+
+const getEmailNamePrefix = (value: string) => value.trim().split("@")[0].trim()
 
 export async function POST(request: Request) {
   const db = createDb()
@@ -50,10 +52,11 @@ export async function POST(request: Request) {
       }
     }
 
-    const { name, expiryTime, domain } = await request.json<{
+    const { name, expiryTime, domain, groupId } = await request.json<{
       name?: string
       expiryTime: number
       domain: string
+      groupId?: string | null
     }>()
 
     if (!EXPIRY_OPTIONS.some(option => option.value === expiryTime)) {
@@ -73,8 +76,31 @@ export async function POST(request: Request) {
       )
     }
 
-    const emailName = name?.trim() || nanoid(8)
+    const emailName = name ? getEmailNamePrefix(name) || nanoid(8) : nanoid(8)
     const address = `${emailName}@${domain}`
+    const selectedGroupId = typeof groupId === "string" && groupId.trim()
+      ? groupId.trim()
+      : null
+
+    if (selectedGroupId) {
+      const group = await db.query.emailGroups.findFirst({
+        where: and(
+          eq(emailGroups.id, selectedGroupId),
+          eq(emailGroups.userId, userId!)
+        ),
+        columns: {
+          id: true,
+        },
+      })
+
+      if (!group) {
+        return NextResponse.json(
+          { error: "无效的分组" },
+          { status: 400 }
+        )
+      }
+    }
+
     const existingEmail = await db.query.emails.findFirst({
       where: eq(sql`LOWER(${emails.address})`, address.toLowerCase())
     })
@@ -95,7 +121,8 @@ export async function POST(request: Request) {
       address,
       createdAt: now,
       expiresAt: expires,
-      userId: userId!
+      userId: userId!,
+      groupId: selectedGroupId
     }
     
     const result = await db.insert(emails)
