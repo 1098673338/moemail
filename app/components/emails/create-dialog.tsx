@@ -152,61 +152,58 @@ export function CreateDialog({ onEmailCreated, selectedGroupId, selectedGroupNam
           <DialogTitle>{t("title")}</DialogTitle>
         </DialogHeader>
         <div className="flex flex-col gap-4 py-4">
-          <div className="flex items-start gap-4">
-            <Label className={`${formLabelClass} pt-2`}>{t("name")}</Label>
-            <div className="flex min-w-0 flex-1 flex-col gap-2">
-              <div className="flex min-w-0 gap-2">
-                <Input
-                  value={emailName}
-                  onChange={(e) => setEmailName(e.target.value)}
-                  placeholder={t("namePlaceholder")}
-                  className="min-w-0 flex-1"
-                />
-                {(config?.emailDomainsArray?.length ?? 0) > 1 && (
-                  <Select value={currentDomain} onValueChange={setCurrentDomain}>
-                    <SelectTrigger className="w-[180px]">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {config?.emailDomainsArray?.map(d => (
-                        <SelectItem key={d} value={d}>@{d}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                )}
+          <div className="flex min-w-0 flex-col gap-2">
+            <div className="flex min-w-0 gap-2">
+              <Input
+                value={emailName}
+                onChange={(e) => setEmailName(e.target.value)}
+                placeholder={t("namePlaceholder")}
+                className="min-w-0 flex-1"
+              />
+              {(config?.emailDomainsArray?.length ?? 0) > 1 && (
+                <Select value={currentDomain} onValueChange={setCurrentDomain}>
+                  <SelectTrigger className="w-[180px]">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {config?.emailDomainsArray?.map(d => (
+                      <SelectItem key={d} value={d}>@{d}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+              <Button
+                variant="outline"
+                size="icon"
+                onClick={generateRandomName}
+                type="button"
+                className="shrink-0"
+              >
+                <RefreshCw className="w-4 h-4" />
+              </Button>
+            </div>
+            {emailNamePrefix ? (
+              <div className="flex h-11 min-w-0 items-center gap-2 rounded-md border border-gray-200 bg-gray-100 px-3 text-foreground">
+                <span className="shrink-0 text-xs text-muted-foreground">{t("addressPreview")}</span>
+                <span className="min-w-0 flex-1 truncate font-mono text-sm text-foreground">
+                  {`${emailNamePrefix}@${currentDomain}`}
+                </span>
                 <Button
-                  variant="outline"
+                  variant="ghost"
                   size="icon"
-                  onClick={generateRandomName}
                   type="button"
-                  className="shrink-0"
+                  className="h-7 w-7 shrink-0 hover:bg-black/10"
+                  aria-label={tCommon("copy")}
+                  onClick={copyEmailAddress}
                 >
-                  <RefreshCw className="w-4 h-4" />
+                  <Copy className="size-4" />
                 </Button>
               </div>
-              {emailNamePrefix ? (
-                <div className="flex h-11 min-w-0 items-center gap-2 rounded-md border border-gray-200 bg-gray-100 px-3 text-foreground">
-                  <span className="shrink-0 text-xs text-muted-foreground">{t("addressPreview")}</span>
-                  <span className="min-w-0 flex-1 truncate font-mono text-sm text-foreground">
-                    {`${emailNamePrefix}@${currentDomain}`}
-                  </span>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    type="button"
-                    className="h-7 w-7 shrink-0 hover:bg-black/10"
-                    aria-label={tCommon("copy")}
-                    onClick={copyEmailAddress}
-                  >
-                    <Copy className="size-4" />
-                  </Button>
-                </div>
-              ) : (
-                <div className="flex h-11 items-center rounded-md border border-gray-200 bg-gray-100 px-3">
-                  <span className="text-sm text-muted-foreground/60">{t("addressPreviewEmpty")}</span>
-                </div>
-              )}
-            </div>
+            ) : (
+              <div className="flex h-11 items-center rounded-md border border-gray-200 bg-gray-100 px-3">
+                <span className="text-sm text-muted-foreground/60">{t("addressPreviewEmpty")}</span>
+              </div>
+            )}
           </div>
 
           <div className="flex items-center gap-4">

@@ -1,11 +1,17 @@
 "use client"
 
 import Link from "next/link"
+import { useLocale } from "next-intl"
+import { useSession } from "next-auth/react"
 
 export function Logo() {
+  const locale = useLocale()
+  const { data: session } = useSession()
+  const href = session?.user ? `/${locale}/moe` : `/${locale}`
+
   return (
     <Link 
-      href="/"
+      href={href}
       className="flex items-center gap-2 hover:opacity-80 transition-opacity"
     >
       <div className="relative w-8 h-8">
