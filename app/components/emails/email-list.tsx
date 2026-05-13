@@ -62,6 +62,7 @@ interface EmailResponse {
 interface EmailGroup {
   id: string
   name: string
+  emailCount: number
 }
 
 export function EmailList({ onEmailSelect, selectedEmailId, refreshTrigger }: EmailListProps) {
@@ -244,7 +245,9 @@ export function EmailList({ onEmailSelect, selectedEmailId, refreshTrigger }: Em
       }
 
       setGroups(prev => prev.map(group => (
-        group.id === data.group!.id ? data.group! : group
+        group.id === data.group!.id
+          ? { ...group, name: data.group!.name }
+          : group
       )))
       setEditingGroup(null)
       setEditGroupName("")
@@ -329,6 +332,15 @@ export function EmailList({ onEmailSelect, selectedEmailId, refreshTrigger }: Em
     }
   }
 
+  const handleDeleteGroupClick = (group: EmailGroup) => {
+    if (group.emailCount === 0) {
+      deleteGroup(group, false)
+      return
+    }
+
+    setGroupToDelete(group)
+  }
+
   const moveEmailToGroup = async (email: Email, groupId: string | null) => {
     setMovingEmailId(email.id)
 
@@ -354,6 +366,18 @@ export function EmailList({ onEmailSelect, selectedEmailId, refreshTrigger }: Em
       const staysVisible = selectedGroupId === null
         || selectedGroupId === groupId
         || (selectedGroupId === "none" && !groupId)
+
+      setGroups(prev => prev.map(group => {
+        if (group.id === email.groupId) {
+          return { ...group, emailCount: Math.max(group.emailCount - 1, 0) }
+        }
+
+        if (group.id === groupId) {
+          return { ...group, emailCount: group.emailCount + 1 }
+        }
+
+        return group
+      }))
 
       setEmails(prev => {
         const updated = prev.map(item => (
@@ -436,6 +460,13 @@ export function EmailList({ onEmailSelect, selectedEmailId, refreshTrigger }: Em
       }
 
       setEmails(prev => prev.filter(e => e.id !== email.id))
+      if (email.groupId) {
+        setGroups(prev => prev.map(group => (
+          group.id === email.groupId
+            ? { ...group, emailCount: Math.max(group.emailCount - 1, 0) }
+            : group
+        )))
+      }
       setTotal(prev => prev - 1)
 
       toast({
@@ -582,7 +613,7 @@ export function EmailList({ onEmailSelect, selectedEmailId, refreshTrigger }: Em
                       size="icon"
                       className="h-6 w-6 hover:bg-black/10"
                       aria-label={tGroups("delete")}
-                      onClick={() => setGroupToDelete(group)}
+                      onClick={() => handleDeleteGroupClick(group)}
                     >
                       <Trash2 className="h-3.5 w-3.5" />
                     </Button>

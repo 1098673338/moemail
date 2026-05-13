@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server"
 import { createDb } from "@/lib/db"
-import { emailGroups } from "@/lib/schema"
+import { emailGroups, emails } from "@/lib/schema"
 import { getUserId } from "@/lib/apiKey"
-import { eq } from "drizzle-orm"
+import { asc, eq, sql } from "drizzle-orm"
 
 export const runtime = "edge"
 
@@ -16,13 +16,18 @@ export async function GET() {
   const db = createDb()
 
   try {
-    const groups = await db.query.emailGroups.findMany({
-      where: eq(emailGroups.userId, userId),
-      orderBy: (emailGroups, { asc }) => [
-        asc(emailGroups.createdAt),
-        asc(emailGroups.name),
-      ],
+    const groups = await db.select({
+      id: emailGroups.id,
+      name: emailGroups.name,
+      userId: emailGroups.userId,
+      createdAt: emailGroups.createdAt,
+      emailCount: sql<number>`count(${emails.id})`,
     })
+      .from(emailGroups)
+      .leftJoin(emails, eq(emails.groupId, emailGroups.id))
+      .where(eq(emailGroups.userId, userId))
+      .groupBy(emailGroups.id)
+      .orderBy(asc(emailGroups.createdAt), asc(emailGroups.name))
 
     return NextResponse.json({ groups })
   } catch (error) {
@@ -58,7 +63,7 @@ export async function POST(request: Request) {
       })
       .returning()
 
-    return NextResponse.json({ group })
+    return NextResponse.json({ group: { ...group, emailCount: 0 } })
   } catch (error) {
     console.error("Failed to create email group:", error)
     return NextResponse.json(
