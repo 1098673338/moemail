@@ -54,6 +54,7 @@
     "deleteSuccess": "分組已刪除",
     "deleteWithEmailsSuccess": "分組和郵箱已刪除",
     "deleteFailed": "刪除分組失敗",
+    "removeFromGroup": "移除目前分組",
     "moveTo": "移動到分組",
     "moveSuccess": "郵箱已移動",
     "moveFailed": "移動郵箱失敗",

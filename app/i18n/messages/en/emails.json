@@ -54,6 +54,7 @@
     "deleteSuccess": "Group deleted",
     "deleteWithEmailsSuccess": "Group and emails deleted",
     "deleteFailed": "Failed to delete group",
+    "removeFromGroup": "Remove from current group",
     "moveTo": "Move to group",
     "moveSuccess": "Email moved",
     "moveFailed": "Failed to move email",

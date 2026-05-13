@@ -684,24 +684,23 @@ export function EmailList({ onEmailSelect, selectedEmailId, refreshTrigger }: Em
                           disabled={!email.groupId}
                           onClick={() => moveEmailToGroup(email, null)}
                         >
-                          <Check className={cn("mr-2 h-4 w-4", !email.groupId ? "opacity-100" : "opacity-0")} />
-                          {tGroups("ungrouped")}
+                          <Check className="mr-2 h-4 w-4 opacity-0" />
+                          {tGroups("removeFromGroup")}
                         </DropdownMenuItem>
-                        {groups.length > 0 ? (
-                          groups.map(group => (
-                            <DropdownMenuItem
-                              key={group.id}
-                              disabled={email.groupId === group.id}
-                              onClick={() => moveEmailToGroup(email, group.id)}
-                            >
-                              <Check className={cn("mr-2 h-4 w-4", email.groupId === group.id ? "opacity-100" : "opacity-0")} />
-                              <span className="truncate">{group.name}</span>
-                            </DropdownMenuItem>
-                          ))
-                        ) : (
-                          <DropdownMenuItem disabled>
-                            {tGroups("noGroups")}
+                        {groups.map(group => (
+                          <DropdownMenuItem
+                            key={group.id}
+                            disabled={email.groupId === group.id}
+                            onClick={() => moveEmailToGroup(email, group.id)}
+                          >
+                            <Check className={cn("mr-2 h-4 w-4", email.groupId === group.id ? "opacity-100" : "opacity-0")} />
+                            <span className="truncate">{group.name}</span>
                           </DropdownMenuItem>
+                        ))}
+                        {groups.length === 0 && (
+                          <div className="px-2 py-3 text-center text-xs text-gray-500">
+                            {tGroups("noGroups")}
+                          </div>
                         )}
                       </DropdownMenuContent>
                     </DropdownMenu>

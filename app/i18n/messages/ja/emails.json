@@ -54,6 +54,7 @@
     "deleteSuccess": "グループを削除しました",
     "deleteWithEmailsSuccess": "グループとメールボックスを削除しました",
     "deleteFailed": "グループの削除に失敗しました",
+    "removeFromGroup": "現在のグループから外す",
     "moveTo": "グループへ移動",
     "moveSuccess": "メールボックスを移動しました",
     "moveFailed": "メールボックスの移動に失敗しました",
