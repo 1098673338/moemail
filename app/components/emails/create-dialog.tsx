@@ -185,16 +185,16 @@ export function CreateDialog({ onEmailCreated, selectedGroupId, selectedGroupNam
                 </Button>
               </div>
               {emailNamePrefix ? (
-                <div className="flex min-h-9 min-w-0 items-center gap-2 rounded-md border border-dashed border-primary/30 bg-primary/5 px-3 py-2 text-foreground">
+                <div className="flex h-11 min-w-0 items-center gap-2 rounded-md border border-gray-200 bg-gray-100 px-3 text-foreground">
                   <span className="shrink-0 text-xs text-muted-foreground">{t("addressPreview")}</span>
-                  <span className="min-w-0 flex-1 truncate font-mono text-sm text-primary">
+                  <span className="min-w-0 flex-1 truncate font-mono text-sm text-foreground">
                     {`${emailNamePrefix}@${currentDomain}`}
                   </span>
                   <Button
                     variant="ghost"
                     size="icon"
                     type="button"
-                    className="h-7 w-7 shrink-0 hover:bg-primary/10"
+                    className="h-7 w-7 shrink-0 hover:bg-black/10"
                     aria-label={tCommon("copy")}
                     onClick={copyEmailAddress}
                   >
@@ -202,7 +202,7 @@ export function CreateDialog({ onEmailCreated, selectedGroupId, selectedGroupNam
                   </Button>
                 </div>
               ) : (
-                <div className="flex min-h-9 items-center rounded-md border border-dashed bg-muted/40 px-3 py-2">
+                <div className="flex h-11 items-center rounded-md border border-gray-200 bg-gray-100 px-3">
                   <span className="text-sm text-muted-foreground/60">{t("addressPreviewEmpty")}</span>
                 </div>
               )}
