@@ -103,6 +103,7 @@ export function MessageListContainer({ email, onMessageSelect, selectedMessageId
               messageType="received"
               onMessageSelect={onMessageSelect}
               selectedMessageId={selectedMessageId}
+              refreshTrigger={refreshTrigger}
               emptyStateOffsetClass="-translate-y-[80px]"
               onTotalChange={handleTotalChange}
             />
@@ -127,6 +128,7 @@ export function MessageListContainer({ email, onMessageSelect, selectedMessageId
             messageType="received"
             onMessageSelect={onMessageSelect}
             selectedMessageId={selectedMessageId}
+            refreshTrigger={refreshTrigger}
             emptyStateOffsetClass="-translate-y-[52px]"
           />
         </div>

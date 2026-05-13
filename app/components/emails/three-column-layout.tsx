@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { useTranslations } from "next-intl"
 import { EmailList } from "./email-list"
 import { MessageListContainer } from "./message-list-container"
@@ -23,6 +23,7 @@ export function ThreeColumnLayout() {
   const [selectedMessageType, setSelectedMessageType] = useState<'received' | 'sent'>('received')
   const [refreshTrigger, setRefreshTrigger] = useState(0)
   const [emailRefreshTrigger, setEmailRefreshTrigger] = useState(0)
+  const lastVisibilityRefreshAtRef = useRef(0)
   const { copyToClipboard } = useCopy()
   const { canSend: canSendEmails } = useSendPermission()
 
@@ -51,6 +52,35 @@ export function ThreeColumnLayout() {
     setEmailRefreshTrigger(prev => prev + 1)
   }
 
+  const handleEmailListRefresh = () => {
+    if (selectedEmail) {
+      setRefreshTrigger(prev => prev + 1)
+    }
+  }
+
+  useEffect(() => {
+    const refreshVisibleLists = () => {
+      if (document.visibilityState !== "visible") return
+
+      const now = Date.now()
+      if (now - lastVisibilityRefreshAtRef.current < 1000) return
+      lastVisibilityRefreshAtRef.current = now
+
+      setEmailRefreshTrigger(prev => prev + 1)
+      if (selectedEmail) {
+        setRefreshTrigger(prev => prev + 1)
+      }
+    }
+
+    document.addEventListener("visibilitychange", refreshVisibleLists)
+    window.addEventListener("focus", refreshVisibleLists)
+
+    return () => {
+      document.removeEventListener("visibilitychange", refreshVisibleLists)
+      window.removeEventListener("focus", refreshVisibleLists)
+    }
+  }, [selectedEmail])
+
   return (
     <div className="flex h-full min-h-0 flex-col pb-5 pt-16">
       <div className="grid min-h-0 flex-1 gap-5" style={{ gridTemplateColumns: "repeat(24, minmax(0, 1fr))" }}>
@@ -71,6 +101,7 @@ export function ThreeColumnLayout() {
               }}
               selectedEmailId={selectedEmail?.id}
               refreshTrigger={emailRefreshTrigger}
+              onRefresh={handleEmailListRefresh}
             />
           </div>
         </div>

@@ -51,6 +51,7 @@ interface EmailListProps {
   onEmailSelect: (email: Email | null) => void
   selectedEmailId?: string
   refreshTrigger?: number
+  onRefresh?: () => void
 }
 
 interface EmailResponse {
@@ -65,7 +66,7 @@ interface EmailGroup {
   emailCount: number
 }
 
-export function EmailList({ onEmailSelect, selectedEmailId, refreshTrigger }: EmailListProps) {
+export function EmailList({ onEmailSelect, selectedEmailId, refreshTrigger, onRefresh }: EmailListProps) {
   const { data: session } = useSession()
   const { config } = useConfig()
   const { role } = useUserRole()
@@ -161,7 +162,11 @@ export function EmailList({ onEmailSelect, selectedEmailId, refreshTrigger }: Em
 
   const handleRefresh = async () => {
     setRefreshing(true)
-    await fetchEmails(undefined, selectedGroupId)
+    onRefresh?.()
+    await Promise.all([
+      fetchGroups(),
+      fetchEmails(undefined, selectedGroupId, true),
+    ])
   }
 
   const createGroup = async () => {
@@ -439,7 +444,10 @@ export function EmailList({ onEmailSelect, selectedEmailId, refreshTrigger }: Em
   useEffect(() => {
     if (!session || !refreshTrigger) return
     setRefreshing(true)
-    fetchEmails(undefined, selectedGroupId)
+    Promise.all([
+      fetchGroups(),
+      fetchEmails(undefined, selectedGroupId, true),
+    ])
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [refreshTrigger])
 
@@ -627,11 +635,17 @@ export function EmailList({ onEmailSelect, selectedEmailId, refreshTrigger }: Em
         
         <div
           className={cn(
-            "min-h-0 flex-1 overflow-auto p-2",
+            "relative min-h-0 flex-1 overflow-auto p-2",
             (loading || (!loading && emails.length === 0)) && "flex"
           )}
           onScroll={handleScroll}
         >
+          {refreshing && !loading && (
+            <div className="pointer-events-none absolute left-2 right-2 top-2 z-10 flex items-center justify-center gap-2 rounded border border-gray-200 bg-background/95 py-2 text-xs text-gray-500 shadow-sm">
+              <Loader2 className="h-4 w-4 animate-spin text-primary/50" />
+              <span>{t("loading")}</span>
+            </div>
+          )}
           {loading ? (
             <div className="flex flex-1 -translate-y-[52px] flex-col items-center justify-center px-6 text-center text-sm text-gray-500">
               <Loader2 className="mb-3 h-8 w-8 animate-spin text-primary/40" />
