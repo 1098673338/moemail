@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server"
 import { createDb } from "@/lib/db"
 import { emailGroups, emails, messages } from "@/lib/schema"
-import { eq, and, lt, or, sql, ne, isNull } from "drizzle-orm"
+import { eq, and, lt, or, sql, ne, isNull, desc } from "drizzle-orm"
 import { encodeCursor, decodeCursor } from "@/lib/cursor"
 import { getUserId } from "@/lib/apiKey"
 import { checkBasicSendPermission } from "@/lib/send-permissions"
@@ -114,6 +114,8 @@ export async function GET(
   const { searchParams } = new URL(request.url)
   const cursorStr = searchParams.get('cursor')
   const messageType = searchParams.get('type')
+  const summaryOnly = searchParams.get('summary') === '1' || searchParams.get('summary') === 'true'
+  const countOnly = searchParams.get('countOnly') === '1' || searchParams.get('countOnly') === 'true'
 
   try {
     const db = createDb()
@@ -159,6 +161,14 @@ export async function GET(
       .where(baseConditions)
     const totalCount = Number(totalResult[0].count)
 
+    if (countOnly) {
+      return NextResponse.json({
+        messages: [],
+        nextCursor: null,
+        total: totalCount
+      })
+    }
+
     const conditions = [baseConditions]
 
     if (cursorStr) {
@@ -176,15 +186,33 @@ export async function GET(
     }
 
     const orderByTime = messageType === 'sent' ? messages.sentAt : messages.receivedAt
-    
-    const results = await db.query.messages.findMany({
-      where: and(...conditions),
-      orderBy: (messages, { desc }) => [
-        desc(orderByTime),
-        desc(messages.id)
-      ],
-      limit: PAGE_SIZE + 1
-    })
+    const summaryFields = {
+      id: messages.id,
+      fromAddress: messages.fromAddress,
+      toAddress: messages.toAddress,
+      subject: messages.subject,
+      type: messages.type,
+      sentAt: messages.sentAt,
+      receivedAt: messages.receivedAt,
+    }
+
+    const results = summaryOnly
+      ? await db
+          .select(summaryFields)
+          .from(messages)
+          .where(and(...conditions))
+          .orderBy(desc(orderByTime), desc(messages.id))
+          .limit(PAGE_SIZE + 1)
+      : await db
+          .select({
+            ...summaryFields,
+            content: messages.content,
+            html: messages.html,
+          })
+          .from(messages)
+          .where(and(...conditions))
+          .orderBy(desc(orderByTime), desc(messages.id))
+          .limit(PAGE_SIZE + 1)
     
     const hasMore = results.length > PAGE_SIZE
     const nextCursor = hasMore 
@@ -198,16 +226,26 @@ export async function GET(
     const messageList = hasMore ? results.slice(0, PAGE_SIZE) : results
 
     return NextResponse.json({ 
-      messages: messageList.map(msg => ({
-        id: msg.id,
-        from_address: msg?.fromAddress,
-        to_address: msg?.toAddress,
-        subject: msg.subject,
-        content: msg.content,
-        html: msg.html,
-        sent_at: msg.sentAt?.getTime(),
-        received_at: msg.receivedAt?.getTime()
-      })),
+      messages: messageList.map(msg => {
+        const message = {
+          id: msg.id,
+          from_address: msg?.fromAddress,
+          to_address: msg?.toAddress,
+          subject: msg.subject,
+          sent_at: msg.sentAt?.getTime(),
+          received_at: msg.receivedAt?.getTime(),
+          type: msg.type as 'received' | 'sent' | undefined,
+        }
+
+        if (summaryOnly) return message
+
+        const fullMessage = msg as typeof messages.$inferSelect
+        return {
+          ...message,
+          content: fullMessage.content,
+          html: fullMessage.html,
+        }
+      }),
       nextCursor,
       total: totalCount
     })

@@ -17,7 +17,8 @@ interface Message {
 interface SharedMessageListProps {
   messages: Message[]
   selectedMessageId?: string | null
-  onMessageSelect: (messageId: string) => void
+  onMessageSelect: (message: Message) => void
+  onMessagePrefetch?: (message: Message) => void
   onLoadMore?: () => void
   onRefresh?: () => void
   loading?: boolean
@@ -39,6 +40,7 @@ export function SharedMessageList({
   messages,
   selectedMessageId,
   onMessageSelect,
+  onMessagePrefetch,
   onLoadMore,
   onRefresh,
   loading = false,
@@ -97,9 +99,12 @@ export function SharedMessageList({
                 key={message.id}
                 onClick={() => {
                   if (selectedMessageId !== message.id) {
-                    onMessageSelect(message.id)
+                    onMessageSelect(message)
                   }
                 }}
+                onFocus={() => onMessagePrefetch?.(message)}
+                onMouseEnter={() => onMessagePrefetch?.(message)}
+                tabIndex={0}
                 className={cn(
                   "py-2 px-3 rounded cursor-pointer",
                   selectedMessageId === message.id

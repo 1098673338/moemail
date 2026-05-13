@@ -12,12 +12,26 @@ interface MessageListContainerProps {
     id: string
     address: string
   }
-  onMessageSelect: (messageId: string | null, messageType?: 'received' | 'sent') => void
+  onMessageSelect: (messageId: string | null, messageType?: MessageType, message?: MessageSummary) => void
+  onMessagePrefetch?: (messageId: string, messageType: MessageType, message: MessageSummary) => void
   selectedMessageId?: string | null
   refreshTrigger?: number
 }
 
-export function MessageListContainer({ email, onMessageSelect, selectedMessageId, refreshTrigger }: MessageListContainerProps) {
+type MessageType = 'received' | 'sent'
+
+interface MessageSummary {
+  id: string
+  from_address?: string
+  to_address?: string
+  subject: string
+  received_at?: number
+  sent_at?: number
+  content?: string
+  html?: string
+}
+
+export function MessageListContainer({ email, onMessageSelect, onMessagePrefetch, selectedMessageId, refreshTrigger }: MessageListContainerProps) {
   const t = useTranslations("emails.messages")
   const [activeTab, setActiveTab] = useState<'received' | 'sent'>('received')
   const [messageCounts, setMessageCounts] = useState<Record<'received' | 'sent', number>>({
@@ -33,6 +47,7 @@ export function MessageListContainer({ email, onMessageSelect, selectedMessageId
 
     const fetchCount = async (messageType: 'received' | 'sent') => {
       const url = new URL(`/api/emails/${email.id}`, window.location.origin)
+      url.searchParams.set('countOnly', '1')
       if (messageType === 'sent') {
         url.searchParams.set('type', 'sent')
       }
@@ -102,6 +117,7 @@ export function MessageListContainer({ email, onMessageSelect, selectedMessageId
               email={email}
               messageType="received"
               onMessageSelect={onMessageSelect}
+              onMessagePrefetch={onMessagePrefetch}
               selectedMessageId={selectedMessageId}
               refreshTrigger={refreshTrigger}
               emptyStateOffsetClass="-translate-y-[80px]"
@@ -114,6 +130,7 @@ export function MessageListContainer({ email, onMessageSelect, selectedMessageId
               email={email}
               messageType="sent"
               onMessageSelect={onMessageSelect}
+              onMessagePrefetch={onMessagePrefetch}
               selectedMessageId={selectedMessageId}
               refreshTrigger={refreshTrigger}
               emptyStateOffsetClass="-translate-y-[80px]"
@@ -127,6 +144,7 @@ export function MessageListContainer({ email, onMessageSelect, selectedMessageId
             email={email}
             messageType="received"
             onMessageSelect={onMessageSelect}
+            onMessagePrefetch={onMessagePrefetch}
             selectedMessageId={selectedMessageId}
             refreshTrigger={refreshTrigger}
             emptyStateOffsetClass="-translate-y-[52px]"

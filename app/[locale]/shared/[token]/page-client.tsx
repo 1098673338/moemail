@@ -22,8 +22,8 @@ interface Message {
   from_address?: string
   to_address?: string
   subject: string
-  received_at?: Date
-  sent_at?: Date
+  received_at?: Date | number
+  sent_at?: Date | number
   type?: "received" | "sent"
 }
 
@@ -58,6 +58,8 @@ export function SharedEmailPageClient({
   const [refreshing, setRefreshing] = useState(false)
   const pollTimeoutRef = useRef<Timer | null>(null)
   const messagesRef = useRef<Message[]>(initialMessages)
+  const messageDetailCacheRef = useRef<Map<string, MessageDetail>>(new Map())
+  const messageDetailRequestRef = useRef<Map<string, Promise<MessageDetail>>>(new Map())
   const columnClass = "border border-gray-200 bg-background rounded-lg overflow-hidden"
 
   // 当 messages 改变时更新 ref
@@ -156,22 +158,58 @@ export function SharedEmailPageClient({
     }
   }
 
-  const fetchMessageDetail = async (messageId: string) => {
-    if (selectedMessage?.id === messageId) {
+  const fetchMessageDetailData = (messageId: string) => {
+    const cachedMessage = messageDetailCacheRef.current.get(messageId)
+    if (cachedMessage) return Promise.resolve(cachedMessage)
+
+    const existingRequest = messageDetailRequestRef.current.get(messageId)
+    if (existingRequest) return existingRequest
+
+    const request = fetch(`/api/shared/${token}/messages/${messageId}`)
+      .then(async (response) => {
+        if (!response.ok) {
+          throw new Error("Failed to load message")
+        }
+
+        const data = await response.json() as { message: MessageDetail }
+        messageDetailCacheRef.current.set(messageId, data.message)
+        return data.message
+      })
+      .finally(() => {
+        messageDetailRequestRef.current.delete(messageId)
+      })
+
+    messageDetailRequestRef.current.set(messageId, request)
+    return request
+  }
+
+  const prefetchMessageDetail = (message: Message) => {
+    fetchMessageDetailData(message.id).catch(() => {
+      // 预取失败不打断当前页面，点击详情时会再处理。
+    })
+  }
+
+  const fetchMessageDetail = async (message: Message) => {
+    if (
+      selectedMessage?.id === message.id &&
+      (typeof selectedMessage.content === "string" || typeof selectedMessage.html === "string")
+    ) {
+      return
+    }
+
+    const cachedMessage = messageDetailCacheRef.current.get(message.id)
+    if (cachedMessage) {
+      setSelectedMessage(cachedMessage)
+      setMessageLoading(false)
       return
     }
 
     try {
+      setSelectedMessage(message)
       setMessageLoading(true)
 
-      const response = await fetch(`/api/shared/${token}/messages/${messageId}`)
-
-      if (!response.ok) {
-        throw new Error("Failed to load message")
-      }
-
-      const data = await response.json() as { message: MessageDetail }
-      setSelectedMessage(data.message)
+      const data = await fetchMessageDetailData(message.id)
+      setSelectedMessage(data)
     } catch (err) {
       console.error("Failed to fetch message:", err)
     } finally {
@@ -223,6 +261,7 @@ export function SharedEmailPageClient({
               }))}
               selectedMessageId={selectedMessage?.id}
               onMessageSelect={fetchMessageDetail}
+              onMessagePrefetch={prefetchMessageDetail}
               onLoadMore={handleLoadMore}
               onRefresh={handleRefresh}
               loading={false}

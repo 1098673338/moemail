@@ -36,12 +36,13 @@ interface MessageListProps {
     id: string
     address: string
   }
-  messageType: 'received' | 'sent'
-  onMessageSelect: (messageId: string | null, messageType?: 'received' | 'sent') => void
+  messageType: MessageType
+  onMessageSelect: (messageId: string | null, messageType?: MessageType, message?: Message) => void
+  onMessagePrefetch?: (messageId: string, messageType: MessageType, message: Message) => void
   selectedMessageId?: string | null
   refreshTrigger?: number
   emptyStateOffsetClass?: string
-  onTotalChange?: (messageType: 'received' | 'sent', total: number) => void
+  onTotalChange?: (messageType: MessageType, total: number) => void
 }
 
 interface MessageResponse {
@@ -50,7 +51,9 @@ interface MessageResponse {
   total: number
 }
 
-export function MessageList({ email, messageType, onMessageSelect, selectedMessageId, refreshTrigger, emptyStateOffsetClass, onTotalChange }: MessageListProps) {
+type MessageType = 'received' | 'sent'
+
+export function MessageList({ email, messageType, onMessageSelect, onMessagePrefetch, selectedMessageId, refreshTrigger, emptyStateOffsetClass, onTotalChange }: MessageListProps) {
   const t = useTranslations("emails.messages")
   const tList = useTranslations("emails.list")
   const tCommon = useTranslations("common.actions")
@@ -81,6 +84,7 @@ export function MessageList({ email, messageType, onMessageSelect, selectedMessa
       if (messageType === 'sent') {
         url.searchParams.set('type', 'sent')
       }
+      url.searchParams.set('summary', '1')
       if (cursor) {
         url.searchParams.set('cursor', cursor)
       }
@@ -259,7 +263,10 @@ export function MessageList({ email, messageType, onMessageSelect, selectedMessa
             {messages.map(message => (
               <div
                 key={message.id}
-                onClick={() => onMessageSelect(message.id, messageType)}
+                onClick={() => onMessageSelect(message.id, messageType, message)}
+                onFocus={() => onMessagePrefetch?.(message.id, messageType, message)}
+                onMouseEnter={() => onMessagePrefetch?.(message.id, messageType, message)}
+                tabIndex={0}
                 className={cn(
                   "py-2 px-3 rounded cursor-pointer text-sm group",
                   selectedMessageId === message.id

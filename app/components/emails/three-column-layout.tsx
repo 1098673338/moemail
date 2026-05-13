@@ -1,10 +1,10 @@
 "use client"
 
-import { useEffect, useRef, useState } from "react"
+import { useState } from "react"
 import { useTranslations } from "next-intl"
 import { EmailList } from "./email-list"
 import { MessageListContainer } from "./message-list-container"
-import { MessageView } from "./message-view"
+import { MessageView, prefetchMessage } from "./message-view"
 import { CreateDialog } from "./create-dialog"
 import { SendDialog } from "./send-dialog"
 import { useCopy } from "@/hooks/use-copy"
@@ -16,14 +16,27 @@ interface Email {
   address: string
 }
 
+type MessageType = 'received' | 'sent'
+
+interface MessageSummary {
+  id: string
+  from_address?: string
+  to_address?: string
+  subject: string
+  received_at?: number
+  sent_at?: number
+  content?: string
+  html?: string
+}
+
 export function ThreeColumnLayout() {
   const t = useTranslations("emails.layout")
   const [selectedEmail, setSelectedEmail] = useState<Email | null>(null)
   const [selectedMessageId, setSelectedMessageId] = useState<string | null>(null)
-  const [selectedMessageType, setSelectedMessageType] = useState<'received' | 'sent'>('received')
+  const [selectedMessageType, setSelectedMessageType] = useState<MessageType>('received')
+  const [selectedMessagePreview, setSelectedMessagePreview] = useState<MessageSummary | null>(null)
   const [refreshTrigger, setRefreshTrigger] = useState(0)
   const [emailRefreshTrigger, setEmailRefreshTrigger] = useState(0)
-  const lastVisibilityRefreshAtRef = useRef(0)
   const { copyToClipboard } = useCopy()
   const { canSend: canSendEmails } = useSendPermission()
 
@@ -39,9 +52,17 @@ export function ThreeColumnLayout() {
     copyToClipboard(selectedEmail?.address || "")
   }
 
-  const handleMessageSelect = (messageId: string | null, messageType: 'received' | 'sent' = 'received') => {
+  const handleMessageSelect = (messageId: string | null, messageType: MessageType = 'received', message?: MessageSummary) => {
     setSelectedMessageId(messageId)
     setSelectedMessageType(messageType)
+    setSelectedMessagePreview(message ?? null)
+  }
+
+  const handleMessagePrefetch = (messageId: string, messageType: MessageType) => {
+    if (!selectedEmail) return
+    prefetchMessage(selectedEmail.id, messageId, messageType).catch(() => {
+      // Prefetch is a best-effort speedup; the detail view still handles errors.
+    })
   }
 
   const handleSendSuccess = () => {
@@ -57,29 +78,6 @@ export function ThreeColumnLayout() {
       setRefreshTrigger(prev => prev + 1)
     }
   }
-
-  useEffect(() => {
-    const refreshVisibleLists = () => {
-      if (document.visibilityState !== "visible") return
-
-      const now = Date.now()
-      if (now - lastVisibilityRefreshAtRef.current < 1000) return
-      lastVisibilityRefreshAtRef.current = now
-
-      setEmailRefreshTrigger(prev => prev + 1)
-      if (selectedEmail) {
-        setRefreshTrigger(prev => prev + 1)
-      }
-    }
-
-    document.addEventListener("visibilitychange", refreshVisibleLists)
-    window.addEventListener("focus", refreshVisibleLists)
-
-    return () => {
-      document.removeEventListener("visibilitychange", refreshVisibleLists)
-      window.removeEventListener("focus", refreshVisibleLists)
-    }
-  }, [selectedEmail])
 
   return (
     <div className="flex h-full min-h-0 flex-col pb-5 pt-16">
@@ -98,6 +96,7 @@ export function ThreeColumnLayout() {
               onEmailSelect={(email) => {
                 setSelectedEmail(email)
                 setSelectedMessageId(null)
+                setSelectedMessagePreview(null)
               }}
               selectedEmailId={selectedEmail?.id}
               refreshTrigger={emailRefreshTrigger}
@@ -138,6 +137,7 @@ export function ThreeColumnLayout() {
               <MessageListContainer
                 email={selectedEmail}
                 onMessageSelect={handleMessageSelect}
+                onMessagePrefetch={handleMessagePrefetch}
                 selectedMessageId={selectedMessageId}
                 refreshTrigger={refreshTrigger}
               />
@@ -157,7 +157,14 @@ export function ThreeColumnLayout() {
                 emailId={selectedEmail.id}
                 messageId={selectedMessageId}
                 messageType={selectedMessageType}
-                onClose={() => setSelectedMessageId(null)}
+                initialMessage={selectedMessagePreview ? {
+                  ...selectedMessagePreview,
+                  type: selectedMessageType,
+                } : undefined}
+                onClose={() => {
+                  setSelectedMessageId(null)
+                  setSelectedMessagePreview(null)
+                }}
               />
             </div>
           ) : (

@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useRef } from "react"
+import { useState, useEffect, useRef, useCallback } from "react"
 import { useTranslations } from "next-intl"
 import { Loader2, Share2 } from "lucide-react"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
@@ -13,7 +13,7 @@ interface Message {
   from_address?: string
   to_address?: string
   subject: string
-  content: string
+  content?: string
   html?: string
   received_at?: number
   sent_at?: number
@@ -24,66 +24,127 @@ interface MessageViewProps {
   emailId: string
   messageId: string
   messageType?: 'received' | 'sent'
+  initialMessage?: Message
   onClose: () => void
 }
 
 type ViewMode = "html" | "text"
 
-export function MessageView({ emailId, messageId, messageType = 'received' }: MessageViewProps) {
+const messageCache = new Map<string, Message>()
+const messageRequestCache = new Map<string, Promise<Message>>()
+
+const getMessageCacheKey = (
+  emailId: string,
+  messageId: string,
+  messageType: 'received' | 'sent' = 'received'
+) => `${emailId}:${messageType}:${messageId}`
+
+const hasMessageBody = (message: Message | null) => {
+  return typeof message?.content === "string" || typeof message?.html === "string"
+}
+
+export async function prefetchMessage(
+  emailId: string,
+  messageId: string,
+  messageType: 'received' | 'sent' = 'received'
+) {
+  const cacheKey = getMessageCacheKey(emailId, messageId, messageType)
+  const cachedMessage = messageCache.get(cacheKey)
+
+  if (cachedMessage) return cachedMessage
+
+  const existingRequest = messageRequestCache.get(cacheKey)
+  if (existingRequest) return existingRequest
+
+  const request = fetch(`/api/emails/${emailId}/${messageId}${messageType === 'sent' ? '?type=sent' : ''}`)
+    .then(async (response) => {
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => null) as { error?: string } | null
+        throw new Error(errorData?.error || "Failed to load message")
+      }
+
+      const data = await response.json() as { message: Message }
+      messageCache.set(cacheKey, data.message)
+      return data.message
+    })
+    .finally(() => {
+      messageRequestCache.delete(cacheKey)
+    })
+
+  messageRequestCache.set(cacheKey, request)
+  return request
+}
+
+export function MessageView({ emailId, messageId, messageType = 'received', initialMessage }: MessageViewProps) {
   const t = useTranslations("emails.messageView")
   const tList = useTranslations("emails.list")
-  const [message, setMessage] = useState<Message | null>(null)
-  const [loading, setLoading] = useState(true)
+  const cacheKey = getMessageCacheKey(emailId, messageId, messageType)
+  const cachedInitialMessage = messageCache.get(cacheKey)
+  const firstMessage = cachedInitialMessage ?? initialMessage ?? null
+  const [message, setMessage] = useState<Message | null>(firstMessage)
+  const [loading, setLoading] = useState(!hasMessageBody(firstMessage))
   const [error, setError] = useState<string | null>(null)
-  const [viewMode, setViewMode] = useState<ViewMode>("html")
+  const [viewMode, setViewMode] = useState<ViewMode>(firstMessage?.html ? "html" : "text")
   const iframeRef = useRef<HTMLIFrameElement>(null)
   const { toast } = useToast()
 
   useEffect(() => {
+    const cacheKey = getMessageCacheKey(emailId, messageId, messageType)
+    const cachedMessage = messageCache.get(cacheKey)
+    const nextInitialMessage = cachedMessage ?? initialMessage ?? null
+    let cancelled = false
+
+    setError(null)
+    setMessage(nextInitialMessage)
+    setViewMode(nextInitialMessage?.html ? "html" : "text")
+
+    if (hasMessageBody(nextInitialMessage)) {
+      setLoading(false)
+      return
+    }
+
     const fetchMessage = async () => {
       try {
         setLoading(true)
-        setError(null)
-        
-        const url = `/api/emails/${emailId}/${messageId}${messageType === 'sent' ? '?type=sent' : ''}`;
-        
-        const response = await fetch(url)
-        
-        if (!response.ok) {
-          const errorData = await response.json()
-          const errorMessage = (errorData as { error?: string }).error || t("loadError")
-          setError(errorMessage)
+
+        const data = await prefetchMessage(emailId, messageId, messageType)
+        if (cancelled) return
+
+        setMessage(data)
+        setViewMode(data.html ? "html" : "text")
+      } catch (error) {
+        if (cancelled) return
+
+        const errorMessage = error instanceof TypeError
+          ? t("networkError")
+          : error instanceof Error && error.message !== "Failed to load message"
+            ? error.message
+            : t("loadError")
+        setError(errorMessage)
+
+        if (!nextInitialMessage) {
           toast({
             title: tList("error"),
             description: errorMessage,
             variant: "destructive"
           })
-          return
         }
-        
-        const data = await response.json() as { message: Message }
-        setMessage(data.message)
-        if (!data.message.html) {
-          setViewMode("text")
-        }
-      } catch (error) {
-        const errorMessage = t("networkError")
-        setError(errorMessage)
-        toast({
-          title: tList("error"), 
-          description: errorMessage,
-          variant: "destructive"
-        })
         console.error("Failed to fetch message:", error)
       } finally {
-        setLoading(false)
+        if (!cancelled) {
+          setLoading(false)
+        }
       }
     }
 
     fetchMessage()
-  }, [emailId, messageId, messageType, toast, t, tList])
 
-  const updateIframeContent = () => {
+    return () => {
+      cancelled = true
+    }
+  }, [emailId, initialMessage, messageId, messageType, toast, t, tList])
+
+  const updateIframeContent = useCallback(() => {
     if (viewMode === "html" && message?.html && iframeRef.current) {
       const iframe = iframeRef.current
       const doc = iframe.contentDocument || iframe.contentWindow?.document
@@ -156,13 +217,13 @@ export function MessageView({ emailId, messageId, messageType = 'received' }: Me
         }
       }
     }
-  }
-
-  useEffect(() => {
-    updateIframeContent()
   }, [message?.html, viewMode])
 
-  if (loading) {
+  useEffect(() => {
+    return updateIframeContent()
+  }, [updateIframeContent])
+
+  if (loading && !message) {
     return (
       <div className="flex h-full flex-col items-center justify-center px-6 text-center text-sm text-gray-500">
         <Loader2 className="mb-3 h-8 w-8 animate-spin text-primary/40" />
@@ -171,7 +232,7 @@ export function MessageView({ emailId, messageId, messageType = 'received' }: Me
     )
   }
 
-  if (error) {
+  if (error && !message) {
     return (
       <div className="flex flex-col items-center justify-center h-32 text-center">
         <p className="text-sm text-destructive mb-2">{error}</p>
@@ -187,6 +248,7 @@ export function MessageView({ emailId, messageId, messageType = 'received' }: Me
 
   if (!message) return null
   const isSentMessage = messageType === 'sent' || message.type === 'sent'
+  const bodyLoaded = hasMessageBody(message)
 
   return (
     <div className="h-full flex flex-col">
@@ -245,7 +307,22 @@ export function MessageView({ emailId, messageId, messageType = 'received' }: Me
       )}
       
       <div className="flex-1 overflow-auto relative">
-        {viewMode === "html" && message.html ? (
+        {loading && !bodyLoaded ? (
+          <div className="flex h-full flex-col items-center justify-center px-6 text-center text-sm text-gray-500">
+            <Loader2 className="mb-3 h-8 w-8 animate-spin text-primary/40" />
+            <p>{t("loading")}</p>
+          </div>
+        ) : error ? (
+          <div className="flex h-full flex-col items-center justify-center px-6 text-center">
+            <p className="mb-2 text-sm text-destructive">{error}</p>
+            <button
+              onClick={() => window.location.reload()}
+              className="text-xs text-primary hover:underline"
+            >
+              {t("retry")}
+            </button>
+          </div>
+        ) : viewMode === "html" && message.html ? (
           <iframe
             ref={iframeRef}
             className="absolute inset-0 w-full h-full border-0 bg-transparent"

@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useRef } from "react"
+import { useState, useCallback, useEffect, useRef } from "react"
 import { Loader2, MailOpen } from "lucide-react"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Label } from "@/components/ui/label"
@@ -35,6 +35,10 @@ interface SharedMessageDetailProps {
 
 type ViewMode = "html" | "text"
 
+const hasMessageBody = (message: MessageDetail | null) => {
+  return typeof message?.content === "string" || typeof message?.html === "string"
+}
+
 export function SharedMessageDetail({
   message,
   loading = false,
@@ -54,7 +58,7 @@ export function SharedMessageDetail({
     }
   }, [message])
 
-  const updateIframeContent = () => {
+  const updateIframeContent = useCallback(() => {
     if (viewMode === "html" && message?.html && iframeRef.current) {
       const iframe = iframeRef.current
       const doc = iframe.contentDocument || iframe.contentWindow?.document
@@ -124,13 +128,13 @@ export function SharedMessageDetail({
         }
       }
     }
-  }
-
-  useEffect(() => {
-    updateIframeContent()
   }, [message?.html, viewMode])
 
-  if (loading) {
+  useEffect(() => {
+    return updateIframeContent()
+  }, [updateIframeContent])
+
+  if (loading && !message) {
     return (
       <div className="flex h-full flex-col items-center justify-center px-6 text-center text-sm text-gray-500">
         <Loader2 className="mb-3 h-8 w-8 animate-spin text-primary/40" />
@@ -148,6 +152,7 @@ export function SharedMessageDetail({
     )
   }
   const isSentMessage = message.type === "sent"
+  const bodyLoaded = hasMessageBody(message)
 
   return (
     <div className="h-full flex flex-col">
@@ -199,7 +204,12 @@ export function SharedMessageDetail({
       )}
 
       <div className="flex-1 overflow-auto relative">
-        {viewMode === "html" && message.html ? (
+        {loading && !bodyLoaded ? (
+          <div className="flex h-full flex-col items-center justify-center px-6 text-center text-sm text-gray-500">
+            <Loader2 className="mb-3 h-8 w-8 animate-spin text-primary/40" />
+            <p>{t.loading}</p>
+          </div>
+        ) : viewMode === "html" && message.html ? (
           <iframe
             ref={iframeRef}
             className="absolute inset-0 w-full h-full border-0 bg-transparent"

@@ -61,26 +61,26 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
     const db = createDb()
     const userId = await getUserId()
 
-    const email = await db.query.emails.findFirst({
-      where: and(
-        eq(emails.id, id),
-        eq(emails.userId, userId!)
-      )
-    })
-
-    if (!email) {
-      return NextResponse.json(
-        { error: "无权限查看" },
-        { status: 403 }
-      )
-    }
-
-    const message = await db.query.messages.findFirst({
-      where: and(
+    const [message] = await db
+      .select({
+        id: messages.id,
+        fromAddress: messages.fromAddress,
+        toAddress: messages.toAddress,
+        subject: messages.subject,
+        content: messages.content,
+        html: messages.html,
+        receivedAt: messages.receivedAt,
+        sentAt: messages.sentAt,
+        type: messages.type,
+      })
+      .from(messages)
+      .innerJoin(emails, eq(messages.emailId, emails.id))
+      .where(and(
         eq(messages.id, messageId),
-        eq(messages.emailId, id)
-      )
-    })
+        eq(messages.emailId, id),
+        eq(emails.userId, userId!)
+      ))
+      .limit(1)
     
     if (!message) {
       return NextResponse.json(
@@ -98,7 +98,7 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
         content: message.content,
         html: message.html,
         received_at: message.receivedAt.getTime(),
-        sent_at: message.receivedAt.getTime(),
+        sent_at: message.sentAt?.getTime(),
         type: message.type as 'received' | 'sent'
       }
     })
