@@ -68,6 +68,8 @@
     "title": "建立郵箱",
     "name": "郵箱前綴",
     "namePlaceholder": "留空則隨機生成",
+    "nameInvalidWhitespace": "郵箱前綴不能包含空格",
+    "nameInvalidDot": "郵箱前綴不能包含點號",
     "group": "分組",
     "addressPreview": "地址預覽",
     "addressPreviewEmpty": "輸入郵箱前綴後顯示預覽地址",

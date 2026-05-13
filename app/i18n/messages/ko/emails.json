@@ -68,6 +68,8 @@
     "title": "이메일 생성",
     "name": "이메일 접두사",
     "namePlaceholder": "비워두면 무작위로 생성됩니다",
+    "nameInvalidWhitespace": "이메일 접두사에는 공백을 사용할 수 없습니다",
+    "nameInvalidDot": "이메일 접두사에는 점을 사용할 수 없습니다",
     "group": "그룹",
     "addressPreview": "주소 미리보기",
     "addressPreviewEmpty": "접두사를 입력하면 주소가 미리 표시됩니다",

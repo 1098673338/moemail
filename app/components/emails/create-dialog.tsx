@@ -5,6 +5,7 @@ import { useTranslations } from "next-intl"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { Copy, Plus, RefreshCw } from "lucide-react"
 import { useToast } from "@/components/ui/use-toast"
 import { nanoid } from "nanoid"
@@ -14,6 +15,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { EXPIRY_OPTIONS } from "@/types/email"
 import { useCopy } from "@/hooks/use-copy"
 import { useConfig } from "@/hooks/use-config"
+import { cn } from "@/lib/utils"
 
 interface CreateDialogProps {
   onEmailCreated: () => void
@@ -30,7 +32,7 @@ interface EmailGroup {
 
 const DEFAULT_EXPIRY_TIME = "0"
 const UNGROUPED_GROUP_VALUE = "__ungrouped__"
-const getEmailNamePrefix = (value: string) => value.replace(/\s+/g, "").split("@")[0]
+const getEmailNamePrefix = (value: string) => value.split("@")[0]
 
 export function CreateDialog({ onEmailCreated, selectedGroupId, selectedGroupName }: CreateDialogProps) {
   const { config } = useConfig()
@@ -50,7 +52,12 @@ export function CreateDialog({ onEmailCreated, selectedGroupId, selectedGroupNam
   const selectedGroupExists = createGroupId === UNGROUPED_GROUP_VALUE
     || groups.some(group => group.id === createGroupId)
   const emailNamePrefix = getEmailNamePrefix(emailName)
-  const formLabelClass = "w-24 shrink-0 text-muted-foreground"
+  const emailNameError = /\s/.test(emailNamePrefix)
+    ? t("nameInvalidWhitespace")
+    : emailNamePrefix.includes(".")
+      ? t("nameInvalidDot")
+      : ""
+  const formLabelClass = "w-16 shrink-0 whitespace-nowrap text-muted-foreground"
   const groupSelectItemClass = "hover:bg-accent hover:text-accent-foreground"
 
   const generateRandomName = () => setEmailName(nanoid(8))
@@ -87,6 +94,8 @@ export function CreateDialog({ onEmailCreated, selectedGroupId, selectedGroupNam
   }
 
   const createEmail = async () => {
+    if (emailNameError) return
+
     setLoading(true)
     try {
       const response = await fetch("/api/emails/generate", {
@@ -140,9 +149,8 @@ export function CreateDialog({ onEmailCreated, selectedGroupId, selectedGroupNam
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogTrigger asChild>
         <Button
-          variant="ghost"
           size="sm"
-          className="h-8 gap-2 text-foreground hover:text-foreground transition-colors"
+          className="h-8 gap-2"
         >
           <Plus className="w-4 h-4" />
           <span className="hidden sm:inline">{t("title")}</span>
@@ -155,12 +163,25 @@ export function CreateDialog({ onEmailCreated, selectedGroupId, selectedGroupNam
         <div className="flex flex-col gap-4 py-4">
           <div className="flex min-w-0 flex-col gap-2">
             <div className="flex min-w-0 gap-2">
-              <Input
-                value={emailName}
-                onChange={(e) => setEmailName(e.target.value)}
-                placeholder={t("namePlaceholder")}
-                className="min-w-0 flex-1"
-              />
+              <TooltipProvider delayDuration={0}>
+                <Tooltip open={Boolean(emailNameError)}>
+                  <TooltipTrigger asChild>
+                    <Input
+                      value={emailName}
+                      onChange={(e) => setEmailName(e.target.value)}
+                      placeholder={t("namePlaceholder")}
+                      aria-invalid={Boolean(emailNameError)}
+                      className={cn(
+                        "min-w-0 flex-1",
+                        emailNameError && "border-destructive focus-visible:ring-destructive"
+                      )}
+                    />
+                  </TooltipTrigger>
+                  <TooltipContent side="top" className="bg-destructive text-destructive-foreground">
+                    {emailNameError}
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
               {(config?.emailDomainsArray?.length ?? 0) > 1 && (
                 <Select value={currentDomain} onValueChange={setCurrentDomain}>
                   <SelectTrigger className="w-[180px]">
@@ -183,7 +204,7 @@ export function CreateDialog({ onEmailCreated, selectedGroupId, selectedGroupNam
                 <RefreshCw className="w-4 h-4" />
               </Button>
             </div>
-            {emailNamePrefix ? (
+            {emailNamePrefix && !emailNameError ? (
               <div className="flex h-11 min-w-0 items-center gap-2 rounded-md border border-gray-200 bg-gray-100 px-3 text-foreground">
                 <span className="shrink-0 text-xs text-muted-foreground">{t("addressPreview")}</span>
                 <span className="min-w-0 flex-1 truncate font-mono text-sm text-foreground">
@@ -207,7 +228,7 @@ export function CreateDialog({ onEmailCreated, selectedGroupId, selectedGroupNam
             )}
           </div>
 
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-3">
             <Label className={formLabelClass}>{t("group")}</Label>
             <Select value={createGroupId} onValueChange={setCreateGroupId}>
               <SelectTrigger className="flex-1">
@@ -231,7 +252,7 @@ export function CreateDialog({ onEmailCreated, selectedGroupId, selectedGroupNam
             </Select>
           </div>
 
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-3">
             <Label className={formLabelClass}>{t("expiryTime")}</Label>
             <RadioGroup
               value={expiryTime}
@@ -257,7 +278,7 @@ export function CreateDialog({ onEmailCreated, selectedGroupId, selectedGroupNam
           <Button variant="outline" onClick={() => handleOpenChange(false)} disabled={loading}>
             {tCommon("cancel")}
           </Button>
-          <Button onClick={createEmail} disabled={loading}>
+          <Button onClick={createEmail} disabled={loading || Boolean(emailNameError)}>
             {loading ? t("creating") : t("create")}
           </Button>
         </div>

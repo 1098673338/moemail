@@ -93,25 +93,25 @@ export function MessageListContainer({ email, onMessageSelect, onMessagePrefetch
     }))
   }
 
+  const tabControls = (
+    <SlidingTabsList className="w-44 shrink-0">
+      <SlidingTabsTrigger value="received">
+        <Inbox className="h-4 w-4" />
+        <span>{t("received")}</span>
+        <span className="opacity-60">{messageCounts.received}</span>
+      </SlidingTabsTrigger>
+      <SlidingTabsTrigger value="sent">
+        <Send className="h-4 w-4" />
+        <span>{t("sent")}</span>
+        <span className="opacity-60">{messageCounts.sent}</span>
+      </SlidingTabsTrigger>
+    </SlidingTabsList>
+  )
+
   return (
     <div className="flex h-full min-h-0 flex-col">
       {canSendEmails ? (
         <Tabs value={activeTab} onValueChange={handleTabChange} className="flex h-full min-h-0 flex-col">
-          <div className="shrink-0 p-2 border-b border-gray-200">
-            <SlidingTabsList>
-              <SlidingTabsTrigger value="received">
-                <Inbox className="h-4 w-4" />
-                <span>{t("received")}</span>
-                <span className="opacity-60">{messageCounts.received}</span>
-              </SlidingTabsTrigger>
-              <SlidingTabsTrigger value="sent">
-                <Send className="h-4 w-4" />
-                <span>{t("sent")}</span>
-                <span className="opacity-60">{messageCounts.sent}</span>
-              </SlidingTabsTrigger>
-            </SlidingTabsList>
-          </div>
-          
           <TabsContent value="received" className="m-0 min-h-0 flex-1 overflow-hidden">
             <MessageList
               email={email}
@@ -120,8 +120,9 @@ export function MessageListContainer({ email, onMessageSelect, onMessagePrefetch
               onMessagePrefetch={onMessagePrefetch}
               selectedMessageId={selectedMessageId}
               refreshTrigger={refreshTrigger}
-              emptyStateOffsetClass="-translate-y-[80px]"
+              emptyStateOffsetClass="-translate-y-[52px]"
               onTotalChange={handleTotalChange}
+              tabControls={tabControls}
             />
           </TabsContent>
           
@@ -133,8 +134,9 @@ export function MessageListContainer({ email, onMessageSelect, onMessagePrefetch
               onMessagePrefetch={onMessagePrefetch}
               selectedMessageId={selectedMessageId}
               refreshTrigger={refreshTrigger}
-              emptyStateOffsetClass="-translate-y-[80px]"
+              emptyStateOffsetClass="-translate-y-[52px]"
               onTotalChange={handleTotalChange}
+              tabControls={tabControls}
             />
           </TabsContent>
         </Tabs>

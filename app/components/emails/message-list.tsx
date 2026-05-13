@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useRef } from "react"
+import { type ReactNode, useState, useEffect, useRef } from "react"
 import { useTranslations } from "next-intl"
 import { Loader2, Mail, MailX, RefreshCw, Trash2, Share2 } from "lucide-react"
 import { cn } from "@/lib/utils"
@@ -43,6 +43,7 @@ interface MessageListProps {
   refreshTrigger?: number
   emptyStateOffsetClass?: string
   onTotalChange?: (messageType: MessageType, total: number) => void
+  tabControls?: ReactNode
 }
 
 interface MessageResponse {
@@ -53,7 +54,7 @@ interface MessageResponse {
 
 type MessageType = 'received' | 'sent'
 
-export function MessageList({ email, messageType, onMessageSelect, onMessagePrefetch, selectedMessageId, refreshTrigger, emptyStateOffsetClass, onTotalChange }: MessageListProps) {
+export function MessageList({ email, messageType, onMessageSelect, onMessagePrefetch, selectedMessageId, refreshTrigger, emptyStateOffsetClass, onTotalChange, tabControls }: MessageListProps) {
   const t = useTranslations("emails.messages")
   const tList = useTranslations("emails.list")
   const tCommon = useTranslations("common.actions")
@@ -231,16 +232,19 @@ export function MessageList({ email, messageType, onMessageSelect, onMessagePref
   return (
   <>
     <div className="flex h-full min-h-0 flex-col">
-      <div className="flex h-14 shrink-0 items-center justify-between border-b border-gray-200 px-2">
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={handleRefresh}
-          disabled={refreshing}
-          className={cn("h-8 w-8", refreshing && "animate-spin")}
-        >
-          <RefreshCw className="h-4 w-4" />
-        </Button>
+      <div className="flex h-14 shrink-0 items-center justify-between gap-2 border-b border-gray-200 px-2">
+        <div className="flex min-w-0 items-center gap-2">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={handleRefresh}
+            disabled={refreshing}
+            className={cn("h-8 w-8 shrink-0", refreshing && "animate-spin")}
+          >
+            <RefreshCw className="h-4 w-4" />
+          </Button>
+          {tabControls}
+        </div>
         <span className="text-xs text-gray-500">
           {total > 0 ? `${total} ${t("messageCount")}` : t("noMessages")}
         </span>

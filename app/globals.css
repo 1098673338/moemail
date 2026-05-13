@@ -49,6 +49,47 @@
   * {
     @apply border-border;
   }
+
+  :where(
+    button,
+    a,
+    select,
+    input[type="button"],
+    input[type="submit"],
+    input[type="reset"],
+    [role="button"],
+    [role="tab"],
+    [role="menuitem"],
+    [role="option"],
+    [role="checkbox"],
+    [role="radio"],
+    [role="switch"],
+    [tabindex]:not([tabindex="-1"])
+  ):not(input:not([type="button"]):not([type="submit"]):not([type="reset"])):not(textarea):focus,
+  :where(
+    button,
+    a,
+    select,
+    input[type="button"],
+    input[type="submit"],
+    input[type="reset"],
+    [role="button"],
+    [role="tab"],
+    [role="menuitem"],
+    [role="option"],
+    [role="checkbox"],
+    [role="radio"],
+    [role="switch"],
+    [tabindex]:not([tabindex="-1"])
+  ):not(input:not([type="button"]):not([type="submit"]):not([type="reset"])):not(textarea):focus-visible {
+    outline: none !important;
+    box-shadow: none !important;
+  }
+
+  :where(button, [role="button"], input[type="button"], input[type="submit"], input[type="reset"]) {
+    box-shadow: none !important;
+  }
+
   body {
     @apply bg-background text-foreground;
   }

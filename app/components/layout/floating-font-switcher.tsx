@@ -3,7 +3,7 @@
 import { FontSwitcher } from "@/components/theme/font-switcher"
 
 export function FloatingFontSwitcher() {
-  const controlButtonClass = "relative h-9 w-9 shrink-0 rounded-md border-0 bg-transparent shadow-none focus-visible:ring-0 focus-visible:ring-offset-0"
+  const controlButtonClass = "relative h-9 w-9 shrink-0 rounded-md border-0 bg-transparent"
   const controlIconClass = "h-5 w-5"
 
   return (

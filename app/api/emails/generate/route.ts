@@ -12,7 +12,13 @@ import { ROLES } from "@/lib/permissions"
 
 export const runtime = "edge"
 
-const getEmailNamePrefix = (value: string) => value.replace(/\s+/g, "").split("@")[0]
+const getEmailNamePrefix = (value: string) => value.split("@")[0]
+
+const getEmailNameError = (value: string) => {
+  if (/\s/.test(value)) return "邮箱前缀不能包含空格"
+  if (value.includes(".")) return "邮箱前缀不能包含点号"
+  return null
+}
 
 export async function POST(request: Request) {
   const db = createDb()
@@ -77,6 +83,15 @@ export async function POST(request: Request) {
     }
 
     const emailName = name ? getEmailNamePrefix(name) || nanoid(8) : nanoid(8)
+    const emailNameError = getEmailNameError(emailName)
+
+    if (emailNameError) {
+      return NextResponse.json(
+        { error: emailNameError },
+        { status: 400 }
+      )
+    }
+
     const address = `${emailName}@${domain}`
     const selectedGroupId = typeof groupId === "string" && groupId.trim()
       ? groupId.trim()

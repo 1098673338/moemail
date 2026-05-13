@@ -4,7 +4,7 @@ import { useEffect, useState } from "react"
 import { useSession } from "next-auth/react"
 import { useTranslations } from "next-intl"
 import { ShareDialog } from "./share-dialog"
-import { AtSign, Check, Copy, Folder, FolderInput, FolderOpen, FolderPlus, GripVertical, Loader2, MoreHorizontal, Pencil, RefreshCw, Share2, Trash2 } from "lucide-react"
+import { AtSign, Check, Copy, Folder, FolderOpen, FolderPlus, GripVertical, Loader2, MoreHorizontal, Pencil, RefreshCw, Share2, Trash2 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -93,6 +93,7 @@ export function EmailList({ onEmailSelect, onGroupChange, selectedEmailId, refre
   const [groupName, setGroupName] = useState("")
   const [creatingGroup, setCreatingGroup] = useState(false)
   const [movingEmailId, setMovingEmailId] = useState<string | null>(null)
+  const [openMoreGroupId, setOpenMoreGroupId] = useState<string | null>(null)
   const [openMoreEmailId, setOpenMoreEmailId] = useState<string | null>(null)
   const [emailToShare, setEmailToShare] = useState<Email | null>(null)
   const [editingGroup, setEditingGroup] = useState<EmailGroup | null>(null)
@@ -135,6 +136,7 @@ export function EmailList({ onEmailSelect, onGroupChange, selectedEmailId, refre
 
   const toggleGroupSortMode = () => {
     setGroupSortMode(prev => !prev)
+    setOpenMoreGroupId(null)
     setDraggingGroupId(null)
     setDragOverGroup(null)
   }
@@ -341,6 +343,7 @@ export function EmailList({ onEmailSelect, onGroupChange, selectedEmailId, refre
   }
 
   const openEditGroupDialog = (group: EmailGroup) => {
+    setOpenMoreGroupId(null)
     setEditingGroup(group)
     setEditGroupName(group.name)
   }
@@ -465,6 +468,8 @@ export function EmailList({ onEmailSelect, onGroupChange, selectedEmailId, refre
   }
 
   const handleDeleteGroupClick = (group: EmailGroup) => {
+    setOpenMoreGroupId(null)
+
     if (group.emailCount === 0) {
       deleteGroup(group, false)
       return
@@ -786,29 +791,39 @@ export function EmailList({ onEmailSelect, onGroupChange, selectedEmailId, refre
                     <span className="min-w-0 flex-1 truncate">{group.name}</span>
                   </button>
                   {!groupSortMode && (
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="hidden h-6 w-6 rounded-sm hover:bg-black/10 group-hover:flex"
-                          aria-label={tGroups("more")}
-                          onClick={(event) => event.stopPropagation()}
-                        >
-                          <MoreHorizontal className="h-3.5 w-3.5" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent side="right" align="start" sideOffset={8} className="w-40">
-                        <DropdownMenuItem onClick={() => openEditGroupDialog(group)}>
-                          <Pencil className="mr-2 h-4 w-4" />
-                          {tGroups("rename")}
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => handleDeleteGroupClick(group)}>
-                          <Trash2 className="mr-2 h-4 w-4" />
-                          {tGroups("delete")}
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
+                    <div
+                      className={cn(
+                        "shrink-0 items-center justify-center self-center",
+                        openMoreGroupId === group.id ? "flex" : "hidden group-hover:flex"
+                      )}
+                      onClick={(event) => event.stopPropagation()}
+                    >
+                      <DropdownMenu
+                        open={openMoreGroupId === group.id}
+                        onOpenChange={(open) => setOpenMoreGroupId(open ? group.id : null)}
+                      >
+                        <DropdownMenuTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-6 w-6 rounded-sm hover:bg-black/10"
+                            aria-label={tGroups("more")}
+                          >
+                            <MoreHorizontal className="h-3.5 w-3.5" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent side="right" align="start" sideOffset={8} className="w-40">
+                          <DropdownMenuItem onClick={() => openEditGroupDialog(group)}>
+                            <Pencil className="mr-2 h-4 w-4" />
+                            {tGroups("rename")}
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => handleDeleteGroupClick(group)}>
+                            <Trash2 className="mr-2 h-4 w-4" />
+                            {tGroups("delete")}
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </div>
                   )}
                 </div>
                 ))}
@@ -889,10 +904,6 @@ export function EmailList({ onEmailSelect, onGroupChange, selectedEmailId, refre
                           {tCommon("delete")}
                         </DropdownMenuItem>
                         <div className="my-1 h-px bg-border" />
-                        <DropdownMenuItem disabled className="text-xs text-gray-500">
-                          <FolderInput className="mr-2 h-4 w-4" />
-                          {tGroups("moveTo")}
-                        </DropdownMenuItem>
                         {email.groupId && (
                           <DropdownMenuItem onClick={() => moveEmailToGroup(email, null)}>
                             <Check className="mr-2 h-4 w-4 opacity-0" />

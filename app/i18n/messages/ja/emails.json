@@ -68,6 +68,8 @@
     "title": "メールボックスを作成",
     "name": "メールボックスのプレフィックス",
     "namePlaceholder": "空白の場合はランダムに生成",
+    "nameInvalidWhitespace": "メールボックスのプレフィックスに空白は使用できません",
+    "nameInvalidDot": "メールボックスのプレフィックスにドットは使用できません",
     "group": "グループ",
     "addressPreview": "アドレスプレビュー",
     "addressPreviewEmpty": "プレフィックスを入力するとアドレスをプレビューできます",

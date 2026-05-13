@@ -68,6 +68,8 @@
     "title": "Create Email",
     "name": "Email Prefix",
     "namePlaceholder": "Leave empty for random generation",
+    "nameInvalidWhitespace": "Email prefix cannot contain spaces",
+    "nameInvalidDot": "Email prefix cannot contain dots",
     "group": "Group",
     "addressPreview": "Address Preview",
     "addressPreviewEmpty": "Enter a prefix to preview the address",

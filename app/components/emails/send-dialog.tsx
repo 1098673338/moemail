@@ -89,9 +89,8 @@ export function SendDialog({ emailId, fromAddress, onSendSuccess }: SendDialogPr
           <DialogTrigger asChild>
             <TooltipTrigger asChild>
               <Button 
-                variant="ghost" 
                 size="sm"
-                className="h-8 gap-2 text-foreground hover:text-foreground transition-colors"
+                className="h-8 gap-2"
               >
                 <Send className="h-4 w-4" />
                 <span className="hidden sm:inline">{t("trigger")}</span>
