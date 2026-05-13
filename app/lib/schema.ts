@@ -41,10 +41,25 @@ export const accounts = sqliteTable(
   })
 )
 
+export const emailGroups = sqliteTable("email_group", {
+  id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+  userId: text("user_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  name: text("name").notNull(),
+  createdAt: integer("created_at", { mode: "timestamp_ms" })
+    .notNull()
+    .$defaultFn(() => new Date()),
+}, (table) => ({
+  userIdIdx: index("email_group_user_id_idx").on(table.userId),
+  userNameUnique: uniqueIndex("email_group_user_name_unique").on(table.userId, table.name),
+}))
+
 export const emails = sqliteTable("email", {
   id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
   address: text("address").notNull().unique(),
   userId: text("userId").references(() => users.id, { onDelete: "cascade" }),
+  groupId: text("group_id").references(() => emailGroups.id, { onDelete: "set null" }),
   createdAt: integer("created_at", { mode: "timestamp_ms" })
     .notNull()
     .$defaultFn(() => new Date()),
@@ -52,6 +67,7 @@ export const emails = sqliteTable("email", {
 }, (table) => ({
   expiresAtIdx: index("email_expires_at_idx").on(table.expiresAt),
   userIdIdx: index("email_user_id_idx").on(table.userId),
+  groupIdIdx: index("email_group_id_idx").on(table.groupId),
   addressLowerIdx: index("email_address_lower_idx").on(sql`LOWER(${table.address})`),
 }))
 

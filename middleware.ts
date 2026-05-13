@@ -8,6 +8,7 @@ import { handleApiKeyAuth } from "@/lib/apiKey"
 
 const API_PERMISSIONS: Record<string, Permission> = {
   '/api/emails': PERMISSIONS.MANAGE_EMAIL,
+  '/api/email-groups': PERMISSIONS.MANAGE_EMAIL,
   '/api/webhook': PERMISSIONS.MANAGE_WEBHOOK,
   '/api/roles/promote': PERMISSIONS.PROMOTE_USER,
   '/api/config': PERMISSIONS.MANAGE_CONFIG,
@@ -127,6 +128,7 @@ export const config = {
   matcher: [
     '/((?!_next|.*\\..*).*)', // all pages excluding static assets
     '/api/emails/:path*',
+    '/api/email-groups/:path*',
     '/api/webhook/:path*',
     '/api/roles/:path*',
     '/api/config/:path*',

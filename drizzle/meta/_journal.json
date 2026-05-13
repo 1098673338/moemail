@@ -148,6 +148,13 @@
       "when": 1778523277692,
       "tag": "0020_user_send_limit",
       "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "6",
+      "when": 1778638086211,
+      "tag": "0021_wooden_rhino",
+      "breakpoints": true
     }
   ]
 }

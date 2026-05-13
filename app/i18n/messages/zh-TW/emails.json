@@ -30,6 +30,21 @@
     "error": "錯誤",
     "success": "成功"
   },
+  "groups": {
+    "title": "郵箱分組",
+    "all": "全部郵箱",
+    "ungrouped": "未分組",
+    "create": "建立分組",
+    "creating": "建立中...",
+    "createTitle": "新建郵箱分組",
+    "namePlaceholder": "輸入分組名稱",
+    "createSuccess": "分組已建立",
+    "createFailed": "建立分組失敗",
+    "moveTo": "移動到分組",
+    "moveSuccess": "郵箱已移動",
+    "moveFailed": "移動郵箱失敗",
+    "noGroups": "暫無分組"
+  },
   "create": {
     "title": "建立郵箱",
     "name": "郵箱前綴",

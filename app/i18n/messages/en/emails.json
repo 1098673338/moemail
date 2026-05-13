@@ -30,6 +30,21 @@
     "error": "Error",
     "success": "Success"
   },
+  "groups": {
+    "title": "Email Groups",
+    "all": "All Emails",
+    "ungrouped": "Ungrouped",
+    "create": "Create Group",
+    "creating": "Creating...",
+    "createTitle": "New Email Group",
+    "namePlaceholder": "Enter group name",
+    "createSuccess": "Group created",
+    "createFailed": "Failed to create group",
+    "moveTo": "Move to group",
+    "moveSuccess": "Email moved",
+    "moveFailed": "Failed to move email",
+    "noGroups": "No groups yet"
+  },
   "create": {
     "title": "Create Email",
     "name": "Email Prefix",

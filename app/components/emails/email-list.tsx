@@ -4,11 +4,26 @@ import { useEffect, useState } from "react"
 import { useSession } from "next-auth/react"
 import { useTranslations } from "next-intl"
 import { ShareDialog } from "./share-dialog"
-import { AtSign, Copy, Loader2, RefreshCw, Trash2 } from "lucide-react"
+import { AtSign, Check, Copy, Folder, FolderInput, FolderOpen, FolderPlus, Loader2, RefreshCw, Trash2 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
 import { useThrottle } from "@/hooks/use-throttle"
 import { useToast } from "@/components/ui/use-toast"
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -29,6 +44,7 @@ interface Email {
   address: string
   createdAt: number
   expiresAt: number
+  groupId?: string | null
 }
 
 interface EmailListProps {
@@ -43,34 +59,68 @@ interface EmailResponse {
   total: number
 }
 
+interface EmailGroup {
+  id: string
+  name: string
+}
+
 export function EmailList({ onEmailSelect, selectedEmailId, refreshTrigger }: EmailListProps) {
   const { data: session } = useSession()
   const { config } = useConfig()
   const { role } = useUserRole()
   const t = useTranslations("emails.list")
+  const tGroups = useTranslations("emails.groups")
   const tCommon = useTranslations("common.actions")
   const [emails, setEmails] = useState<Email[]>([])
+  const [groups, setGroups] = useState<EmailGroup[]>([])
+  const [selectedGroupId, setSelectedGroupId] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
   const [nextCursor, setNextCursor] = useState<string | null>(null)
   const [loadingMore, setLoadingMore] = useState(false)
   const [total, setTotal] = useState(0)
   const [emailToDelete, setEmailToDelete] = useState<Email | null>(null)
+  const [groupDialogOpen, setGroupDialogOpen] = useState(false)
+  const [groupName, setGroupName] = useState("")
+  const [creatingGroup, setCreatingGroup] = useState(false)
+  const [movingEmailId, setMovingEmailId] = useState<string | null>(null)
   const { toast } = useToast()
   const { copyToClipboard } = useCopy()
   const maxEmailsLimit = config?.maxEmails
 
-  const fetchEmails = async (cursor?: string) => {
+  const fetchGroups = async () => {
+    try {
+      const response = await fetch("/api/email-groups")
+      if (!response.ok) return
+
+      const data = await response.json() as { groups: EmailGroup[] }
+      setGroups(data.groups)
+    } catch (error) {
+      console.error("Failed to fetch email groups:", error)
+    }
+  }
+
+  const fetchEmails = async (cursor?: string, groupId = selectedGroupId, replace = false) => {
     try {
       const url = new URL("/api/emails", window.location.origin)
       if (cursor) {
         url.searchParams.set('cursor', cursor)
+      }
+      if (groupId) {
+        url.searchParams.set('groupId', groupId)
       }
       const response = await fetch(url)
       const data = await response.json() as EmailResponse
       
       if (!cursor) {
         const newEmails = data.emails
+        if (replace) {
+          setEmails(newEmails)
+          setNextCursor(data.nextCursor)
+          setTotal(data.total)
+          return
+        }
+
         const oldEmails = emails
 
         const lastDuplicateIndex = newEmails.findIndex(
@@ -102,7 +152,111 @@ export function EmailList({ onEmailSelect, selectedEmailId, refreshTrigger }: Em
 
   const handleRefresh = async () => {
     setRefreshing(true)
-    await fetchEmails()
+    await fetchEmails(undefined, selectedGroupId)
+  }
+
+  const createGroup = async () => {
+    const name = groupName.trim()
+    if (!name) return
+
+    setCreatingGroup(true)
+
+    try {
+      const response = await fetch("/api/email-groups", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ name }),
+      })
+      const data = await response.json() as { group?: EmailGroup; error?: string }
+
+      if (!response.ok || !data.group) {
+        toast({
+          title: t("error"),
+          description: data.error || tGroups("createFailed"),
+          variant: "destructive",
+        })
+        return
+      }
+
+      setGroups(prev => [...prev, data.group!])
+      setGroupName("")
+      setGroupDialogOpen(false)
+      toast({
+        title: t("success"),
+        description: tGroups("createSuccess"),
+      })
+    } catch {
+      toast({
+        title: t("error"),
+        description: tGroups("createFailed"),
+        variant: "destructive",
+      })
+    } finally {
+      setCreatingGroup(false)
+    }
+  }
+
+  const handleGroupSelect = (groupId: string | null) => {
+    setSelectedGroupId(groupId)
+    onEmailSelect(null)
+  }
+
+  const moveEmailToGroup = async (email: Email, groupId: string | null) => {
+    setMovingEmailId(email.id)
+
+    try {
+      const response = await fetch(`/api/emails/${email.id}`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ groupId }),
+      })
+      const data = await response.json() as { error?: string }
+
+      if (!response.ok) {
+        toast({
+          title: t("error"),
+          description: data.error || tGroups("moveFailed"),
+          variant: "destructive",
+        })
+        return
+      }
+
+      const staysVisible = selectedGroupId === null
+        || selectedGroupId === groupId
+        || (selectedGroupId === "none" && !groupId)
+
+      setEmails(prev => {
+        const updated = prev.map(item => (
+          item.id === email.id ? { ...item, groupId } : item
+        ))
+
+        return staysVisible ? updated : updated.filter(item => item.id !== email.id)
+      })
+
+      if (!staysVisible) {
+        setTotal(prev => Math.max(prev - 1, 0))
+        if (selectedEmailId === email.id) {
+          onEmailSelect(null)
+        }
+      }
+
+      toast({
+        title: t("success"),
+        description: tGroups("moveSuccess"),
+      })
+    } catch {
+      toast({
+        title: t("error"),
+        description: tGroups("moveFailed"),
+        variant: "destructive",
+      })
+    } finally {
+      setMovingEmailId(null)
+    }
   }
 
   const handleScroll = useThrottle((e: React.UIEvent<HTMLDivElement>) => {
@@ -114,18 +268,28 @@ export function EmailList({ onEmailSelect, selectedEmailId, refreshTrigger }: Em
 
     if (remainingScroll <= threshold && nextCursor) {
       setLoadingMore(true)
-      fetchEmails(nextCursor)
+      fetchEmails(nextCursor, selectedGroupId)
     }
   }, 200)
 
   useEffect(() => {
-    if (session) fetchEmails()
+    if (session) fetchGroups()
   }, [session])
+
+  useEffect(() => {
+    if (!session) return
+
+    setLoading(true)
+    setNextCursor(null)
+    setEmails([])
+    fetchEmails(undefined, selectedGroupId, true)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [session, selectedGroupId])
 
   useEffect(() => {
     if (!session || !refreshTrigger) return
     setRefreshing(true)
-    fetchEmails()
+    fetchEmails(undefined, selectedGroupId)
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [refreshTrigger])
 
@@ -169,6 +333,12 @@ export function EmailList({ onEmailSelect, selectedEmailId, refreshTrigger }: Em
 
   if (!session) return null
 
+  const groupFilters = [
+    { id: null, label: tGroups("all"), icon: FolderOpen },
+    { id: "none", label: tGroups("ungrouped"), icon: Folder },
+    ...groups.map(group => ({ id: group.id, label: group.name, icon: Folder })),
+  ]
+
   return (
     <>
       <div className="flex h-full min-h-0 flex-col">
@@ -192,6 +362,73 @@ export function EmailList({ onEmailSelect, selectedEmailId, refreshTrigger }: Em
                 t("emailCount", { count: total, max: maxEmailsLimit })
               )}
             </span>
+          </div>
+        </div>
+
+        <div className="shrink-0 border-b border-gray-200 p-2">
+          <div className="mb-2 flex items-center justify-between gap-2">
+            <span className="min-w-0 truncate text-xs font-medium text-gray-500">
+              {tGroups("title")}
+            </span>
+            <Dialog open={groupDialogOpen} onOpenChange={setGroupDialogOpen}>
+              <DialogTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-7 w-7 shrink-0"
+                  aria-label={tGroups("create")}
+                >
+                  <FolderPlus className="h-4 w-4" />
+                </Button>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>{tGroups("createTitle")}</DialogTitle>
+                </DialogHeader>
+                <Input
+                  value={groupName}
+                  onChange={(event) => setGroupName(event.target.value)}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter") {
+                      event.preventDefault()
+                      createGroup()
+                    }
+                  }}
+                  placeholder={tGroups("namePlaceholder")}
+                  disabled={creatingGroup}
+                />
+                <DialogFooter>
+                  <Button
+                    onClick={createGroup}
+                    disabled={creatingGroup || !groupName.trim()}
+                  >
+                    {creatingGroup ? tGroups("creating") : tGroups("create")}
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+          </div>
+
+          <div className="max-h-36 space-y-1 overflow-auto pr-1">
+            {groupFilters.map(group => {
+              const Icon = group.icon
+              const selected = selectedGroupId === group.id
+
+              return (
+                <button
+                  key={group.id ?? "all"}
+                  type="button"
+                  className={cn(
+                    "flex h-8 w-full items-center gap-2 rounded px-2 text-left text-sm transition-colors",
+                    selected ? "bg-gray-200" : "hover:bg-gray-100"
+                  )}
+                  onClick={() => handleGroupSelect(group.id)}
+                >
+                  <Icon className="h-4 w-4 shrink-0 text-primary/60" />
+                  <span className="min-w-0 flex-1 truncate">{group.label}</span>
+                </button>
+              )
+            })}
           </div>
         </div>
         
@@ -240,6 +477,40 @@ export function EmailList({ onEmailSelect, selectedEmailId, refreshTrigger }: Em
                       <Copy className="h-4 w-4" />
                     </Button>
                     <ShareDialog emailId={email.id} emailAddress={email.address} />
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 hover:bg-black/10"
+                          aria-label={tGroups("moveTo")}
+                          disabled={movingEmailId === email.id}
+                        >
+                          <FolderInput className="h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end" className="w-44">
+                        <DropdownMenuItem onClick={() => moveEmailToGroup(email, null)}>
+                          <Check className={cn("mr-2 h-4 w-4", !email.groupId ? "opacity-100" : "opacity-0")} />
+                          {tGroups("ungrouped")}
+                        </DropdownMenuItem>
+                        {groups.length > 0 ? (
+                          groups.map(group => (
+                            <DropdownMenuItem
+                              key={group.id}
+                              onClick={() => moveEmailToGroup(email, group.id)}
+                            >
+                              <Check className={cn("mr-2 h-4 w-4", email.groupId === group.id ? "opacity-100" : "opacity-0")} />
+                              <span className="truncate">{group.name}</span>
+                            </DropdownMenuItem>
+                          ))
+                        ) : (
+                          <DropdownMenuItem disabled>
+                            {tGroups("noGroups")}
+                          </DropdownMenuItem>
+                        )}
+                      </DropdownMenuContent>
+                    </DropdownMenu>
                     <Button
                       variant="ghost"
                       size="icon"

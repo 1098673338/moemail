@@ -1,5 +1,5 @@
 import { createDb } from "@/lib/db"
-import { and, eq, gt, lt, or, sql } from "drizzle-orm"
+import { and, eq, gt, isNull, lt, or, sql } from "drizzle-orm"
 import { NextResponse } from "next/server"
 import { emails } from "@/lib/schema"
 import { encodeCursor, decodeCursor } from "@/lib/cursor"
@@ -14,6 +14,7 @@ export async function GET(request: Request) {
 
   const { searchParams } = new URL(request.url)
   const cursor = searchParams.get('cursor')
+  const groupId = searchParams.get('groupId')
   
   const db = createDb()
 
@@ -23,12 +24,18 @@ export async function GET(request: Request) {
       gt(emails.expiresAt, new Date())
     )
 
+    const conditions = [baseConditions]
+
+    if (groupId === "none") {
+      conditions.push(isNull(emails.groupId))
+    } else if (groupId) {
+      conditions.push(eq(emails.groupId, groupId))
+    }
+
     const totalResult = await db.select({ count: sql<number>`count(*)` })
       .from(emails)
-      .where(baseConditions)
+      .where(and(...conditions))
     const totalCount = Number(totalResult[0].count)
-
-    const conditions = [baseConditions]
 
     if (cursor) {
       const { timestamp, id } = decodeCursor(cursor)

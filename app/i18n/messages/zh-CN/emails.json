@@ -30,6 +30,21 @@
     "error": "错误",
     "success": "成功"
   },
+  "groups": {
+    "title": "邮箱分组",
+    "all": "全部邮箱",
+    "ungrouped": "未分组",
+    "create": "创建分组",
+    "creating": "创建中...",
+    "createTitle": "新建邮箱分组",
+    "namePlaceholder": "输入分组名称",
+    "createSuccess": "分组已创建",
+    "createFailed": "创建分组失败",
+    "moveTo": "移动到分组",
+    "moveSuccess": "邮箱已移动",
+    "moveFailed": "移动邮箱失败",
+    "noGroups": "暂无分组"
+  },
   "create": {
     "title": "创建邮箱",
     "name": "邮箱前缀",

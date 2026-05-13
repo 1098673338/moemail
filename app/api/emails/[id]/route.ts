@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server"
 import { createDb } from "@/lib/db"
-import { emails, messages } from "@/lib/schema"
+import { emailGroups, emails, messages } from "@/lib/schema"
 import { eq, and, lt, or, sql, ne, isNull } from "drizzle-orm"
 import { encodeCursor, decodeCursor } from "@/lib/cursor"
 import { getUserId } from "@/lib/apiKey"
@@ -45,6 +45,65 @@ export async function DELETE(
     )
   }
 } 
+
+export async function PATCH(
+  request: Request,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const userId = await getUserId()
+
+  if (!userId) {
+    return NextResponse.json({ error: "未授权" }, { status: 401 })
+  }
+
+  try {
+    const db = createDb()
+    const { id } = await params
+    const { groupId } = await request.json() as { groupId?: string | null }
+
+    const email = await db.query.emails.findFirst({
+      where: and(
+        eq(emails.id, id),
+        eq(emails.userId, userId)
+      )
+    })
+
+    if (!email) {
+      return NextResponse.json(
+        { error: "邮箱不存在或无权限操作" },
+        { status: 403 }
+      )
+    }
+
+    if (groupId) {
+      const group = await db.query.emailGroups.findFirst({
+        where: and(
+          eq(emailGroups.id, groupId),
+          eq(emailGroups.userId, userId)
+        )
+      })
+
+      if (!group) {
+        return NextResponse.json(
+          { error: "分组不存在或无权限使用" },
+          { status: 404 }
+        )
+      }
+    }
+
+    await db.update(emails)
+      .set({ groupId: groupId || null })
+      .where(eq(emails.id, id))
+
+    return NextResponse.json({ success: true, groupId: groupId || null })
+  } catch (error) {
+    console.error("Failed to move email:", error)
+    return NextResponse.json(
+      { error: "移动邮箱失败" },
+      { status: 500 }
+    )
+  }
+}
 
 const PAGE_SIZE = 20
 

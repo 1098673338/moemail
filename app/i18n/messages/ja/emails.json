@@ -30,6 +30,21 @@
     "error": "エラー",
     "success": "成功"
   },
+  "groups": {
+    "title": "メールボックスグループ",
+    "all": "すべてのメールボックス",
+    "ungrouped": "未分類",
+    "create": "グループ作成",
+    "creating": "作成中...",
+    "createTitle": "新しいメールボックスグループ",
+    "namePlaceholder": "グループ名を入力",
+    "createSuccess": "グループを作成しました",
+    "createFailed": "グループの作成に失敗しました",
+    "moveTo": "グループへ移動",
+    "moveSuccess": "メールボックスを移動しました",
+    "moveFailed": "メールボックスの移動に失敗しました",
+    "noGroups": "グループはまだありません"
+  },
   "create": {
     "title": "メールボックスを作成",
     "name": "メールボックスのプレフィックス",
