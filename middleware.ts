@@ -31,7 +31,7 @@ export async function middleware(request: Request) {
     }
 
     const session = await auth()
-    if (!session?.user) {
+    if (!session?.user?.id) {
       return NextResponse.json(
         { error: "未授权" },
         { status: 401 }
