@@ -4,7 +4,7 @@ import { useEffect, useState } from "react"
 import { useSession } from "next-auth/react"
 import { useTranslations } from "next-intl"
 import { ShareDialog } from "./share-dialog"
-import { AtSign, Check, Copy, Folder, FolderInput, FolderOpen, FolderPlus, Loader2, RefreshCw, Trash2 } from "lucide-react"
+import { AtSign, Check, Copy, Folder, FolderInput, FolderOpen, FolderPlus, Loader2, MoreHorizontal, Pencil, RefreshCw, Share2, Trash2 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -70,6 +70,7 @@ export function EmailList({ onEmailSelect, selectedEmailId, refreshTrigger }: Em
   const { role } = useUserRole()
   const t = useTranslations("emails.list")
   const tGroups = useTranslations("emails.groups")
+  const tShare = useTranslations("emails.share")
   const tCommon = useTranslations("common.actions")
   const [emails, setEmails] = useState<Email[]>([])
   const [groups, setGroups] = useState<EmailGroup[]>([])
@@ -84,6 +85,12 @@ export function EmailList({ onEmailSelect, selectedEmailId, refreshTrigger }: Em
   const [groupName, setGroupName] = useState("")
   const [creatingGroup, setCreatingGroup] = useState(false)
   const [movingEmailId, setMovingEmailId] = useState<string | null>(null)
+  const [emailToShare, setEmailToShare] = useState<Email | null>(null)
+  const [editingGroup, setEditingGroup] = useState<EmailGroup | null>(null)
+  const [editGroupName, setEditGroupName] = useState("")
+  const [savingGroup, setSavingGroup] = useState(false)
+  const [groupToDelete, setGroupToDelete] = useState<EmailGroup | null>(null)
+  const [deletingGroup, setDeletingGroup] = useState(false)
   const { toast } = useToast()
   const { copyToClipboard } = useCopy()
   const maxEmailsLimit = config?.maxEmails
@@ -201,6 +208,102 @@ export function EmailList({ onEmailSelect, selectedEmailId, refreshTrigger }: Em
   const handleGroupSelect = (groupId: string | null) => {
     setSelectedGroupId(groupId)
     onEmailSelect(null)
+  }
+
+  const openEditGroupDialog = (group: EmailGroup) => {
+    setEditingGroup(group)
+    setEditGroupName(group.name)
+  }
+
+  const updateGroup = async () => {
+    if (!editingGroup) return
+
+    const name = editGroupName.trim()
+    if (!name) return
+
+    setSavingGroup(true)
+
+    try {
+      const response = await fetch(`/api/email-groups/${editingGroup.id}`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ name }),
+      })
+      const data = await response.json() as { group?: EmailGroup; error?: string }
+
+      if (!response.ok || !data.group) {
+        toast({
+          title: t("error"),
+          description: data.error || tGroups("renameFailed"),
+          variant: "destructive",
+        })
+        return
+      }
+
+      setGroups(prev => prev.map(group => (
+        group.id === data.group!.id ? data.group! : group
+      )))
+      setEditingGroup(null)
+      setEditGroupName("")
+      toast({
+        title: t("success"),
+        description: tGroups("renameSuccess"),
+      })
+    } catch {
+      toast({
+        title: t("error"),
+        description: tGroups("renameFailed"),
+        variant: "destructive",
+      })
+    } finally {
+      setSavingGroup(false)
+    }
+  }
+
+  const deleteGroup = async (group: EmailGroup) => {
+    setDeletingGroup(true)
+
+    try {
+      const response = await fetch(`/api/email-groups/${group.id}`, {
+        method: "DELETE",
+      })
+      const data = await response.json() as { error?: string }
+
+      if (!response.ok) {
+        toast({
+          title: t("error"),
+          description: data.error || tGroups("deleteFailed"),
+          variant: "destructive",
+        })
+        return
+      }
+
+      setGroups(prev => prev.filter(item => item.id !== group.id))
+      setEmails(prev => prev.map(email => (
+        email.groupId === group.id ? { ...email, groupId: null } : email
+      )))
+
+      if (selectedGroupId === group.id) {
+        setSelectedGroupId(null)
+        onEmailSelect(null)
+      }
+
+      toast({
+        title: t("success"),
+        description: tGroups("deleteSuccess"),
+      })
+    } catch {
+      toast({
+        title: t("error"),
+        description: tGroups("deleteFailed"),
+        variant: "destructive",
+      })
+    } finally {
+      setDeletingGroup(false)
+      setGroupToDelete(null)
+    }
   }
 
   const moveEmailToGroup = async (email: Email, groupId: string | null) => {
@@ -333,16 +436,21 @@ export function EmailList({ onEmailSelect, selectedEmailId, refreshTrigger }: Em
 
   if (!session) return null
 
-  const groupFilters = [
+  const groupFilters: {
+    id: string | null
+    label: string
+    icon: typeof Folder
+    group?: EmailGroup
+  }[] = [
     { id: null, label: tGroups("all"), icon: FolderOpen },
     { id: "none", label: tGroups("ungrouped"), icon: Folder },
-    ...groups.map(group => ({ id: group.id, label: group.name, icon: Folder })),
+    ...groups.map(group => ({ id: group.id, label: group.name, icon: Folder, group })),
   ]
 
   return (
     <>
       <div className="flex h-full min-h-0 flex-col">
-        <div className="flex h-14 shrink-0 items-center border-b border-gray-200 px-2">
+        <div className="flex h-14 shrink-0 items-center justify-between border-b border-gray-200 px-2">
           <div className="flex items-center gap-2">
             <Button
               variant="ghost"
@@ -353,29 +461,12 @@ export function EmailList({ onEmailSelect, selectedEmailId, refreshTrigger }: Em
             >
               <RefreshCw className="h-4 w-4" />
             </Button>
-            <span className="text-xs text-gray-500">
-              {role === ROLES.EMPEROR || maxEmailsLimit === 0 ? (
-                t("emailCountUnlimited", { count: total })
-              ) : maxEmailsLimit === undefined ? (
-                t("emailCount", { count: total, max: "..." })
-              ) : (
-                t("emailCount", { count: total, max: maxEmailsLimit })
-              )}
-            </span>
-          </div>
-        </div>
-
-        <div className="shrink-0 border-b border-gray-200 p-2">
-          <div className="mb-2 flex items-center justify-between gap-2">
-            <span className="min-w-0 truncate text-xs font-medium text-gray-500">
-              {tGroups("title")}
-            </span>
             <Dialog open={groupDialogOpen} onOpenChange={setGroupDialogOpen}>
               <DialogTrigger asChild>
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="h-7 w-7 shrink-0"
+                  className="h-8 w-8"
                   aria-label={tGroups("create")}
                 >
                   <FolderPlus className="h-4 w-4" />
@@ -408,25 +499,62 @@ export function EmailList({ onEmailSelect, selectedEmailId, refreshTrigger }: Em
               </DialogContent>
             </Dialog>
           </div>
+          <span className="shrink-0 text-xs text-gray-500">
+            {role === ROLES.EMPEROR || maxEmailsLimit === 0 ? (
+              t("emailCountUnlimited", { count: total })
+            ) : maxEmailsLimit === undefined ? (
+              t("emailCount", { count: total, max: "..." })
+            ) : (
+              t("emailCount", { count: total, max: maxEmailsLimit })
+            )}
+          </span>
+        </div>
 
+        <div className="shrink-0 border-b border-gray-200 p-2">
           <div className="max-h-36 space-y-1 overflow-auto pr-1">
             {groupFilters.map(group => {
               const Icon = group.icon
               const selected = selectedGroupId === group.id
 
               return (
-                <button
+                <div
                   key={group.id ?? "all"}
-                  type="button"
                   className={cn(
-                    "flex h-8 w-full items-center gap-2 rounded px-2 text-left text-sm transition-colors",
+                    "group flex h-8 w-full items-center gap-1 rounded px-2 text-sm transition-colors",
                     selected ? "bg-gray-200" : "hover:bg-gray-100"
                   )}
-                  onClick={() => handleGroupSelect(group.id)}
                 >
-                  <Icon className="h-4 w-4 shrink-0 text-primary/60" />
-                  <span className="min-w-0 flex-1 truncate">{group.label}</span>
-                </button>
+                  <button
+                    type="button"
+                    className="flex min-w-0 flex-1 items-center gap-2 text-left"
+                    onClick={() => handleGroupSelect(group.id)}
+                  >
+                    <Icon className="h-4 w-4 shrink-0 text-primary/60" />
+                    <span className="min-w-0 flex-1 truncate">{group.label}</span>
+                  </button>
+                  {group.group && (
+                    <div className="hidden shrink-0 items-center gap-1 group-hover:flex">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-6 w-6 hover:bg-black/10"
+                        aria-label={tGroups("rename")}
+                        onClick={() => openEditGroupDialog(group.group!)}
+                      >
+                        <Pencil className="h-3.5 w-3.5" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-6 w-6 hover:bg-black/10"
+                        aria-label={tGroups("delete")}
+                        onClick={() => setGroupToDelete(group.group!)}
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </Button>
+                    </div>
+                  )}
+                </div>
               )
             })}
           </div>
@@ -476,20 +604,28 @@ export function EmailList({ onEmailSelect, selectedEmailId, refreshTrigger }: Em
                     >
                       <Copy className="h-4 w-4" />
                     </Button>
-                    <ShareDialog emailId={email.id} emailAddress={email.address} />
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
                         <Button
                           variant="ghost"
                           size="icon"
                           className="h-8 w-8 hover:bg-black/10"
-                          aria-label={tGroups("moveTo")}
+                          aria-label={tGroups("more")}
                           disabled={movingEmailId === email.id}
                         >
-                          <FolderInput className="h-4 w-4" />
+                          <MoreHorizontal className="h-4 w-4" />
                         </Button>
                       </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end" className="w-44">
+                      <DropdownMenuContent align="end" sideOffset={6} className="w-48">
+                        <DropdownMenuItem onClick={() => setEmailToShare(email)}>
+                          <Share2 className="mr-2 h-4 w-4" />
+                          {tShare("shareButton")}
+                        </DropdownMenuItem>
+                        <div className="my-1 h-px bg-border" />
+                        <DropdownMenuItem disabled className="text-xs text-gray-500">
+                          <FolderInput className="mr-2 h-4 w-4" />
+                          {tGroups("moveTo")}
+                        </DropdownMenuItem>
                         <DropdownMenuItem onClick={() => moveEmailToGroup(email, null)}>
                           <Check className={cn("mr-2 h-4 w-4", !email.groupId ? "opacity-100" : "opacity-0")} />
                           {tGroups("ungrouped")}
@@ -553,6 +689,74 @@ export function EmailList({ onEmailSelect, selectedEmailId, refreshTrigger }: Em
             <AlertDialogAction
               className="bg-destructive hover:bg-destructive/90"
               onClick={() => emailToDelete && handleDelete(emailToDelete)}
+            >
+              {tCommon("delete")}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {emailToShare && (
+        <ShareDialog
+          emailId={emailToShare.id}
+          emailAddress={emailToShare.address}
+          open={!!emailToShare}
+          onOpenChange={(open) => {
+            if (!open) {
+              setEmailToShare(null)
+            }
+          }}
+          trigger={null}
+        />
+      )}
+
+      <Dialog open={!!editingGroup} onOpenChange={(open) => {
+        if (!open) {
+          setEditingGroup(null)
+          setEditGroupName("")
+        }
+      }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{tGroups("renameTitle")}</DialogTitle>
+          </DialogHeader>
+          <Input
+            value={editGroupName}
+            onChange={(event) => setEditGroupName(event.target.value)}
+            onKeyDown={(event) => {
+              if (event.key === "Enter") {
+                event.preventDefault()
+                updateGroup()
+              }
+            }}
+            placeholder={tGroups("namePlaceholder")}
+            disabled={savingGroup}
+          />
+          <DialogFooter>
+            <Button
+              onClick={updateGroup}
+              disabled={savingGroup || !editGroupName.trim()}
+            >
+              {savingGroup ? tGroups("saving") : tCommon("save")}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <AlertDialog open={!!groupToDelete} onOpenChange={() => setGroupToDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{tGroups("deleteConfirm")}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {tGroups("deleteDescription", { name: groupToDelete?.name || "" })}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>{tCommon("cancel")}</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive hover:bg-destructive/90"
+              disabled={deletingGroup}
+              onClick={() => groupToDelete && deleteGroup(groupToDelete)}
             >
               {tCommon("delete")}
             </AlertDialogAction>

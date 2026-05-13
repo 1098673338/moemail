@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, type ReactNode } from "react"
 import { useTranslations } from "next-intl"
 import { Share2, Copy, Trash2, Link2 } from "lucide-react"
 import { cn } from "@/lib/utils"
@@ -38,6 +38,9 @@ import { EXPIRY_OPTIONS } from "@/types/email"
 interface ShareDialogProps {
   emailId: string
   emailAddress: string
+  open?: boolean
+  onOpenChange?: (open: boolean) => void
+  trigger?: ReactNode | null
 }
 
 interface ShareLink {
@@ -48,17 +51,23 @@ interface ShareLink {
   enabled: boolean
 }
 
-export function ShareDialog({ emailId }: ShareDialogProps) {
+export function ShareDialog({ emailId, open: controlledOpen, onOpenChange, trigger }: ShareDialogProps) {
   const t = useTranslations("emails.share")
   const { toast } = useToast()
   const { copyToClipboard } = useCopy()
 
-  const [open, setOpen] = useState(false)
+  const [internalOpen, setInternalOpen] = useState(false)
   const [shares, setShares] = useState<ShareLink[]>([])
   const [loading, setLoading] = useState(false)
   const [creating, setCreating] = useState(false)
   const [expiryTime, setExpiryTime] = useState(EXPIRY_OPTIONS[1].value.toString())
   const [deleteTarget, setDeleteTarget] = useState<ShareLink | null>(null)
+  const open = controlledOpen ?? internalOpen
+
+  const handleOpenChange = (nextOpen: boolean) => {
+    setInternalOpen(nextOpen)
+    onOpenChange?.(nextOpen)
+  }
 
   const fetchShares = async () => {
     try {
@@ -163,12 +172,16 @@ export function ShareDialog({ emailId }: ShareDialogProps) {
 
   return (
     <>
-      <Dialog open={open} onOpenChange={setOpen}>
-        <DialogTrigger asChild>
-          <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-black/10">
-            <Share2 className="h-4 w-4" />
-          </Button>
-        </DialogTrigger>
+      <Dialog open={open} onOpenChange={handleOpenChange}>
+        {trigger !== null && (
+          <DialogTrigger asChild>
+            {trigger ?? (
+              <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-black/10">
+                <Share2 className="h-4 w-4" />
+              </Button>
+            )}
+          </DialogTrigger>
+        )}
         <DialogContent
           className="w-[calc(100vw-2rem)] max-w-[calc(100vw-2rem)] sm:max-w-[600px] max-h-[calc(100vh-2rem)] overflow-hidden p-4 sm:p-6"
           onInteractOutside={(e) => e.preventDefault()}
