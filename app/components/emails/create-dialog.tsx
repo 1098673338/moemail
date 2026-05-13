@@ -50,6 +50,7 @@ export function CreateDialog({ onEmailCreated, selectedGroupId, selectedGroupNam
     || groups.some(group => group.id === createGroupId)
   const emailNamePrefix = getEmailNamePrefix(emailName)
   const formLabelClass = "w-24 shrink-0 text-muted-foreground"
+  const groupSelectItemClass = "hover:bg-accent hover:text-accent-foreground"
 
   const generateRandomName = () => setEmailName(nanoid(8))
   const getDefaultGroupId = () => (
@@ -151,36 +152,60 @@ export function CreateDialog({ onEmailCreated, selectedGroupId, selectedGroupNam
           <DialogTitle>{t("title")}</DialogTitle>
         </DialogHeader>
         <div className="flex flex-col gap-4 py-4">
-          <div className="flex items-center gap-4">
-            <Label className={formLabelClass}>{t("name")}</Label>
-            <div className="flex min-w-0 flex-1 gap-2">
-              <Input
-                value={emailName}
-                onChange={(e) => setEmailName(e.target.value)}
-                placeholder={t("namePlaceholder")}
-                className="min-w-0 flex-1"
-              />
-              {(config?.emailDomainsArray?.length ?? 0) > 1 && (
-                <Select value={currentDomain} onValueChange={setCurrentDomain}>
-                  <SelectTrigger className="w-[180px]">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {config?.emailDomainsArray?.map(d => (
-                      <SelectItem key={d} value={d}>@{d}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+          <div className="flex items-start gap-4">
+            <Label className={`${formLabelClass} pt-2`}>{t("name")}</Label>
+            <div className="flex min-w-0 flex-1 flex-col gap-2">
+              <div className="flex min-w-0 gap-2">
+                <Input
+                  value={emailName}
+                  onChange={(e) => setEmailName(e.target.value)}
+                  placeholder={t("namePlaceholder")}
+                  className="min-w-0 flex-1"
+                />
+                {(config?.emailDomainsArray?.length ?? 0) > 1 && (
+                  <Select value={currentDomain} onValueChange={setCurrentDomain}>
+                    <SelectTrigger className="w-[180px]">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {config?.emailDomainsArray?.map(d => (
+                        <SelectItem key={d} value={d}>@{d}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+                <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={generateRandomName}
+                  type="button"
+                  className="shrink-0"
+                >
+                  <RefreshCw className="w-4 h-4" />
+                </Button>
+              </div>
+              {emailNamePrefix ? (
+                <div className="flex min-h-9 min-w-0 items-center gap-2 rounded-md border border-dashed border-primary/30 bg-primary/5 px-3 py-2 text-foreground">
+                  <span className="shrink-0 text-xs text-muted-foreground">{t("addressPreview")}</span>
+                  <span className="min-w-0 flex-1 truncate font-mono text-sm text-primary">
+                    {`${emailNamePrefix}@${currentDomain}`}
+                  </span>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    type="button"
+                    className="h-7 w-7 shrink-0 hover:bg-primary/10"
+                    aria-label={tCommon("copy")}
+                    onClick={copyEmailAddress}
+                  >
+                    <Copy className="size-4" />
+                  </Button>
+                </div>
+              ) : (
+                <div className="flex min-h-9 items-center rounded-md border border-dashed bg-muted/40 px-3 py-2">
+                  <span className="text-sm text-muted-foreground/60">{t("addressPreviewEmpty")}</span>
+                </div>
               )}
-              <Button
-                variant="outline"
-                size="icon"
-                onClick={generateRandomName}
-                type="button"
-                className="shrink-0"
-              >
-                <RefreshCw className="w-4 h-4" />
-              </Button>
             </div>
           </div>
 
@@ -191,12 +216,16 @@ export function CreateDialog({ onEmailCreated, selectedGroupId, selectedGroupNam
                 <SelectValue />
               </SelectTrigger>
               <SelectContent className="max-h-64">
-                <SelectItem value={UNGROUPED_GROUP_VALUE}>{tGroups("ungrouped")}</SelectItem>
+                <SelectItem value={UNGROUPED_GROUP_VALUE} className={groupSelectItemClass}>
+                  {tGroups("ungrouped")}
+                </SelectItem>
                 {!selectedGroupExists && selectedGroupName && (
-                  <SelectItem value={createGroupId}>{selectedGroupName}</SelectItem>
+                  <SelectItem value={createGroupId} className={groupSelectItemClass}>
+                    {selectedGroupName}
+                  </SelectItem>
                 )}
                 {groups.map(group => (
-                  <SelectItem key={group.id} value={group.id}>
+                  <SelectItem key={group.id} value={group.id} className={groupSelectItemClass}>
                     {group.name}
                   </SelectItem>
                 ))}
@@ -225,30 +254,6 @@ export function CreateDialog({ onEmailCreated, selectedGroupId, selectedGroupNam
             </RadioGroup>
           </div>
 
-          <div className="flex items-center gap-4 text-sm text-muted-foreground">
-            <span className={formLabelClass}>{t("addressPreview")}</span>
-            {emailNamePrefix ? (
-              <div className="flex min-w-0 flex-1 items-center gap-2 rounded-md border border-dashed border-primary/30 bg-primary/5 px-3 py-2 text-foreground">
-                <span className="min-w-0 flex-1 truncate font-mono text-sm text-primary">
-                  {`${emailNamePrefix}@${currentDomain}`}
-                </span>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  type="button"
-                  className="h-7 w-7 shrink-0 hover:bg-primary/10"
-                  aria-label={tCommon("copy")}
-                  onClick={copyEmailAddress}
-                >
-                  <Copy className="size-4" />
-                </Button>
-              </div>
-            ) : (
-              <div className="flex min-h-9 flex-1 items-center rounded-md border border-dashed bg-muted/40 px-3 py-2">
-                <span className="text-muted-foreground/60">{t("addressPreviewEmpty")}</span>
-              </div>
-            )}
-          </div>
         </div>
         <div className="flex justify-end gap-2">
           <Button variant="outline" onClick={() => handleOpenChange(false)} disabled={loading}>
