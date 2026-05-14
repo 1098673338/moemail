@@ -480,6 +480,13 @@ export function EmailList({ onEmailSelect, onGroupChange, selectedEmailId, refre
     setGroupToDelete(group)
   }
 
+  const openShareDialog = (email: Email) => {
+    setOpenMoreEmailId(null)
+    window.setTimeout(() => {
+      setEmailToShare(email)
+    }, 0)
+  }
+
   const moveEmailToGroup = async (email: Email, groupId: string | null) => {
     setMovingEmailId(email.id)
 
@@ -892,7 +899,7 @@ export function EmailList({ onEmailSelect, onGroupChange, selectedEmailId, refre
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent side="right" align="start" sideOffset={8} className="w-48">
-                        <DropdownMenuItem onClick={() => setEmailToShare(email)}>
+                        <DropdownMenuItem onSelect={() => openShareDialog(email)}>
                           <Share2 className="mr-2 h-4 w-4" />
                           {tShare("shareButton")}
                         </DropdownMenuItem>
