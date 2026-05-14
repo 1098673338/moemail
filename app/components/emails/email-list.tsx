@@ -753,12 +753,13 @@ export function EmailList({ onEmailSelect, onGroupChange, selectedEmailId, refre
                       setDragOverGroup(null)
                     }
                   }}
-                  onDrop={(event) => handleGroupDrop(event, group.id)}
-                  className={cn(
-                    "group relative flex h-8 w-full items-center gap-1 rounded px-2 text-sm transition-colors",
-                    selectedGroupId === group.id ? "bg-gray-200" : "hover:bg-gray-100",
-                    draggingGroupId === group.id && "opacity-50"
-                  )}
+	                  onDrop={(event) => handleGroupDrop(event, group.id)}
+	                  onClick={() => handleGroupSelect(group.id, group.name)}
+	                  className={cn(
+	                    "group relative flex h-8 w-full cursor-pointer items-center gap-1 rounded px-2 text-sm transition-colors",
+	                    selectedGroupId === group.id ? "bg-gray-200" : "hover:bg-gray-100",
+	                    draggingGroupId === group.id && "opacity-50"
+	                  )}
                 >
                   {dragOverGroup?.groupId === group.id && dragOverGroup.position === "before" && (
                     <div className="pointer-events-none absolute left-2 right-2 top-0 h-0.5 rounded-full bg-gray-500" />
@@ -782,11 +783,10 @@ export function EmailList({ onEmailSelect, onGroupChange, selectedEmailId, refre
                       <GripVertical className="h-3.5 w-3.5" />
                     </button>
                   )}
-                  <button
-                    type="button"
-                    className="flex min-w-0 flex-1 items-center gap-2 text-left"
-                    onClick={() => handleGroupSelect(group.id, group.name)}
-                  >
+	                  <button
+	                    type="button"
+	                    className="flex min-w-0 flex-1 items-center gap-2 text-left"
+	                  >
                     <Folder className="h-4 w-4 shrink-0 text-primary/60" />
                     <span className="min-w-0 flex-1 truncate">{group.name}</span>
                   </button>

@@ -40,7 +40,7 @@ export function MessageListContainer({ email, onMessageSelect, onMessagePrefetch
   const { canSend: canSendEmails } = useSendPermission()
 
   useEffect(() => {
-    if (!email.id) return
+    if (!email.id || !canSendEmails) return
 
     let cancelled = false
 
@@ -58,27 +58,28 @@ export function MessageListContainer({ email, onMessageSelect, onMessagePrefetch
       return Number.isFinite(data.total) ? data.total! : 0
     }
 
-    const fetchCounts = async () => {
+    const fetchInactiveCount = async () => {
       try {
-        const [received, sent] = await Promise.all([
-          fetchCount('received'),
-          canSendEmails ? fetchCount('sent') : Promise.resolve(0),
-        ])
+        const inactiveTab = activeTab === 'received' ? 'sent' : 'received'
+        const total = await fetchCount(inactiveTab)
 
         if (!cancelled) {
-          setMessageCounts({ received, sent })
+          setMessageCounts(prev => ({
+            ...prev,
+            [inactiveTab]: total,
+          }))
         }
       } catch (error) {
         console.error("Failed to fetch message counts:", error)
       }
     }
 
-    fetchCounts()
+    fetchInactiveCount()
 
     return () => {
       cancelled = true
     }
-  }, [email.id, canSendEmails, refreshTrigger])
+  }, [email.id, canSendEmails, activeTab, refreshTrigger])
 
   const handleTabChange = (tabId: string) => {
     setActiveTab(tabId as 'received' | 'sent')
