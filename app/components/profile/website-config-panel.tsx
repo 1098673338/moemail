@@ -17,6 +17,7 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { EMAIL_CONFIG } from "@/config"
+import { normalizeConfigurableLimitInput } from "@/lib/validation"
 
 export interface WebsiteConfigData {
   defaultRole: Exclude<Role, typeof ROLES.EMPEROR>
@@ -171,11 +172,11 @@ export function WebsiteConfigPanel({ initialConfig }: WebsiteConfigPanelProps) {
         <div className="grid grid-cols-[180px_minmax(0,1fr)] items-center gap-4">
           <span className="text-left text-sm">{t("maxEmails")}:</span>
           <Input 
-            type="number"
-            min="0"
-            max={EMAIL_CONFIG.MAX_CONFIGURABLE_LIMIT}
+            type="text"
+            inputMode="numeric"
+            pattern="[0-9]*"
             value={maxEmails}
-            onChange={(e) => setMaxEmails(e.target.value)}
+            onChange={(e) => setMaxEmails(normalizeConfigurableLimitInput(e.target.value))}
             placeholder={`${EMAIL_CONFIG.MAX_ACTIVE_EMAILS}`}
           />
         </div>

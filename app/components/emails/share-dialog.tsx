@@ -269,7 +269,7 @@ export function ShareDialog({ emailId, open: controlledOpen, onOpenChange, trigg
                                 }
                               }}
                               className={cn(
-                                "flex h-8 min-w-0 flex-1 items-center rounded px-2 text-xs font-mono transition-colors",
+                                "flex h-8 min-w-0 flex-1 items-center rounded-md px-2 text-xs font-mono transition-colors",
                                 isExpired
                                   ? "bg-destructive/10 text-destructive/70 cursor-not-allowed pointer-events-none"
                                   : "bg-gray-100 text-gray-700 hover:text-primary cursor-pointer"

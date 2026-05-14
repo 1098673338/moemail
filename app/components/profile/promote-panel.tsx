@@ -15,6 +15,7 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { EMAIL_CONFIG } from "@/config"
+import { normalizeConfigurableLimitInput } from "@/lib/validation"
 
 type RoleWithoutEmperor = Exclude<Role, typeof ROLES.EMPEROR>
 
@@ -256,11 +257,11 @@ export function PromotePanel() {
           <span className="text-left text-sm">{t("maxEmails")}:</span>
           <Input
             id="user-max-emails"
-            type={isTargetEmperor || !hasTargetUser ? "text" : "number"}
-            min="0"
-            max={EMAIL_CONFIG.MAX_CONFIGURABLE_LIMIT}
+            type="text"
+            inputMode={isTargetEmperor || !hasTargetUser ? undefined : "numeric"}
+            pattern={isTargetEmperor || !hasTargetUser ? undefined : "[0-9]*"}
             value={isTargetEmperor ? t("unlimited") : hasTargetUser ? maxEmails : ""}
-            onChange={(e) => setMaxEmails(e.target.value)}
+            onChange={(e) => setMaxEmails(normalizeConfigurableLimitInput(e.target.value))}
             placeholder={hasTargetUser ? "1" : t("searchFirst")}
             disabled={isUserFormDisabled}
           />
@@ -270,11 +271,11 @@ export function PromotePanel() {
           <span className="text-left text-sm">{t("sendLimit")}:</span>
           <Input
             id="user-send-limit"
-            type={isTargetEmperor || !hasTargetUser ? "text" : "number"}
-            min="0"
-            max={EMAIL_CONFIG.MAX_CONFIGURABLE_LIMIT}
+            type="text"
+            inputMode={isTargetEmperor || !hasTargetUser ? undefined : "numeric"}
+            pattern={isTargetEmperor || !hasTargetUser ? undefined : "[0-9]*"}
             value={isTargetEmperor ? t("unlimited") : hasTargetUser ? sendLimit : ""}
-            onChange={(e) => setSendLimit(e.target.value)}
+            onChange={(e) => setSendLimit(normalizeConfigurableLimitInput(e.target.value))}
             placeholder={hasTargetUser ? t("sendLimitPlaceholder") : t("searchFirst")}
             disabled={isUserFormDisabled}
           />

@@ -1,4 +1,18 @@
 import { z } from "zod"
+import { EMAIL_CONFIG } from "@/config"
+
+export const normalizeConfigurableLimitInput = (value: string) => {
+  const digits = value.replace(/\D/g, "")
+  const normalizedDigits = digits.replace(/^0+(?=\d)/, "")
+
+  if (!normalizedDigits) return ""
+  if (normalizedDigits.length > 4) {
+    return EMAIL_CONFIG.MAX_CONFIGURABLE_LIMIT.toString()
+  }
+
+  const numericValue = Number(normalizedDigits)
+  return Math.min(numericValue, EMAIL_CONFIG.MAX_CONFIGURABLE_LIMIT).toString()
+}
 
 export const authSchema = z.object({
   username: z.string()
