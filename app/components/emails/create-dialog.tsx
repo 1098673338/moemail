@@ -233,7 +233,7 @@ export function CreateDialog({ onEmailCreated, selectedGroupId, selectedGroupNam
                 <SelectTrigger className="flex-1">
                   <SelectValue />
                 </SelectTrigger>
-                <SelectContent className="max-h-64">
+                <SelectContent viewportClassName="max-h-64">
                   <SelectItem value={UNGROUPED_GROUP_VALUE} className={groupSelectItemClass}>
                     {tGroups("ungrouped")}
                   </SelectItem>
