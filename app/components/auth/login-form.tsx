@@ -121,7 +121,7 @@ export function LoginForm({ registrationEnabled = true, turnstile }: LoginFormPr
 
       if (result?.error) {
         toast({
-          title: result.error || t("toast.loginFailed"),
+          title: t("toast.loginFailedDesc"),
           variant: "destructive",
         })
         setLoading(false)
@@ -175,7 +175,7 @@ export function LoginForm({ registrationEnabled = true, turnstile }: LoginFormPr
 
       if (result?.error) {
         toast({
-          title: result.error || t("toast.autoLoginFailed"),
+          title: t("toast.autoLoginFailed"),
           variant: "destructive",
         })
         setLoading(false)

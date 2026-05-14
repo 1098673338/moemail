@@ -52,7 +52,6 @@ interface UserListItem {
   email?: string | null
   role?: string | null
   emailCount: number
-  sentCount: number
   maxEmails: number
   sendLimit: number | null
 }
@@ -129,10 +128,6 @@ export function PromotePanel() {
     if (limit == null || limit < 0) return t("sendDisabled")
     return limit.toString()
   }
-
-  const getSendUsageDisplay = (user: UserListItem) => (
-    `${user.sentCount} / ${getSendLimitDisplay(user.sendLimit)}`
-  )
 
   const fetchUserList = async () => {
     setLoadingUsers(true)
@@ -487,7 +482,7 @@ export function PromotePanel() {
               </div>
             ) : (
               <div className="flex flex-col gap-2">
-                <div className="grid grid-cols-[minmax(0,1fr)_96px_108px_84px_56px] items-center gap-3 px-3 text-xs text-muted-foreground">
+                <div className="grid grid-cols-[minmax(0,1fr)_80px_130px_130px_56px] items-center gap-3 px-3 text-xs text-muted-foreground">
                   <span>{t("userColumn")}</span>
                   <span>{t("roleColumn")}</span>
                   <span className="text-right">{t("emailCountColumn")}</span>
@@ -497,7 +492,7 @@ export function PromotePanel() {
                 {userList.map(user => (
                   <div
                     key={user.id}
-                    className="grid grid-cols-[minmax(0,1fr)_96px_108px_84px_56px] items-center gap-3 rounded-lg border border-border p-3"
+                    className="grid grid-cols-[minmax(0,1fr)_80px_130px_130px_56px] items-center gap-3 rounded-lg border border-border p-3"
                   >
                     <div className="min-w-0">
                       <div className="truncate text-sm font-medium">
@@ -514,7 +509,7 @@ export function PromotePanel() {
                       {getMailboxUsageDisplay(user)}
                     </div>
                     <div className="text-right text-sm">
-                      {getSendUsageDisplay(user)}
+                      {getSendLimitDisplay(user.sendLimit)}
                     </div>
                     <div className="flex justify-end">
                       <Button
