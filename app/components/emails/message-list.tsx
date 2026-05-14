@@ -189,7 +189,7 @@ export function MessageList({ email, messageType, onMessageSelect, onMessagePref
 
       toast({
         title: tList("success"),
-        description: tList("deleteSuccess")
+        description: t("deleteSuccess")
       })
 
       if (selectedMessageId === message.id) {
@@ -198,7 +198,7 @@ export function MessageList({ email, messageType, onMessageSelect, onMessagePref
     } catch {
       toast({
         title: tList("error"),
-        description: tList("deleteFailed"),
+        description: t("deleteFailed"),
         variant: "destructive"
       })
     } finally {
@@ -336,9 +336,9 @@ export function MessageList({ email, messageType, onMessageSelect, onMessagePref
     <AlertDialog open={!!messageToDelete} onOpenChange={() => setMessageToDelete(null)}>
       <AlertDialogContent>
         <AlertDialogHeader>
-          <AlertDialogTitle>{tList("deleteConfirm")}</AlertDialogTitle>
+          <AlertDialogTitle>{t("deleteConfirm")}</AlertDialogTitle>
           <AlertDialogDescription>
-            {tList("deleteDescription", { email: messageToDelete?.subject || "" })}
+            {t("deleteDescription", { subject: messageToDelete?.subject || "" })}
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>

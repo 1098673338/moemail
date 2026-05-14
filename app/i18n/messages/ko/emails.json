@@ -95,7 +95,11 @@
     "subject": "제목",
     "date": "날짜",
     "loading": "로딩 중...",
-    "loadingMore": "더 불러오는 중..."
+    "loadingMore": "더 불러오는 중...",
+    "deleteConfirm": "메일을 삭제하시겠습니까?",
+    "deleteDescription": "메일 \"{subject}\"을(를) 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.",
+    "deleteSuccess": "메일이 삭제되었습니다",
+    "deleteFailed": "메일 삭제에 실패했습니다"
   },
   "send": {
     "title": "이메일 보내기",
