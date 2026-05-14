@@ -65,7 +65,7 @@ export function SharedMessageList({
 
   return (
     <div className="flex h-full min-h-0 flex-col">
-      <div className="flex h-12 shrink-0 items-center justify-between border-b border-gray-200 px-2">
+      <div className="flex h-12 shrink-0 items-center justify-between border-b border-gray-200 px-3">
         <Button
           variant="ghost"
           size="icon"

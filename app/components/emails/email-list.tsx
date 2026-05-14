@@ -633,7 +633,7 @@ export function EmailList({ onEmailSelect, onGroupChange, selectedEmailId, refre
   return (
     <>
       <div className="relative flex h-full min-h-0 flex-col">
-        <div className="flex h-12 shrink-0 items-center justify-between border-b border-gray-200 px-2">
+        <div className="flex h-12 shrink-0 items-center justify-between border-b border-gray-200 px-3">
           <div className="flex items-center gap-2">
             <Button
               variant="ghost"
