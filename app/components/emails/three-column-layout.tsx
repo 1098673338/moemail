@@ -40,7 +40,7 @@ export function ThreeColumnLayout() {
   const [refreshTrigger, setRefreshTrigger] = useState(0)
   const [emailRefreshTrigger, setEmailRefreshTrigger] = useState(0)
   const { copyToClipboard } = useCopy()
-  const { canSend: canSendEmails } = useSendPermission()
+  const { canSend: canSendEmails, loading: sendPermissionLoading } = useSendPermission()
 
   const columnClass = "min-h-0 border border-gray-200 bg-background rounded-lg overflow-hidden flex flex-col"
   const headerClass = "h-12 px-2 border-b border-gray-200 flex items-center justify-between shrink-0"
@@ -152,6 +152,8 @@ export function ThreeColumnLayout() {
                 onMessagePrefetch={handleMessagePrefetch}
                 selectedMessageId={selectedMessageId}
                 refreshTrigger={refreshTrigger}
+                canSendEmails={canSendEmails}
+                sendPermissionLoading={sendPermissionLoading}
               />
             </div>
           ) : (

@@ -8,7 +8,7 @@ interface SendPermissionResponse {
 
 export function useSendPermission() {
   const [canSend, setCanSend] = useState(false)
-  const [loading, setLoading] = useState(false)
+  const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [remainingEmails, setRemainingEmails] = useState<number | undefined>()
 

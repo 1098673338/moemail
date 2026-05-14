@@ -4,7 +4,6 @@ import { useEffect, useState } from "react"
 import { useTranslations } from "next-intl"
 import { Tabs, SlidingTabsList, SlidingTabsTrigger, TabsContent } from "@/components/ui/tabs"
 import { MessageList } from "./message-list"
-import { useSendPermission } from "@/hooks/use-send-permission"
 
 interface MessageListContainerProps {
   email: {
@@ -15,6 +14,8 @@ interface MessageListContainerProps {
   onMessagePrefetch?: (messageId: string, messageType: MessageType, message: MessageSummary) => void
   selectedMessageId?: string | null
   refreshTrigger?: number
+  canSendEmails: boolean
+  sendPermissionLoading?: boolean
 }
 
 type MessageType = 'received' | 'sent'
@@ -30,14 +31,21 @@ interface MessageSummary {
   html?: string
 }
 
-export function MessageListContainer({ email, onMessageSelect, onMessagePrefetch, selectedMessageId, refreshTrigger }: MessageListContainerProps) {
+export function MessageListContainer({
+  email,
+  onMessageSelect,
+  onMessagePrefetch,
+  selectedMessageId,
+  refreshTrigger,
+  canSendEmails,
+  sendPermissionLoading = false,
+}: MessageListContainerProps) {
   const t = useTranslations("emails.messages")
   const [activeTab, setActiveTab] = useState<'received' | 'sent'>('received')
   const [messageCounts, setMessageCounts] = useState<Record<'received' | 'sent', number>>({
     received: 0,
     sent: 0,
   })
-  const { canSend: canSendEmails } = useSendPermission()
 
   useEffect(() => {
     if (!email.id || !canSendEmails) return
@@ -105,6 +113,10 @@ export function MessageListContainer({ email, onMessageSelect, onMessagePrefetch
       </SlidingTabsTrigger>
     </SlidingTabsList>
   )
+
+  if (sendPermissionLoading) {
+    return <div className="flex h-full min-h-0 flex-col" />
+  }
 
   return (
     <div className="flex h-full min-h-0 flex-col">
