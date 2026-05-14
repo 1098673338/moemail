@@ -42,6 +42,7 @@ export function ApiKeyPanel({
 }: ApiKeyPanelProps) {
   const t = useTranslations("profile.apiKey")
   const tCommon = useTranslations("common.actions")
+  const tFeedback = useTranslations("common.feedback")
   const tNoPermission = useTranslations("emails.noPermission")
   const [apiKeys, setApiKeys] = useState<ApiKeyData[]>(initialApiKeys)
   const [loading, setLoading] = useState(false)
@@ -62,7 +63,6 @@ export function ApiKeyPanel({
       console.error(error)
       toast({
         title: t("createFailed"),
-        description: t("createFailed"),
         variant: "destructive"
       })
     }
@@ -86,8 +86,7 @@ export function ApiKeyPanel({
       await fetchApiKeys()
     } catch (error) {
       toast({
-        title: t("createFailed"),
-        description: error instanceof Error ? error.message : t("createFailed"),
+        title: error instanceof Error ? error.message : t("createFailed"),
         variant: "destructive"
       })
       setCreateDialogOpen(false)
@@ -121,7 +120,6 @@ export function ApiKeyPanel({
       console.error(error)
       toast({
         title: t("createFailed"),
-        description: t("createFailed"),
         variant: "destructive"
       })
     }
@@ -137,14 +135,12 @@ export function ApiKeyPanel({
 
       setApiKeys(keys => keys.filter(key => key.id !== id))
       toast({
-        title: t("deleteSuccess"),
-        description: t("deleteSuccess")
+        title: tFeedback("deleteSuccess")
       })
     } catch (error) {
       console.error(error)
       toast({
-        title: t("deleteFailed"),
-        description: t("deleteFailed"),
+        title: tFeedback("deleteFailed"),
         variant: "destructive"
       })
     }

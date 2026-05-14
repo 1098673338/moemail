@@ -9,6 +9,12 @@
     "copy": "複製",
     "delete": "刪除"
   },
+  "feedback": {
+    "copySuccess": "複製成功",
+    "copyFailed": "複製失敗",
+    "deleteSuccess": "刪除成功",
+    "deleteFailed": "刪除失敗"
+  },
   "nav": {
     "home": "首頁",
     "login": "登入",

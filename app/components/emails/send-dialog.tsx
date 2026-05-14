@@ -23,7 +23,6 @@ interface SendDialogProps {
 
 export function SendDialog({ emailId, fromAddress, onSendSuccess }: SendDialogProps) {
   const t = useTranslations("emails.send")
-  const tList = useTranslations("emails.list")
   const tCommon = useTranslations("common.actions")
   const [open, setOpen] = useState(false)
   const [loading, setLoading] = useState(false)
@@ -48,8 +47,7 @@ export function SendDialog({ emailId, fromAddress, onSendSuccess }: SendDialogPr
   const handleSend = async () => {
     if (!to.trim() || !subject.trim() || !content.trim()) {
       toast({
-        title: tList("error"),
-        description: t("toPlaceholder") + ", " + t("subjectPlaceholder") + ", " + t("contentPlaceholder"),
+        title: t("missingFields"),
         variant: "destructive"
       })
       return
@@ -66,16 +64,14 @@ export function SendDialog({ emailId, fromAddress, onSendSuccess }: SendDialogPr
       if (!response.ok) {
         const data = await response.json()
         toast({
-          title: tList("error"),
-          description: (data as { error: string }).error,
+          title: (data as { error?: string }).error || t("failed"),
           variant: "destructive"
         })
         return
       }
 
       toast({
-        title: tList("success"),
-        description: t("success")
+        title: t("success")
       })
       handleOpenChange(false)
       
@@ -83,8 +79,7 @@ export function SendDialog({ emailId, fromAddress, onSendSuccess }: SendDialogPr
     
     } catch {
       toast({
-        title: tList("error"),
-        description: t("failed"),
+        title: t("failed"),
         variant: "destructive"
       })
     } finally {

@@ -9,6 +9,12 @@
     "copy": "コピー",
     "delete": "削除"
   },
+  "feedback": {
+    "copySuccess": "コピーしました",
+    "copyFailed": "コピーに失敗しました",
+    "deleteSuccess": "削除しました",
+    "deleteFailed": "削除に失敗しました"
+  },
   "nav": {
     "home": "ホーム",
     "login": "ログイン",

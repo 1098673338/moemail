@@ -113,6 +113,7 @@
     "contentPlaceholder": "メール内容（HTML 対応）",
     "send": "送信",
     "sending": "送信中...",
+    "missingFields": "宛先、件名、メール本文を入力してください",
     "success": "メールを送信しました",
     "failed": "メールの送信に失敗しました",
     "dailyLimitReached": "1日の送信上限に達しました",

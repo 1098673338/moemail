@@ -113,6 +113,7 @@
     "contentPlaceholder": "郵件內容（支援 HTML）",
     "send": "發送",
     "sending": "發送中...",
+    "missingFields": "請填寫收件人、主旨和郵件內容",
     "success": "郵件發送成功",
     "failed": "發送郵件失敗",
     "dailyLimitReached": "已達每日發送上限",

@@ -56,8 +56,8 @@ type MessageType = 'received' | 'sent'
 
 export function MessageList({ email, messageType, onMessageSelect, onMessagePrefetch, selectedMessageId, refreshTrigger, emptyStateOffsetClass, onTotalChange, tabControls }: MessageListProps) {
   const t = useTranslations("emails.messages")
-  const tList = useTranslations("emails.list")
   const tCommon = useTranslations("common.actions")
+  const tFeedback = useTranslations("common.feedback")
   const [messages, setMessages] = useState<Message[]>([])
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
@@ -173,8 +173,7 @@ export function MessageList({ email, messageType, onMessageSelect, onMessagePref
       if (!response.ok) {
         const data = await response.json()
         toast({
-          title: tList("error"),
-          description: (data as { error: string }).error,
+          title: (data as { error?: string }).error || tFeedback("deleteFailed"),
           variant: "destructive"
         })
         return
@@ -188,8 +187,7 @@ export function MessageList({ email, messageType, onMessageSelect, onMessagePref
       })
 
       toast({
-        title: tList("success"),
-        description: t("deleteSuccess")
+        title: tFeedback("deleteSuccess")
       })
 
       if (selectedMessageId === message.id) {
@@ -197,8 +195,7 @@ export function MessageList({ email, messageType, onMessageSelect, onMessagePref
       }
     } catch {
       toast({
-        title: tList("error"),
-        description: t("deleteFailed"),
+        title: tFeedback("deleteFailed"),
         variant: "destructive"
       })
     } finally {

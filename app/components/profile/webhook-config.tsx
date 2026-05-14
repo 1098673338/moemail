@@ -50,12 +50,10 @@ export function WebhookConfig({ initialConfig }: WebhookConfigProps) {
 
       toast({
         title: t("saveSuccess"),
-        description: t("saveSuccess")
       })
     } catch {
       toast({
         title: t("saveFailed"),
-        description: t("saveFailed"),
         variant: "destructive"
       })
     } finally {
@@ -78,12 +76,10 @@ export function WebhookConfig({ initialConfig }: WebhookConfigProps) {
 
       toast({
         title: t("testSuccess"),
-        description: t("testSuccess")
       })
     } catch {
       toast({
         title: t("testFailed"),
-        description: t("testFailed"),
         variant: "destructive"
       })
     } finally {

@@ -113,6 +113,7 @@
     "contentPlaceholder": "邮件内容（支持 HTML）",
     "send": "发送",
     "sending": "发送中...",
+    "missingFields": "请填写收件人、主题和邮件内容",
     "success": "邮件发送成功",
     "failed": "发送邮件失败",
     "dailyLimitReached": "已达每日发送上限",

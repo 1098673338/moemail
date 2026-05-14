@@ -78,7 +78,6 @@ export async function prefetchMessage(
 
 export function MessageView({ emailId, messageId, messageType = 'received', initialMessage }: MessageViewProps) {
   const t = useTranslations("emails.messageView")
-  const tList = useTranslations("emails.list")
   const cacheKey = getMessageCacheKey(emailId, messageId, messageType)
   const cachedInitialMessage = messageCache.get(cacheKey)
   const firstMessage = cachedInitialMessage ?? initialMessage ?? null
@@ -125,8 +124,7 @@ export function MessageView({ emailId, messageId, messageType = 'received', init
 
         if (!nextInitialMessage) {
           toast({
-            title: tList("error"),
-            description: errorMessage,
+            title: errorMessage,
             variant: "destructive"
           })
         }
@@ -143,7 +141,7 @@ export function MessageView({ emailId, messageId, messageType = 'received', init
     return () => {
       cancelled = true
     }
-  }, [emailId, initialMessage, messageId, messageType, toast, t, tList])
+  }, [emailId, initialMessage, messageId, messageType, toast, t])
 
   const updateIframeContent = useCallback(() => {
     if (viewMode === "html" && message?.html && iframeRef.current) {

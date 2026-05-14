@@ -113,6 +113,7 @@
     "contentPlaceholder": "Email content (supports HTML)",
     "send": "Send",
     "sending": "Sending...",
+    "missingFields": "Please fill in recipient, subject, and message content",
     "success": "Email sent successfully",
     "failed": "Failed to send email",
     "dailyLimitReached": "Daily sending limit reached",

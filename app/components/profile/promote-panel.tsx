@@ -74,6 +74,7 @@ export function PromotePanel() {
   const t = useTranslations("profile.promote")
   const tCard = useTranslations("profile.card")
   const tCommon = useTranslations("common.actions")
+  const tFeedback = useTranslations("common.feedback")
   const [searchText, setSearchText] = useState("")
   const [targetUser, setTargetUser] = useState<TargetUser | null>(null)
   const [loading, setLoading] = useState(false)
@@ -151,8 +152,7 @@ export function PromotePanel() {
       setUserList(data.users || [])
     } catch (error) {
       toast({
-        title: t("loadUsersFailed"),
-        description: error instanceof Error ? error.message : t("loadUsersFailed"),
+        title: error instanceof Error ? error.message : t("loadUsersFailed"),
         variant: "destructive",
       })
     } finally {
@@ -204,13 +204,11 @@ export function PromotePanel() {
       }
 
       toast({
-        title: t("deleteUserSuccess"),
-        description: getUserDisplayName(user),
+        title: tFeedback("deleteSuccess"),
       })
-    } catch (error) {
+    } catch {
       toast({
-        title: t("deleteUserFailed"),
-        description: error instanceof Error ? error.message : t("deleteUserFailed"),
+        title: tFeedback("deleteFailed"),
         variant: "destructive",
       })
     } finally {
@@ -346,7 +344,6 @@ export function PromotePanel() {
 
       toast({
         title: t("updateSuccess"),
-        description: `${targetUser.username || targetUser.email} - ${roleNames[targetRole]}`,
       })
       setSearchText("")
       setTargetUser(null)
@@ -355,8 +352,7 @@ export function PromotePanel() {
       setSendLimit("")
     } catch (error) {
       toast({
-        title: t("updateFailed"),
-        description: error instanceof Error ? error.message : t("updateFailed"),
+        title: error instanceof Error ? error.message : t("updateFailed"),
         variant: "destructive"
       })
     } finally {

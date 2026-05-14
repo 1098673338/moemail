@@ -1,6 +1,7 @@
 "use client"
 
 import { useCallback } from "react"
+import { useTranslations } from "next-intl"
 import { useToast } from "@/components/ui/use-toast"
 
 interface UseCopyOptions {
@@ -10,23 +11,20 @@ interface UseCopyOptions {
 
 export function useCopy(options: UseCopyOptions = {}) {
   const { toast } = useToast()
-  const {
-    successMessage = "已复制到剪贴板",
-    errorMessage = "复制失败"
-  } = options
+  const tFeedback = useTranslations("common.feedback")
+  const successMessage = options.successMessage ?? tFeedback("copySuccess")
+  const errorMessage = options.errorMessage ?? tFeedback("copyFailed")
 
   const copyToClipboard = useCallback(async (text: string) => {
     try {
       await navigator.clipboard.writeText(text)
       toast({
-        title: "成功",
-        description: successMessage
+        title: successMessage
       })
       return true
     } catch {
       toast({
-        title: "错误",
-        description: errorMessage,
+        title: errorMessage,
         variant: "destructive"
       })
       return false

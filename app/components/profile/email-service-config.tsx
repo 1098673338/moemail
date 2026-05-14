@@ -47,12 +47,10 @@ export function EmailServiceConfig({ initialConfig }: EmailServiceConfigProps) {
 
       toast({
         title: t("saveSuccess"),
-        description: t("saveSuccess"),
       })
     } catch (error) {
       toast({
-        title: t("saveFailed"),
-        description: error instanceof Error ? error.message : t("saveFailed"),
+        title: error instanceof Error ? error.message : t("saveFailed"),
         variant: "destructive",
       })
     } finally {

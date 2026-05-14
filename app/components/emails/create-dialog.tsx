@@ -37,7 +37,6 @@ export function CreateDialog({ onEmailCreated, selectedGroupId, selectedGroupNam
   const { config } = useConfig()
   const t = useTranslations("emails.create")
   const tGroups = useTranslations("emails.groups")
-  const tList = useTranslations("emails.list")
   const tCommon = useTranslations("common.actions")
   const [open, setOpen] = useState(false)
   const [loading, setLoading] = useState(false)
@@ -121,24 +120,21 @@ export function CreateDialog({ onEmailCreated, selectedGroupId, selectedGroupNam
       if (!response.ok) {
         const data = await response.json()
         toast({
-          title: tList("error"),
-          description: (data as { error: string }).error,
+          title: (data as { error?: string }).error || t("failed"),
           variant: "destructive"
         })
         return
       }
 
       toast({
-        title: tList("success"),
-        description: t("success")
+        title: t("success")
       })
       onEmailCreated()
       setOpen(false)
       resetForm()
     } catch {
       toast({
-        title: tList("error"),
-        description: t("failed"),
+        title: t("failed"),
         variant: "destructive"
       })
     } finally {

@@ -9,6 +9,12 @@
     "copy": "복사",
     "delete": "삭제"
   },
+  "feedback": {
+    "copySuccess": "복사 성공",
+    "copyFailed": "복사 실패",
+    "deleteSuccess": "삭제 성공",
+    "deleteFailed": "삭제 실패"
+  },
   "nav": {
     "home": "홈",
     "login": "로그인",

@@ -9,6 +9,12 @@
     "copy": "Copy",
     "delete": "Delete"
   },
+  "feedback": {
+    "copySuccess": "Copy successful",
+    "copyFailed": "Copy failed",
+    "deleteSuccess": "Delete successful",
+    "deleteFailed": "Delete failed"
+  },
   "nav": {
     "home": "Home",
     "login": "Login",

@@ -67,7 +67,6 @@ export function LoginForm({ registrationEnabled = true, turnstile }: LoginFormPr
 
     toast({
       title: t("toast.turnstileRequired"),
-      description: t("toast.turnstileRequiredDesc"),
       variant: "destructive",
     })
     return false
@@ -123,8 +122,7 @@ export function LoginForm({ registrationEnabled = true, turnstile }: LoginFormPr
 
       if (result?.error) {
         toast({
-          title: t("toast.loginFailed"),
-          description: result.error,
+          title: result.error || t("toast.loginFailed"),
           variant: "destructive",
         })
         setLoading(false)
@@ -135,8 +133,7 @@ export function LoginForm({ registrationEnabled = true, turnstile }: LoginFormPr
       window.location.href = mailboxPath
     } catch (error) {
       toast({
-        title: t("toast.loginFailed"),
-        description: error instanceof Error ? error.message : t("toast.registerFailedDesc"),
+        title: error instanceof Error ? error.message : t("toast.loginFailed"),
         variant: "destructive",
       })
       setLoading(false)
@@ -161,8 +158,7 @@ export function LoginForm({ registrationEnabled = true, turnstile }: LoginFormPr
 
       if (!response.ok) {
         toast({
-          title: t("toast.registerFailed"),
-          description: data.error || t("toast.registerFailedDesc"),
+          title: data.error || t("toast.registerFailed"),
           variant: "destructive",
         })
         setLoading(false)
@@ -180,8 +176,7 @@ export function LoginForm({ registrationEnabled = true, turnstile }: LoginFormPr
 
       if (result?.error) {
         toast({
-          title: t("toast.loginFailed"),
-          description: result.error || t("toast.autoLoginFailed"),
+          title: result.error || t("toast.autoLoginFailed"),
           variant: "destructive",
         })
         setLoading(false)
@@ -192,8 +187,7 @@ export function LoginForm({ registrationEnabled = true, turnstile }: LoginFormPr
       window.location.href = mailboxPath
     } catch (error) {
       toast({
-        title: t("toast.registerFailed"),
-        description: error instanceof Error ? error.message : t("toast.registerFailedDesc"),
+        title: error instanceof Error ? error.message : t("toast.registerFailed"),
         variant: "destructive",
       })
       setLoading(false)

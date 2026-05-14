@@ -52,6 +52,7 @@ interface ShareLink {
 
 export function ShareMessageDialog({ emailId, messageId, messageSubject, trigger }: ShareMessageDialogProps) {
   const t = useTranslations("emails.shareMessage")
+  const tFeedback = useTranslations("common.feedback")
   const { toast } = useToast()
   const { copyToClipboard } = useCopy()
   
@@ -74,7 +75,6 @@ export function ShareMessageDialog({ emailId, messageId, messageSubject, trigger
       console.error("Failed to fetch shares:", error)
       toast({
         title: t("createFailed"),
-        description: String(error),
         variant: "destructive"
       })
     } finally {
@@ -103,7 +103,6 @@ export function ShareMessageDialog({ emailId, messageId, messageSubject, trigger
       console.error("Failed to create share:", error)
       toast({
         title: t("createFailed"),
-        description: String(error),
         variant: "destructive"
       })
     } finally {
@@ -122,13 +121,12 @@ export function ShareMessageDialog({ emailId, messageId, messageSubject, trigger
       setShares(prev => prev.filter(s => s.id !== share.id))
       
       toast({
-        title: t("deleteSuccess"),
+        title: tFeedback("deleteSuccess"),
       })
     } catch (error) {
       console.error("Failed to delete share:", error)
       toast({
-        title: t("deleteFailed"),
-        description: String(error),
+        title: tFeedback("deleteFailed"),
         variant: "destructive"
       })
     } finally {
@@ -142,18 +140,7 @@ export function ShareMessageDialog({ emailId, messageId, messageSubject, trigger
 
   const handleCopy = async (token: string) => {
     const url = getShareUrl(token)
-    const success = await copyToClipboard(url)
-    
-    if (success) {
-      toast({
-        title: t("copied"),
-      })
-    } else {
-      toast({
-        title: t("copyFailed"),
-        variant: "destructive"
-      })
-    }
+    await copyToClipboard(url)
   }
 
   useEffect(() => {

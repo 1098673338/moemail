@@ -81,6 +81,7 @@ export function EmailList({ onEmailSelect, onGroupChange, selectedEmailId, refre
   const tGroups = useTranslations("emails.groups")
   const tShare = useTranslations("emails.share")
   const tCommon = useTranslations("common.actions")
+  const tFeedback = useTranslations("common.feedback")
   const [emails, setEmails] = useState<Email[]>([])
   const [groups, setGroups] = useState<EmailGroup[]>([])
   const [selectedGroupId, setSelectedGroupId] = useState<string | null>(null)
@@ -163,8 +164,7 @@ export function EmailList({ onEmailSelect, onGroupChange, selectedEmailId, refre
     } catch (error) {
       setGroups(previousGroups)
       toast({
-        title: t("error"),
-        description: error instanceof Error ? error.message : tGroups("sortFailed"),
+        title: error instanceof Error ? error.message : tGroups("sortFailed"),
         variant: "destructive",
       })
     } finally {
@@ -312,8 +312,7 @@ export function EmailList({ onEmailSelect, onGroupChange, selectedEmailId, refre
 
       if (!response.ok || !data.group) {
         toast({
-          title: t("error"),
-          description: data.error || tGroups("createFailed"),
+          title: data.error || tGroups("createFailed"),
           variant: "destructive",
         })
         return
@@ -323,13 +322,11 @@ export function EmailList({ onEmailSelect, onGroupChange, selectedEmailId, refre
       setGroupName("")
       setGroupDialogOpen(false)
       toast({
-        title: t("success"),
-        description: tGroups("createSuccess"),
+        title: tGroups("createSuccess"),
       })
     } catch {
       toast({
-        title: t("error"),
-        description: tGroups("createFailed"),
+        title: tGroups("createFailed"),
         variant: "destructive",
       })
     } finally {
@@ -371,8 +368,7 @@ export function EmailList({ onEmailSelect, onGroupChange, selectedEmailId, refre
 
       if (!response.ok || !data.group) {
         toast({
-          title: t("error"),
-          description: data.error || tGroups("renameFailed"),
+          title: data.error || tGroups("renameFailed"),
           variant: "destructive",
         })
         return
@@ -389,13 +385,11 @@ export function EmailList({ onEmailSelect, onGroupChange, selectedEmailId, refre
       setEditingGroup(null)
       setEditGroupName("")
       toast({
-        title: t("success"),
-        description: tGroups("renameSuccess"),
+        title: tGroups("renameSuccess"),
       })
     } catch {
       toast({
-        title: t("error"),
-        description: tGroups("renameFailed"),
+        title: tGroups("renameFailed"),
         variant: "destructive",
       })
     } finally {
@@ -418,8 +412,7 @@ export function EmailList({ onEmailSelect, onGroupChange, selectedEmailId, refre
 
       if (!response.ok) {
         toast({
-          title: t("error"),
-          description: data.error || tGroups("deleteFailed"),
+          title: data.error || tFeedback("deleteFailed"),
           variant: "destructive",
         })
         return
@@ -453,15 +446,11 @@ export function EmailList({ onEmailSelect, onGroupChange, selectedEmailId, refre
       }
 
       toast({
-        title: t("success"),
-        description: deleteEmails
-          ? tGroups("deleteWithEmailsSuccess")
-          : tGroups("deleteSuccess"),
+        title: tFeedback("deleteSuccess"),
       })
     } catch {
       toast({
-        title: t("error"),
-        description: tGroups("deleteFailed"),
+        title: tFeedback("deleteFailed"),
         variant: "destructive",
       })
     } finally {
@@ -503,8 +492,7 @@ export function EmailList({ onEmailSelect, onGroupChange, selectedEmailId, refre
 
       if (!response.ok) {
         toast({
-          title: t("error"),
-          description: data.error || tGroups("moveFailed"),
+          title: data.error || tGroups("moveFailed"),
           variant: "destructive",
         })
         return
@@ -542,13 +530,11 @@ export function EmailList({ onEmailSelect, onGroupChange, selectedEmailId, refre
       }
 
       toast({
-        title: t("success"),
-        description: tGroups("moveSuccess"),
+        title: tGroups("moveSuccess"),
       })
     } catch {
       toast({
-        title: t("error"),
-        description: tGroups("moveFailed"),
+        title: tGroups("moveFailed"),
         variant: "destructive",
       })
     } finally {
@@ -602,8 +588,7 @@ export function EmailList({ onEmailSelect, onGroupChange, selectedEmailId, refre
       if (!response.ok) {
         const data = await response.json()
         toast({
-          title: t("error"),
-          description: (data as { error: string }).error,
+          title: (data as { error?: string }).error || tFeedback("deleteFailed"),
           variant: "destructive"
         })
         return
@@ -620,8 +605,7 @@ export function EmailList({ onEmailSelect, onGroupChange, selectedEmailId, refre
       setTotal(prev => prev - 1)
 
       toast({
-        title: t("success"),
-        description: t("deleteSuccess")
+        title: tFeedback("deleteSuccess")
       })
       
       if (selectedEmailId === email.id) {
@@ -629,8 +613,7 @@ export function EmailList({ onEmailSelect, onGroupChange, selectedEmailId, refre
       }
     } catch {
       toast({
-        title: t("error"),
-        description: t("deleteFailed"),
+        title: tFeedback("deleteFailed"),
         variant: "destructive"
       })
     } finally {
