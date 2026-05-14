@@ -7,6 +7,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Label } from "@/components/ui/label"
 import { useToast } from "@/components/ui/use-toast"
 import { ShareMessageDialog } from "./share-message-dialog"
+import { MessageDetailHeader } from "./message-detail-header"
 
 interface Message {
   id: string
@@ -252,30 +253,27 @@ export function MessageView({ emailId, messageId, messageType = 'received', init
 
   return (
     <div className="h-full flex flex-col">
-      <div className="flex flex-col gap-0 border-b border-gray-200 p-4">
-        <div className="flex items-start justify-between gap-2">
-          <h3 className="text-base font-bold flex-1">{message.subject}</h3>
-          <ShareMessageDialog 
+      <MessageDetailHeader
+        subject={message.subject}
+        fromLabel={t("from")}
+        toLabel={t("to")}
+        timeLabel={t("time")}
+        fromAddress={!isSentMessage ? message.from_address : undefined}
+        toAddress={message.to_address}
+        timestamp={message.sent_at || message.received_at || 0}
+        action={
+          <ShareMessageDialog
             emailId={emailId}
-            messageId={message.id} 
+            messageId={message.id}
             messageSubject={message.subject}
             trigger={
-              <button className="p-1.5 hover:bg-primary/10 rounded-md transition-colors">
+              <button className="flex size-7 items-center justify-center rounded-md transition-colors hover:bg-primary/10">
                 <Share2 className="h-4 w-4 text-gray-500" />
               </button>
             }
           />
-        </div>
-        <div className="flex flex-col gap-[3px] text-xs text-gray-500">
-          {!isSentMessage && message.from_address && (
-            <p>{t("from")}: {message.from_address}</p>
-          )}
-          {message.to_address && (
-            <p>{t("to")}: {message.to_address}</p>
-          )}
-          <p>{t("time")}: {new Date(message.sent_at || message.received_at || 0).toLocaleString()}</p>
-        </div>
-      </div>
+        }
+      />
       
       {message.html && message.content && (
         <div className="border-b border-gray-200 p-2">

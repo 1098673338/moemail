@@ -4,6 +4,7 @@ import { useState, useCallback, useEffect, useRef } from "react"
 import { Loader2, MailOpen } from "lucide-react"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Label } from "@/components/ui/label"
+import { MessageDetailHeader } from "./message-detail-header"
 
 interface MessageDetail {
   id: string
@@ -156,29 +157,15 @@ export function SharedMessageDetail({
 
   return (
     <div className="h-full flex flex-col">
-      <div className="flex flex-col gap-0 border-b border-gray-200 p-4">
-        <div className="flex items-start justify-between gap-2">
-          <h3 className="text-base font-bold flex-1">{message.subject}</h3>
-        </div>
-        <div className="flex flex-col gap-[3px] text-xs text-gray-500">
-          {!isSentMessage && message.from_address && (
-            <p>
-              {t.from}: {message.from_address}
-            </p>
-          )}
-          {message.to_address && (
-            <p>
-              {t.to}: {message.to_address}
-            </p>
-          )}
-          <p>
-            {t.time}:{" "}
-            {new Date(
-              message.sent_at || message.received_at || 0
-            ).toLocaleString()}
-          </p>
-        </div>
-      </div>
+      <MessageDetailHeader
+        subject={message.subject}
+        fromLabel={t.from}
+        toLabel={t.to}
+        timeLabel={t.time}
+        fromAddress={!isSentMessage ? message.from_address : undefined}
+        toAddress={message.to_address}
+        timestamp={message.sent_at || message.received_at || 0}
+      />
 
       {message.html && message.content && (
         <div className="border-b border-gray-200 p-2">

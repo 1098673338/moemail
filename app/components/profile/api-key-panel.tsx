@@ -161,7 +161,12 @@ export function ApiKeyPanel({
           canManageApiKey && (
             <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
               <DialogTrigger asChild>
-                <Button className="gap-2" onClick={() => setCreateDialogOpen(true)}>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-8 gap-2"
+                  onClick={() => setCreateDialogOpen(true)}
+                >
                   <Plus className="w-4 h-4" />
                   {t("create")}
                 </Button>
