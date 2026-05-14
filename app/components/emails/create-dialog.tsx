@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
-import { Copy, Plus, RefreshCw } from "lucide-react"
+import { Copy, Link2, Plus, RefreshCw } from "lucide-react"
 import { useToast } from "@/components/ui/use-toast"
 import { nanoid } from "nanoid"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
@@ -204,26 +204,22 @@ export function CreateDialog({ onEmailCreated, selectedGroupId, selectedGroupNam
                 <RefreshCw className="w-4 h-4" />
               </Button>
             </div>
-            {emailNamePrefix && !emailNameError ? (
-              <div className="flex h-11 min-w-0 items-center gap-2 rounded-md border border-gray-200 bg-gray-100 px-3 text-foreground">
-                <span className="shrink-0 text-xs text-muted-foreground">{t("addressPreview")}</span>
-                <span className="min-w-0 flex-1 truncate font-mono text-sm text-foreground">
-                  {`${emailNamePrefix}@${currentDomain}`}
-                </span>
+            {emailNamePrefix && !emailNameError && (
+              <div className="flex items-center gap-2 min-w-0">
+                <Link2 className="h-4 w-4 flex-shrink-0 text-primary/60" />
+                <div className="flex h-8 min-w-0 flex-1 items-center rounded bg-gray-100 px-2 text-xs font-mono text-gray-700 transition-colors">
+                  <span className="min-w-0 truncate">{`${emailNamePrefix}@${currentDomain}`}</span>
+                </div>
                 <Button
                   variant="ghost"
                   size="icon"
                   type="button"
-                  className="h-7 w-7 shrink-0 hover:bg-black/10"
+                  className="h-8 w-8 shrink-0"
                   aria-label={tCommon("copy")}
                   onClick={copyEmailAddress}
                 >
-                  <Copy className="size-4" />
+                  <Copy className="h-4 w-4" />
                 </Button>
-              </div>
-            ) : (
-              <div className="flex h-11 items-center rounded-md border border-gray-200 bg-gray-100 px-3">
-                <span className="text-sm text-muted-foreground/60">{t("addressPreviewEmpty")}</span>
               </div>
             )}
           </div>

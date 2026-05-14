@@ -111,9 +111,14 @@ export async function POST(request: Request) {
 
   const normalizedMaxEmails = maxEmails.trim()
   const parsedMaxEmails = Number(normalizedMaxEmails)
-  if (!normalizedMaxEmails || !Number.isInteger(parsedMaxEmails) || parsedMaxEmails < 0) {
+  if (
+    !normalizedMaxEmails
+    || !Number.isInteger(parsedMaxEmails)
+    || parsedMaxEmails < 0
+    || parsedMaxEmails > EMAIL_CONFIG.MAX_CONFIGURABLE_LIMIT
+  ) {
     return Response.json({
-      error: "每个用户最大邮箱数必须是大于等于 0 的整数"
+      error: "每个用户最大邮箱数必须是 0 到 9999 之间的整数，9999 表示无限制"
     }, { status: 400 })
   }
 

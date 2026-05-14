@@ -34,7 +34,11 @@ export async function checkSendPermission(
       }
     }
 
-    if (skipDailyLimitCheck || userDailyLimit === 0) {
+    if (
+      skipDailyLimitCheck
+      || userDailyLimit === 0
+      || userDailyLimit === EMAIL_CONFIG.UNLIMITED_LIMIT
+    ) {
       return {
         canSend: true
       }

@@ -123,7 +123,7 @@
     "saving": "保存中...",
     "saveSuccess": "設定を保存しました",
     "saveFailed": "設定の保存に失敗しました",
-    "maxEmailsInvalid": "ユーザーあたりの最大メールボックス数は 0 以上の整数である必要があります"
+    "maxEmailsInvalid": "ユーザーあたりの最大メールボックス数は 0 から 9999 までの整数にしてください。9999 は無制限を意味します"
   },
   "promote": {
     "title": "ユーザー管理",
@@ -136,10 +136,10 @@
     "maxEmails": "最大メールボックス数",
     "sendLimit": "送信上限",
     "searchFirst": "先にユーザー名またはメールを入力してください",
-    "sendLimitPlaceholder": "空欄は送信不可",
+    "sendLimitPlaceholder": "空欄は送信不可、9999 は無制限",
     "unlimited": "無制限",
-    "maxEmailsInvalid": "最大メールボックス数は 0 以上の整数である必要があります",
-    "sendLimitInvalid": "送信上限は空欄、または 0 以上の整数である必要があります",
+    "maxEmailsInvalid": "最大メールボックス数は 0 から 9999 までの整数にしてください。9999 は無制限を意味します",
+    "sendLimitInvalid": "送信上限は空欄、または 0 から 9999 までの整数にしてください。9999 は無制限を意味します",
     "actions": "操作",
     "promote": "設定",
     "saveConfig": "設定を保存",

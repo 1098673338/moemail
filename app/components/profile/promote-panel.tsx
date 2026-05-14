@@ -14,6 +14,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
+import { EMAIL_CONFIG } from "@/config"
 
 type RoleWithoutEmperor = Exclude<Role, typeof ROLES.EMPEROR>
 
@@ -38,7 +39,7 @@ export function PromotePanel() {
   const [maxEmails, setMaxEmails] = useState("")
   const [sendLimit, setSendLimit] = useState("")
   const { toast } = useToast()
-  const hasSearchText = searchText.trim().length > 0
+  const hasTargetUser = targetUser !== null
   const isTargetEmperor = targetUser?.role === ROLES.EMPEROR
   const isUserFormDisabled = !targetUser || searching || isTargetEmperor
   
@@ -119,7 +120,15 @@ export function PromotePanel() {
     if (!targetUser) return
 
     const parsedMaxEmails = isTargetEmperor ? 0 : Number(maxEmails)
-    if (!isTargetEmperor && (!maxEmails.trim() || !Number.isInteger(parsedMaxEmails) || parsedMaxEmails < 0)) {
+    if (
+      !isTargetEmperor
+      && (
+        !maxEmails.trim()
+        || !Number.isInteger(parsedMaxEmails)
+        || parsedMaxEmails < 0
+        || parsedMaxEmails > EMAIL_CONFIG.MAX_CONFIGURABLE_LIMIT
+      )
+    ) {
       toast({
         title: t("updateFailed"),
         description: t("maxEmailsInvalid"),
@@ -130,7 +139,15 @@ export function PromotePanel() {
 
     const normalizedSendLimit = sendLimit.trim()
     const parsedSendLimit = isTargetEmperor ? 0 : normalizedSendLimit ? Number(normalizedSendLimit) : null
-    if (!isTargetEmperor && parsedSendLimit !== null && (!Number.isInteger(parsedSendLimit) || parsedSendLimit < 0)) {
+    if (
+      !isTargetEmperor
+      && parsedSendLimit !== null
+      && (
+        !Number.isInteger(parsedSendLimit)
+        || parsedSendLimit < 0
+        || parsedSendLimit > EMAIL_CONFIG.MAX_CONFIGURABLE_LIMIT
+      )
+    ) {
       toast({
         title: t("updateFailed"),
         description: t("sendLimitInvalid"),
@@ -197,12 +214,12 @@ export function PromotePanel() {
         <div className="grid grid-cols-[180px_minmax(0,1fr)] items-center gap-4">
           <span className="text-left text-sm">{t("role")}:</span>
           <Select
-            value={hasSearchText ? targetRole : undefined}
+            value={hasTargetUser ? targetRole : undefined}
             onValueChange={(value) => setTargetRole(value as RoleWithoutEmperor)}
             disabled={isUserFormDisabled}
           >
             <SelectTrigger className="w-56">
-              <SelectValue placeholder={!hasSearchText ? t("searchFirst") : undefined} />
+              <SelectValue placeholder={!hasTargetUser ? t("searchFirst") : undefined} />
             </SelectTrigger>
             <SelectContent>
               {targetUser?.role === ROLES.EMPEROR && (
@@ -239,11 +256,12 @@ export function PromotePanel() {
           <span className="text-left text-sm">{t("maxEmails")}:</span>
           <Input
             id="user-max-emails"
-            type={isTargetEmperor || !hasSearchText ? "text" : "number"}
+            type={isTargetEmperor || !hasTargetUser ? "text" : "number"}
             min="0"
-            value={isTargetEmperor ? t("unlimited") : maxEmails}
+            max={EMAIL_CONFIG.MAX_CONFIGURABLE_LIMIT}
+            value={isTargetEmperor ? t("unlimited") : hasTargetUser ? maxEmails : ""}
             onChange={(e) => setMaxEmails(e.target.value)}
-            placeholder={hasSearchText ? "1" : t("searchFirst")}
+            placeholder={hasTargetUser ? "1" : t("searchFirst")}
             disabled={isUserFormDisabled}
           />
         </div>
@@ -252,11 +270,12 @@ export function PromotePanel() {
           <span className="text-left text-sm">{t("sendLimit")}:</span>
           <Input
             id="user-send-limit"
-            type={isTargetEmperor || !hasSearchText ? "text" : "number"}
+            type={isTargetEmperor || !hasTargetUser ? "text" : "number"}
             min="0"
-            value={isTargetEmperor ? t("unlimited") : sendLimit}
+            max={EMAIL_CONFIG.MAX_CONFIGURABLE_LIMIT}
+            value={isTargetEmperor ? t("unlimited") : hasTargetUser ? sendLimit : ""}
             onChange={(e) => setSendLimit(e.target.value)}
-            placeholder={hasSearchText ? t("sendLimitPlaceholder") : t("searchFirst")}
+            placeholder={hasTargetUser ? t("sendLimitPlaceholder") : t("searchFirst")}
             disabled={isUserFormDisabled}
           />
         </div>

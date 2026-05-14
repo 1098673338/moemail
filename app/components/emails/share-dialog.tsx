@@ -254,9 +254,9 @@ export function ShareDialog({ emailId, open: controlledOpen, onOpenChange, trigg
                               : "border-border"
                           )}
                         >
-                          <div className="flex items-start gap-2 min-w-0">
+                          <div className="flex items-center gap-2 min-w-0">
                             <Link2 className={cn(
-                              "h-4 w-4 flex-shrink-0 mt-1",
+                              "h-4 w-4 flex-shrink-0",
                               isExpired ? "text-destructive/60" : "text-primary/60"
                             )} />
                             <a
@@ -269,13 +269,13 @@ export function ShareDialog({ emailId, open: controlledOpen, onOpenChange, trigg
                                 }
                               }}
                               className={cn(
-                                "min-w-0 flex-1 text-xs p-1 rounded font-mono transition-colors break-all",
+                                "flex h-8 min-w-0 flex-1 items-center rounded px-2 text-xs font-mono transition-colors",
                                 isExpired
                                   ? "bg-destructive/10 text-destructive/70 cursor-not-allowed pointer-events-none"
                                   : "bg-gray-100 text-gray-700 hover:text-primary cursor-pointer"
                               )}
                             >
-                              {getShareUrl(share.token)}
+                              <span className="min-w-0 truncate">{getShareUrl(share.token)}</span>
                             </a>
                             <div className="flex flex-shrink-0 gap-1">
                               <Button
@@ -292,7 +292,7 @@ export function ShareDialog({ emailId, open: controlledOpen, onOpenChange, trigg
                                 className="h-8 w-8"
                                 onClick={() => setDeleteTarget(share)}
                               >
-                                <Trash2 className="h-4 w-4 text-destructive" />
+                                <Trash2 className="h-4 w-4 text-black" />
                               </Button>
                             </div>
                           </div>

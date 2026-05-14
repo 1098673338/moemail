@@ -60,7 +60,14 @@ export function WebsiteConfigPanel({ initialConfig }: WebsiteConfigPanelProps) {
     const normalizedMaxEmails = maxEmails.trim()
     const parsedMaxEmails = Number(normalizedMaxEmails)
 
-    if (normalizedMaxEmails && (!Number.isInteger(parsedMaxEmails) || parsedMaxEmails < 0)) {
+    if (
+      normalizedMaxEmails
+      && (
+        !Number.isInteger(parsedMaxEmails)
+        || parsedMaxEmails < 0
+        || parsedMaxEmails > EMAIL_CONFIG.MAX_CONFIGURABLE_LIMIT
+      )
+    ) {
       toast({
         title: t("saveFailed"),
         description: t("maxEmailsInvalid"),
@@ -166,7 +173,7 @@ export function WebsiteConfigPanel({ initialConfig }: WebsiteConfigPanelProps) {
           <Input 
             type="number"
             min="0"
-            max="100"
+            max={EMAIL_CONFIG.MAX_CONFIGURABLE_LIMIT}
             value={maxEmails}
             onChange={(e) => setMaxEmails(e.target.value)}
             placeholder={`${EMAIL_CONFIG.MAX_ACTIVE_EMAILS}`}

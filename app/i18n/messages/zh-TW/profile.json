@@ -123,7 +123,7 @@
     "saving": "儲存中...",
     "saveSuccess": "設定儲存成功",
     "saveFailed": "儲存設定失敗",
-    "maxEmailsInvalid": "每個使用者最大郵箱數必須是大於等於 0 的整數"
+    "maxEmailsInvalid": "每個使用者最大郵箱數必須是 0 到 9999 之間的整數，9999 表示無限制"
   },
   "promote": {
     "title": "使用者管理",
@@ -136,10 +136,10 @@
     "maxEmails": "最大郵箱數",
     "sendLimit": "發件限額",
     "searchFirst": "請先輸入使用者名稱或郵箱",
-    "sendLimitPlaceholder": "留空表示不能發件",
+    "sendLimitPlaceholder": "留空表示不能發件，9999 表示無限制",
     "unlimited": "無限制",
-    "maxEmailsInvalid": "最大郵箱數必須是大於等於 0 的整數",
-    "sendLimitInvalid": "發件限額必須留空或填寫大於等於 0 的整數",
+    "maxEmailsInvalid": "最大郵箱數必須是 0 到 9999 之間的整數，9999 表示無限制",
+    "sendLimitInvalid": "發件限額必須留空或填寫 0 到 9999 之間的整數，9999 表示無限制",
     "actions": "操作",
     "promote": "設為",
     "saveConfig": "儲存設定",

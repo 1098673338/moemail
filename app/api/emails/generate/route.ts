@@ -51,7 +51,7 @@ export async function POST(request: Request) {
           )
         )
       
-      if (Number(activeEmailsCount[0].count) >= maxEmails) {
+      if (maxEmails !== EMAIL_CONFIG.UNLIMITED_LIMIT && Number(activeEmailsCount[0].count) >= maxEmails) {
         return NextResponse.json(
           { error: `已达到最大邮箱数量限制 (${maxEmails})` },
           { status: 403 }

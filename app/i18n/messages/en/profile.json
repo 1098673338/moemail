@@ -123,7 +123,7 @@
     "saving": "Saving...",
     "saveSuccess": "Configuration saved successfully",
     "saveFailed": "Failed to save configuration",
-    "maxEmailsInvalid": "Max emails per user must be an integer greater than or equal to 0"
+    "maxEmailsInvalid": "Max emails per user must be an integer from 0 to 9999; 9999 means unlimited"
   },
   "promote": {
     "title": "User Management",
@@ -136,10 +136,10 @@
     "maxEmails": "Max Emails",
     "sendLimit": "Send Limit",
     "searchFirst": "Enter a username or email first",
-    "sendLimitPlaceholder": "Blank means sending disabled",
+    "sendLimitPlaceholder": "Blank means sending disabled; 9999 means unlimited",
     "unlimited": "Unlimited",
-    "maxEmailsInvalid": "Max emails must be an integer greater than or equal to 0",
-    "sendLimitInvalid": "Send limit must be blank or an integer greater than or equal to 0",
+    "maxEmailsInvalid": "Max emails must be an integer from 0 to 9999; 9999 means unlimited",
+    "sendLimitInvalid": "Send limit must be blank or an integer from 0 to 9999; 9999 means unlimited",
     "actions": "Actions",
     "promote": "Set as",
     "saveConfig": "Save Configuration",

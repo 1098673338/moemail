@@ -123,7 +123,7 @@
     "saving": "保存中...",
     "saveSuccess": "配置保存成功",
     "saveFailed": "保存配置失败",
-    "maxEmailsInvalid": "每个用户最大邮箱数必须是大于等于 0 的整数"
+    "maxEmailsInvalid": "每个用户最大邮箱数必须是 0 到 9999 之间的整数，9999 表示无限制"
   },
   "promote": {
     "title": "用户管理",
@@ -136,10 +136,10 @@
     "maxEmails": "最大邮箱数",
     "sendLimit": "发件限额",
     "searchFirst": "请先输入用户名或邮箱",
-    "sendLimitPlaceholder": "留空表示不能发件",
+    "sendLimitPlaceholder": "留空表示不能发件，9999 表示无限制",
     "unlimited": "无限制",
-    "maxEmailsInvalid": "最大邮箱数必须是大于等于 0 的整数",
-    "sendLimitInvalid": "发件限额必须留空或填写大于等于 0 的整数",
+    "maxEmailsInvalid": "最大邮箱数必须是 0 到 9999 之间的整数，9999 表示无限制",
+    "sendLimitInvalid": "发件限额必须留空或填写 0 到 9999 之间的整数，9999 表示无限制",
     "actions": "操作",
     "promote": "设为",
     "saveConfig": "保存配置",

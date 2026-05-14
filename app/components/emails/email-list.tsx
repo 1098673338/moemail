@@ -38,6 +38,7 @@ import { ROLES } from "@/lib/permissions"
 import { useUserRole } from "@/hooks/use-user-role"
 import { useConfig } from "@/hooks/use-config"
 import { useCopy } from "@/hooks/use-copy"
+import { EMAIL_CONFIG } from "@/config"
 
 interface Email {
   id: string
@@ -709,7 +710,7 @@ export function EmailList({ onEmailSelect, onGroupChange, selectedEmailId, refre
             </Button>
           </div>
           <span className="shrink-0 text-xs text-gray-500">
-            {role === ROLES.EMPEROR ? (
+            {role === ROLES.EMPEROR || maxEmailsLimit === EMAIL_CONFIG.UNLIMITED_LIMIT ? (
               t("emailCountUnlimited", { count: total })
             ) : maxEmailsLimit === undefined ? (
               t("emailCount", { count: total, max: "..." })
