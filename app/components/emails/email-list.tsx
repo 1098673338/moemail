@@ -70,7 +70,7 @@ interface EmailGroup {
 
 type GroupDropPosition = "before" | "after"
 
-const EMPTY_STATE_CLASS = "pointer-events-none absolute inset-0 flex -translate-y-6 flex-col items-center justify-center px-6 text-center"
+const EMPTY_STATE_CLASS = "pointer-events-none absolute inset-0 flex -translate-y-5 flex-col items-center justify-center px-6 text-center"
 
 export function EmailList({ onEmailSelect, onGroupChange, selectedEmailId, refreshTrigger, onRefresh }: EmailListProps) {
   const { data: session } = useSession()
@@ -633,7 +633,7 @@ export function EmailList({ onEmailSelect, onGroupChange, selectedEmailId, refre
   return (
     <>
       <div className="relative flex h-full min-h-0 flex-col">
-        <div className="flex h-14 shrink-0 items-center justify-between border-b border-gray-200 px-2">
+        <div className="flex h-12 shrink-0 items-center justify-between border-b border-gray-200 px-2">
           <div className="flex items-center gap-2">
             <Button
               variant="ghost"
