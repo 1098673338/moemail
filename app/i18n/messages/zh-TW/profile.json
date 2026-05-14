@@ -106,6 +106,7 @@
     "adminContact": "管理員聯絡方式",
     "adminContactPlaceholder": "郵箱或其他聯絡方式",
     "maxEmails": "每個使用者最大郵箱數",
+    "maxEmailsPlaceholder": "留空表示不能建立，9999 表示無限制",
     "registration": {
       "enable": "開放註冊",
       "enableDescription": "關閉後，登入頁不再顯示註冊入口，新使用者也無法透過註冊介面建立帳號"
@@ -123,7 +124,7 @@
     "saving": "儲存中...",
     "saveSuccess": "設定儲存成功",
     "saveFailed": "儲存設定失敗",
-    "maxEmailsInvalid": "每個使用者最大郵箱數必須是 0 到 9999 之間的整數，9999 表示無限制"
+    "maxEmailsInvalid": "每個使用者最大郵箱數必須留空或填寫 0 到 9999 之間的整數，留空表示不能建立，9999 表示無限制"
   },
   "promote": {
     "title": "使用者管理",
@@ -136,9 +137,10 @@
     "maxEmails": "最大郵箱數",
     "sendLimit": "發件限額",
     "searchFirst": "請先輸入使用者名稱或郵箱",
+    "maxEmailsPlaceholder": "留空表示不能建立，9999 表示無限制",
     "sendLimitPlaceholder": "留空表示不能發件，9999 表示無限制",
     "unlimited": "無限制",
-    "maxEmailsInvalid": "最大郵箱數必須是 0 到 9999 之間的整數，9999 表示無限制",
+    "maxEmailsInvalid": "最大郵箱數必須留空或填寫 0 到 9999 之間的整數，留空表示不能建立，9999 表示無限制",
     "sendLimitInvalid": "發件限額必須留空或填寫 0 到 9999 之間的整數，9999 表示無限制",
     "actions": "操作",
     "promote": "設為",

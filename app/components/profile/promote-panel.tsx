@@ -120,12 +120,12 @@ export function PromotePanel() {
   const handleAction = async () => {
     if (!targetUser) return
 
-    const parsedMaxEmails = isTargetEmperor ? 0 : Number(maxEmails)
+    const normalizedMaxEmails = maxEmails.trim()
+    const parsedMaxEmails = isTargetEmperor ? 0 : normalizedMaxEmails ? Number(normalizedMaxEmails) : 0
     if (
       !isTargetEmperor
       && (
-        !maxEmails.trim()
-        || !Number.isInteger(parsedMaxEmails)
+        !Number.isInteger(parsedMaxEmails)
         || parsedMaxEmails < 0
         || parsedMaxEmails > EMAIL_CONFIG.MAX_CONFIGURABLE_LIMIT
       )
@@ -262,7 +262,7 @@ export function PromotePanel() {
             pattern={isTargetEmperor || !hasTargetUser ? undefined : "[0-9]*"}
             value={isTargetEmperor ? t("unlimited") : hasTargetUser ? maxEmails : ""}
             onChange={(e) => setMaxEmails(normalizeConfigurableLimitInput(e.target.value))}
-            placeholder={hasTargetUser ? "1" : t("searchFirst")}
+            placeholder={hasTargetUser ? t("maxEmailsPlaceholder") : t("searchFirst")}
             disabled={isUserFormDisabled}
           />
         </div>

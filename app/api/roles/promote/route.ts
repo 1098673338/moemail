@@ -34,7 +34,7 @@ export async function POST(request: Request) {
       && (!Number.isInteger(maxEmails) || maxEmails < 0 || maxEmails > EMAIL_CONFIG.MAX_CONFIGURABLE_LIMIT)
     ) {
       return Response.json(
-        { error: "最大邮箱数必须是 0 到 9999 之间的整数，9999 表示无限制" },
+        { error: "最大邮箱数必须是 0 到 9999 之间的整数，0 表示不能创建，9999 表示无限制" },
         { status: 400 }
       );
     }

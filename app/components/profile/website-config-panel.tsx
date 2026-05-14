@@ -59,7 +59,7 @@ export function WebsiteConfigPanel({ initialConfig }: WebsiteConfigPanelProps) {
 
   const handleSave = async () => {
     const normalizedMaxEmails = maxEmails.trim()
-    const parsedMaxEmails = Number(normalizedMaxEmails)
+    const parsedMaxEmails = normalizedMaxEmails ? Number(normalizedMaxEmails) : 0
 
     if (
       normalizedMaxEmails
@@ -86,7 +86,7 @@ export function WebsiteConfigPanel({ initialConfig }: WebsiteConfigPanelProps) {
           defaultRole, 
           emailDomains,
           adminContact,
-          maxEmails: normalizedMaxEmails || EMAIL_CONFIG.MAX_ACTIVE_EMAILS.toString(),
+          maxEmails: parsedMaxEmails.toString(),
           registrationEnabled,
           turnstile: {
             enabled: turnstileEnabled,
@@ -177,7 +177,7 @@ export function WebsiteConfigPanel({ initialConfig }: WebsiteConfigPanelProps) {
             pattern="[0-9]*"
             value={maxEmails}
             onChange={(e) => setMaxEmails(normalizeConfigurableLimitInput(e.target.value))}
-            placeholder={`${EMAIL_CONFIG.MAX_ACTIVE_EMAILS}`}
+            placeholder={t("maxEmailsPlaceholder")}
           />
         </div>
 

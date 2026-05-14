@@ -106,6 +106,7 @@
     "adminContact": "Admin Contact",
     "adminContactPlaceholder": "Email or other contact method",
     "maxEmails": "Max Emails per User",
+    "maxEmailsPlaceholder": "Blank means mailbox creation disabled; 9999 means unlimited",
     "registration": {
       "enable": "Open Registration",
       "enableDescription": "When disabled, the login page hides sign-up and new users cannot create accounts through the registration API"
@@ -123,7 +124,7 @@
     "saving": "Saving...",
     "saveSuccess": "Configuration saved successfully",
     "saveFailed": "Failed to save configuration",
-    "maxEmailsInvalid": "Max emails per user must be an integer from 0 to 9999; 9999 means unlimited"
+    "maxEmailsInvalid": "Max emails per user must be blank or an integer from 0 to 9999; blank disables mailbox creation, 9999 means unlimited"
   },
   "promote": {
     "title": "User Management",
@@ -136,9 +137,10 @@
     "maxEmails": "Max Emails",
     "sendLimit": "Send Limit",
     "searchFirst": "Enter a username or email first",
+    "maxEmailsPlaceholder": "Blank means mailbox creation disabled; 9999 means unlimited",
     "sendLimitPlaceholder": "Blank means sending disabled; 9999 means unlimited",
     "unlimited": "Unlimited",
-    "maxEmailsInvalid": "Max emails must be an integer from 0 to 9999; 9999 means unlimited",
+    "maxEmailsInvalid": "Max emails must be blank or an integer from 0 to 9999; blank disables mailbox creation, 9999 means unlimited",
     "sendLimitInvalid": "Send limit must be blank or an integer from 0 to 9999; 9999 means unlimited",
     "actions": "Actions",
     "promote": "Set as",

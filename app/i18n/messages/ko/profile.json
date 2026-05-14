@@ -106,6 +106,7 @@
     "adminContact": "관리자 연락처",
     "adminContactPlaceholder": "이메일 또는 기타 연락 방법",
     "maxEmails": "사용자당 최대 이메일 수",
+    "maxEmailsPlaceholder": "비워두면 생성 불가, 9999는 무제한",
     "registration": {
       "enable": "회원가입 허용",
       "enableDescription": "비활성화하면 로그인 페이지에 회원가입 항목이 표시되지 않으며 신규 사용자는 등록 API로 계정을 만들 수 없습니다"
@@ -123,7 +124,7 @@
     "saving": "저장 중...",
     "saveSuccess": "설정이 성공적으로 저장되었습니다",
     "saveFailed": "설정 저장에 실패했습니다",
-    "maxEmailsInvalid": "사용자당 최대 이메일 수는 0에서 9999 사이의 정수여야 하며, 9999는 무제한을 의미합니다"
+    "maxEmailsInvalid": "사용자당 최대 이메일 수는 비워두거나 0에서 9999 사이의 정수여야 하며, 비워두면 생성 불가, 9999는 무제한을 의미합니다"
   },
   "promote": {
     "title": "사용자 관리",
@@ -136,9 +137,10 @@
     "maxEmails": "최대 이메일 수",
     "sendLimit": "전송 한도",
     "searchFirst": "먼저 사용자 이름 또는 이메일을 입력하세요",
+    "maxEmailsPlaceholder": "비워두면 생성 불가, 9999는 무제한",
     "sendLimitPlaceholder": "비워두면 전송 불가, 9999는 무제한",
     "unlimited": "무제한",
-    "maxEmailsInvalid": "최대 이메일 수는 0에서 9999 사이의 정수여야 하며, 9999는 무제한을 의미합니다",
+    "maxEmailsInvalid": "최대 이메일 수는 비워두거나 0에서 9999 사이의 정수여야 하며, 비워두면 생성 불가, 9999는 무제한을 의미합니다",
     "sendLimitInvalid": "전송 한도는 비워두거나 0에서 9999 사이의 정수여야 하며, 9999는 무제한을 의미합니다",
     "actions": "작업",
     "promote": "설정",
