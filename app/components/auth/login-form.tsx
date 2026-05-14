@@ -202,11 +202,11 @@ export function LoginForm({ registrationEnabled = true, turnstile }: LoginFormPr
   }
 
   const handleGithubLogin = () => {
-    signIn("github", { callbackUrl: mailboxPath })
+    signIn("github", { callbackUrl: mailboxPath }, { prompt: "select_account" })
   }
 
   const handleGoogleLogin = () => {
-    signIn("google", { callbackUrl: mailboxPath })
+    signIn("google", { callbackUrl: mailboxPath }, { prompt: "select_account" })
   }
 
   return (

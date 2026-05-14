@@ -97,11 +97,11 @@ export function PromotePanel() {
   } as const
 
   const getUserDisplayName = (user: UserListItem) => (
-    user.username || t("usernameUnset")
+    user.username || user.name || t("usernameUnset")
   )
 
   const getUserSubtitle = (user: UserListItem) => (
-    user.email || user.name || user.id
+    user.email || user.id
   )
 
   const getRoleName = (role?: string | null) => {
