@@ -54,6 +54,19 @@ interface UserListItem {
   emailCount: number
 }
 
+const OPEN_DIALOG_SELECTOR = '[role="dialog"][data-state="open"], [role="alertdialog"][data-state="open"]'
+
+const restoreBodyPointerEventsIfNoDialog = () => {
+  if (typeof window === "undefined") return
+
+  window.setTimeout(() => {
+    if (document.querySelector(OPEN_DIALOG_SELECTOR)) return
+    if (document.body.style.pointerEvents === "none") {
+      document.body.style.removeProperty("pointer-events")
+    }
+  }, 260)
+}
+
 export function PromotePanel() {
   const t = useTranslations("profile.promote")
   const tCard = useTranslations("profile.card")
@@ -84,7 +97,11 @@ export function PromotePanel() {
   } as const
 
   const getUserDisplayName = (user: UserListItem) => (
-    user.username || user.email || user.name || user.id
+    user.username || t("usernameUnset")
+  )
+
+  const getUserSubtitle = (user: UserListItem) => (
+    user.email || user.name || user.id
   )
 
   const getRoleName = (role?: string | null) => {
@@ -126,6 +143,21 @@ export function PromotePanel() {
     void fetchUserList()
   }
 
+  const handleUserListOpenChange = (nextOpen: boolean) => {
+    setUserListOpen(nextOpen)
+    if (!nextOpen) {
+      setDeleteUserTarget(null)
+      setDeletingUserId(null)
+      restoreBodyPointerEventsIfNoDialog()
+    }
+  }
+
+  const handleDeleteUserOpenChange = (nextOpen: boolean) => {
+    if (!nextOpen && !deletingUserId) {
+      setDeleteUserTarget(null)
+    }
+  }
+
   const deleteUser = async (user: UserListItem) => {
     setDeletingUserId(user.id)
     try {
@@ -162,6 +194,7 @@ export function PromotePanel() {
     } finally {
       setDeletingUserId(null)
       setDeleteUserTarget(null)
+      restoreBodyPointerEventsIfNoDialog()
     }
   }
 
@@ -419,7 +452,7 @@ export function PromotePanel() {
         </Button>
       </div>
 
-      <Dialog open={userListOpen} onOpenChange={setUserListOpen}>
+      <Dialog open={userListOpen} onOpenChange={handleUserListOpenChange}>
         <DialogContent className="max-w-3xl">
           <DialogHeader>
             <DialogTitle>{t("userListTitle")}</DialogTitle>
@@ -452,7 +485,7 @@ export function PromotePanel() {
                         {getUserDisplayName(user)}
                       </div>
                       <div className="mt-1 truncate text-xs text-muted-foreground">
-                        {user.email || user.name || user.id}
+                        {getUserSubtitle(user)}
                       </div>
                     </div>
                     <div className="truncate text-sm text-muted-foreground">
@@ -489,7 +522,7 @@ export function PromotePanel() {
         </DialogContent>
       </Dialog>
 
-      <AlertDialog open={!!deleteUserTarget} onOpenChange={() => setDeleteUserTarget(null)}>
+      <AlertDialog open={!!deleteUserTarget} onOpenChange={handleDeleteUserOpenChange}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>{t("deleteUserConfirm")}</AlertDialogTitle>
@@ -503,12 +536,18 @@ export function PromotePanel() {
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>{tCommon("cancel")}</AlertDialogCancel>
+            <AlertDialogCancel disabled={Boolean(deletingUserId)}>{tCommon("cancel")}</AlertDialogCancel>
             <AlertDialogAction
               className="bg-destructive hover:bg-destructive/90"
-              onClick={() => deleteUserTarget && deleteUser(deleteUserTarget)}
+              disabled={Boolean(deletingUserId)}
+              onClick={(event) => {
+                event.preventDefault()
+                if (deleteUserTarget) {
+                  void deleteUser(deleteUserTarget)
+                }
+              }}
             >
-              {tCommon("delete")}
+              {deletingUserId ? t("deletingUser") : tCommon("delete")}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

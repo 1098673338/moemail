@@ -46,13 +46,15 @@ export async function GET() {
       .groupBy(users.id)
       .orderBy(asc(users.username), asc(users.email), asc(users.name))
 
-    return Response.json({
-      currentUserId,
-      users: userRows.map(user => ({
+    const normalizedUsers = userRows.map(user => ({
         ...user,
         role: user.role ?? ROLES.CIVILIAN,
         emailCount: Number(user.emailCount ?? 0),
-      })),
+      }))
+
+    return Response.json({
+      currentUserId,
+      users: normalizedUsers.filter(user => user.role !== ROLES.EMPEROR),
     })
   } catch (error) {
     console.error("Failed to list users:", error)
