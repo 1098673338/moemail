@@ -6,10 +6,9 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
-import { Copy, Link2, Plus, RefreshCw } from "lucide-react"
+import { Copy, Plus, RefreshCw } from "lucide-react"
 import { useToast } from "@/components/ui/use-toast"
 import { nanoid } from "nanoid"
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { EXPIRY_OPTIONS } from "@/types/email"
@@ -64,6 +63,14 @@ export function CreateDialog({ onEmailCreated, selectedGroupId, selectedGroupNam
   const getDefaultGroupId = () => (
     selectedGroupId && selectedGroupId !== "none" ? selectedGroupId : UNGROUPED_GROUP_VALUE
   )
+  const getDefaultDomain = () => config?.emailDomainsArray?.[0] ?? ""
+
+  const resetForm = () => {
+    setEmailName("")
+    setCurrentDomain(getDefaultDomain())
+    setExpiryTime(DEFAULT_EXPIRY_TIME)
+    setCreateGroupId(UNGROUPED_GROUP_VALUE)
+  }
 
   const fetchGroups = async () => {
     try {
@@ -80,12 +87,14 @@ export function CreateDialog({ onEmailCreated, selectedGroupId, selectedGroupNam
   const handleOpenChange = (nextOpen: boolean) => {
     setOpen(nextOpen)
     if (nextOpen) {
+      setEmailName("")
+      setCurrentDomain(getDefaultDomain())
+      setExpiryTime(DEFAULT_EXPIRY_TIME)
       setCreateGroupId(getDefaultGroupId())
       fetchGroups()
     }
     if (!nextOpen) {
-      setExpiryTime(DEFAULT_EXPIRY_TIME)
-      setCreateGroupId(UNGROUPED_GROUP_VALUE)
+      resetForm()
     }
   }
 
@@ -125,9 +134,7 @@ export function CreateDialog({ onEmailCreated, selectedGroupId, selectedGroupNam
       })
       onEmailCreated()
       setOpen(false)
-      setEmailName("")
-      setExpiryTime(DEFAULT_EXPIRY_TIME)
-      setCreateGroupId(UNGROUPED_GROUP_VALUE)
+      resetForm()
     } catch {
       toast({
         title: tList("error"),
@@ -205,28 +212,25 @@ export function CreateDialog({ onEmailCreated, selectedGroupId, selectedGroupNam
               </Button>
             </div>
             {emailNamePrefix && !emailNameError && (
-              <div className="rounded-lg border border-border p-3">
-                <div className="flex items-center gap-2 min-w-0">
-                  <Link2 className="h-4 w-4 flex-shrink-0 text-primary/60" />
-                  <div className="flex h-8 min-w-0 flex-1 items-center rounded-md bg-gray-100 px-2 text-xs font-mono text-gray-700 transition-colors">
-                    <span className="min-w-0 truncate">{`${emailNamePrefix}@${currentDomain}`}</span>
-                  </div>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    type="button"
-                    className="h-8 w-8 shrink-0"
-                    aria-label={tCommon("copy")}
-                    onClick={copyEmailAddress}
-                  >
-                    <Copy className="h-4 w-4" />
-                  </Button>
+              <div className="flex min-w-0 gap-2">
+                <div className="flex h-9 min-w-0 flex-1 items-center rounded-md border border-input bg-transparent px-3 py-1 text-sm font-mono text-gray-700 transition-colors">
+                  <span className="min-w-0 truncate">{`${emailNamePrefix}@${currentDomain}`}</span>
                 </div>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  type="button"
+                  className="shrink-0"
+                  aria-label={tCommon("copy")}
+                  onClick={copyEmailAddress}
+                >
+                  <Copy className="h-4 w-4" />
+                </Button>
               </div>
             )}
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 rounded-lg border border-border p-3">
             <Label className={formLabelClass}>{t("group")}</Label>
             <Select value={createGroupId} onValueChange={setCreateGroupId}>
               <SelectTrigger className="flex-1">
@@ -250,25 +254,27 @@ export function CreateDialog({ onEmailCreated, selectedGroupId, selectedGroupNam
             </Select>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 rounded-lg border border-border p-3">
             <Label className={formLabelClass}>{t("expiryTime")}</Label>
-            <RadioGroup
-              value={expiryTime}
-              onValueChange={setExpiryTime}
-              className="flex gap-6"
-            >
-              {EXPIRY_OPTIONS.map((option, index) => {
-                const labels = [t("oneHour"), t("oneDay"), t("threeDays"), t("permanent")]
-                return (
-                  <div key={option.value} className="flex items-center gap-2">
-                    <RadioGroupItem value={option.value.toString()} id={option.value.toString()} />
-                    <Label htmlFor={option.value.toString()} className="cursor-pointer text-sm">
+            <Select value={expiryTime} onValueChange={setExpiryTime}>
+              <SelectTrigger className="flex-1">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {EXPIRY_OPTIONS.map((option, index) => {
+                  const labels = [t("oneHour"), t("oneDay"), t("threeDays"), t("permanent")]
+                  return (
+                    <SelectItem
+                      key={option.value}
+                      value={option.value.toString()}
+                      className={groupSelectItemClass}
+                    >
                       {labels[index]}
-                    </Label>
-                  </div>
-                )
-              })}
-            </RadioGroup>
+                    </SelectItem>
+                  )
+                })}
+              </SelectContent>
+            </Select>
           </div>
 
         </div>

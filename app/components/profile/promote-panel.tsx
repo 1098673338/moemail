@@ -2,7 +2,7 @@
 
 import { useTranslations } from "next-intl"
 import { Button } from "@/components/ui/button"
-import { Crown, Gem, Sword, User2, Loader2, Users } from "lucide-react"
+import { Crown, Gem, Sword, User2, Loader2, Users, List, Trash2 } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { useEffect, useState } from "react"
 import { useToast } from "@/components/ui/use-toast"
@@ -14,6 +14,22 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
 import { EMAIL_CONFIG } from "@/config"
 import { normalizeConfigurableLimitInput } from "@/lib/validation"
 
@@ -29,9 +45,19 @@ interface TargetUser {
   sendLimit: number | null
 }
 
+interface UserListItem {
+  id: string
+  name?: string | null
+  username?: string | null
+  email?: string | null
+  role?: string | null
+  emailCount: number
+}
+
 export function PromotePanel() {
   const t = useTranslations("profile.promote")
   const tCard = useTranslations("profile.card")
+  const tCommon = useTranslations("common.actions")
   const [searchText, setSearchText] = useState("")
   const [targetUser, setTargetUser] = useState<TargetUser | null>(null)
   const [loading, setLoading] = useState(false)
@@ -39,6 +65,12 @@ export function PromotePanel() {
   const [targetRole, setTargetRole] = useState<Role>(ROLES.KNIGHT)
   const [maxEmails, setMaxEmails] = useState("")
   const [sendLimit, setSendLimit] = useState("")
+  const [userListOpen, setUserListOpen] = useState(false)
+  const [userList, setUserList] = useState<UserListItem[]>([])
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null)
+  const [loadingUsers, setLoadingUsers] = useState(false)
+  const [deleteUserTarget, setDeleteUserTarget] = useState<UserListItem | null>(null)
+  const [deletingUserId, setDeletingUserId] = useState<string | null>(null)
   const { toast } = useToast()
   const hasTargetUser = targetUser !== null
   const isTargetEmperor = targetUser?.role === ROLES.EMPEROR
@@ -50,6 +82,88 @@ export function PromotePanel() {
     [ROLES.KNIGHT]: tCard("roles.KNIGHT"),
     [ROLES.CIVILIAN]: tCard("roles.CIVILIAN"),
   } as const
+
+  const getUserDisplayName = (user: UserListItem) => (
+    user.username || user.email || user.name || user.id
+  )
+
+  const getRoleName = (role?: string | null) => {
+    if (role && role in roleNames) {
+      return roleNames[role as keyof typeof roleNames]
+    }
+    return role || "-"
+  }
+
+  const fetchUserList = async () => {
+    setLoadingUsers(true)
+    try {
+      const res = await fetch("/api/roles/users")
+      const data = await res.json() as {
+        currentUserId?: string | null
+        users?: UserListItem[]
+        error?: string
+      }
+
+      if (!res.ok) {
+        throw new Error(data.error || t("loadUsersFailed"))
+      }
+
+      setCurrentUserId(data.currentUserId ?? null)
+      setUserList(data.users || [])
+    } catch (error) {
+      toast({
+        title: t("loadUsersFailed"),
+        description: error instanceof Error ? error.message : t("loadUsersFailed"),
+        variant: "destructive",
+      })
+    } finally {
+      setLoadingUsers(false)
+    }
+  }
+
+  const openUserList = () => {
+    setUserListOpen(true)
+    void fetchUserList()
+  }
+
+  const deleteUser = async (user: UserListItem) => {
+    setDeletingUserId(user.id)
+    try {
+      const res = await fetch("/api/roles/users", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId: user.id }),
+      })
+      const data = await res.json().catch(() => null) as { error?: string } | null
+
+      if (!res.ok) {
+        throw new Error(data?.error || t("deleteUserFailed"))
+      }
+
+      setUserList(prev => prev.filter(item => item.id !== user.id))
+      if (targetUser?.id === user.id) {
+        setTargetUser(null)
+        setSearchText("")
+        setTargetRole(ROLES.KNIGHT)
+        setMaxEmails("")
+        setSendLimit("")
+      }
+
+      toast({
+        title: t("deleteUserSuccess"),
+        description: getUserDisplayName(user),
+      })
+    } catch (error) {
+      toast({
+        title: t("deleteUserFailed"),
+        description: error instanceof Error ? error.message : t("deleteUserFailed"),
+        variant: "destructive",
+      })
+    } finally {
+      setDeletingUserId(null)
+      setDeleteUserTarget(null)
+    }
+  }
 
   useEffect(() => {
     const search = searchText.trim()
@@ -197,9 +311,21 @@ export function PromotePanel() {
 
   return (
     <div className="bg-background rounded-lg border border-gray-200 p-6">
-      <div className="flex items-center gap-2 mb-6">
-        <Users className="w-5 h-5 text-primary" />
-        <h2 className="text-lg font-semibold">{t("title")}</h2>
+      <div className="mb-6 flex items-center justify-between gap-3">
+        <div className="flex items-center gap-2">
+          <Users className="w-5 h-5 text-primary" />
+          <h2 className="text-lg font-semibold">{t("title")}</h2>
+        </div>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          className="h-8 gap-2"
+          onClick={openUserList}
+        >
+          <List className="h-4 w-4" />
+          {t("userList")}
+        </Button>
       </div>
 
       <div className="space-y-4">
@@ -292,6 +418,101 @@ export function PromotePanel() {
           )}
         </Button>
       </div>
+
+      <Dialog open={userListOpen} onOpenChange={setUserListOpen}>
+        <DialogContent className="max-w-3xl">
+          <DialogHeader>
+            <DialogTitle>{t("userListTitle")}</DialogTitle>
+          </DialogHeader>
+          <div className="max-h-[520px] overflow-y-auto">
+            {loadingUsers ? (
+              <div className="flex flex-col items-center justify-center py-10 text-sm text-muted-foreground">
+                <Loader2 className="mb-3 h-6 w-6 animate-spin text-primary/50" />
+                {t("loadingUsers")}
+              </div>
+            ) : userList.length === 0 ? (
+              <div className="py-10 text-center text-sm text-muted-foreground">
+                {t("noUsers")}
+              </div>
+            ) : (
+              <div className="space-y-2">
+                <div className="grid grid-cols-[minmax(0,1fr)_110px_90px_56px] items-center gap-3 px-3 text-xs text-muted-foreground">
+                  <span>{t("userColumn")}</span>
+                  <span>{t("roleColumn")}</span>
+                  <span className="text-right">{t("emailCountColumn")}</span>
+                  <span className="text-right">{t("actionsColumn")}</span>
+                </div>
+                {userList.map(user => (
+                  <div
+                    key={user.id}
+                    className="grid grid-cols-[minmax(0,1fr)_110px_90px_56px] items-center gap-3 rounded-lg border border-border p-3"
+                  >
+                    <div className="min-w-0">
+                      <div className="truncate text-sm font-medium">
+                        {getUserDisplayName(user)}
+                      </div>
+                      <div className="mt-1 truncate text-xs text-muted-foreground">
+                        {user.email || user.name || user.id}
+                      </div>
+                    </div>
+                    <div className="truncate text-sm text-muted-foreground">
+                      {getRoleName(user.role)}
+                    </div>
+                    <div className="text-right text-sm">
+                      {user.emailCount}
+                    </div>
+                    <div className="flex justify-end">
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8"
+                        disabled={
+                          user.role === ROLES.EMPEROR
+                          || user.id === currentUserId
+                          || deletingUserId === user.id
+                        }
+                        onClick={() => setDeleteUserTarget(user)}
+                      >
+                        {deletingUserId === user.id ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <Trash2 className="h-4 w-4" />
+                        )}
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <AlertDialog open={!!deleteUserTarget} onOpenChange={() => setDeleteUserTarget(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t("deleteUserConfirm")}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {deleteUserTarget
+                ? t("deleteUserDescription", {
+                  name: getUserDisplayName(deleteUserTarget),
+                  count: deleteUserTarget.emailCount,
+                })
+                : ""}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>{tCommon("cancel")}</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive hover:bg-destructive/90"
+              onClick={() => deleteUserTarget && deleteUser(deleteUserTarget)}
+            >
+              {tCommon("delete")}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 } 

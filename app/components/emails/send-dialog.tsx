@@ -32,6 +32,19 @@ export function SendDialog({ emailId, fromAddress, onSendSuccess }: SendDialogPr
   const [content, setContent] = useState("")
   const { toast } = useToast()
 
+  const resetForm = () => {
+    setTo("")
+    setSubject("")
+    setContent("")
+  }
+
+  const handleOpenChange = (nextOpen: boolean) => {
+    setOpen(nextOpen)
+    if (!nextOpen) {
+      resetForm()
+    }
+  }
+
   const handleSend = async () => {
     if (!to.trim() || !subject.trim() || !content.trim()) {
       toast({
@@ -64,10 +77,7 @@ export function SendDialog({ emailId, fromAddress, onSendSuccess }: SendDialogPr
         title: tList("success"),
         description: t("success")
       })
-      setOpen(false)
-      setTo("")
-      setSubject("")
-      setContent("")
+      handleOpenChange(false)
       
       onSendSuccess?.()
     
@@ -83,7 +93,7 @@ export function SendDialog({ emailId, fromAddress, onSendSuccess }: SendDialogPr
   }
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog open={open} onOpenChange={handleOpenChange}>
       <TooltipProvider>
         <Tooltip>
           <DialogTrigger asChild>
@@ -128,7 +138,7 @@ export function SendDialog({ emailId, fromAddress, onSendSuccess }: SendDialogPr
           />
         </div>
         <div className="flex justify-end gap-2">
-          <Button variant="outline" onClick={() => setOpen(false)} disabled={loading}>
+          <Button variant="outline" onClick={() => handleOpenChange(false)} disabled={loading}>
             {tCommon("cancel")}
           </Button>
           <Button onClick={handleSend} disabled={loading}>

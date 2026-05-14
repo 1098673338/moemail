@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { useTranslations } from "next-intl"
-import { Share2, Copy, Trash2, Link2 } from "lucide-react"
+import { Share2, Copy, Trash2 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import {
   Dialog,
@@ -251,10 +251,6 @@ export function ShareMessageDialog({ emailId, messageId, messageSubject, trigger
                         )}
                       >
                         <div className="flex items-center gap-2 min-w-0">
-                          <Link2 className={cn(
-                            "h-4 w-4 flex-shrink-0",
-                            isExpired ? "text-destructive/60" : "text-primary/60"
-                          )} />
                           <a
                             href={isExpired ? undefined : getShareUrl(share.token)}
                             target={isExpired ? undefined : "_blank"}
