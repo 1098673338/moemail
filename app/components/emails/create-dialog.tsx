@@ -230,51 +230,53 @@ export function CreateDialog({ onEmailCreated, selectedGroupId, selectedGroupNam
             )}
           </div>
 
-          <div className="flex items-center gap-3 rounded-lg border border-border p-3">
-            <Label className={formLabelClass}>{t("group")}</Label>
-            <Select value={createGroupId} onValueChange={setCreateGroupId}>
-              <SelectTrigger className="flex-1">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent className="max-h-64">
-                <SelectItem value={UNGROUPED_GROUP_VALUE} className={groupSelectItemClass}>
-                  {tGroups("ungrouped")}
-                </SelectItem>
-                {!selectedGroupExists && selectedGroupName && (
-                  <SelectItem value={createGroupId} className={groupSelectItemClass}>
-                    {selectedGroupName}
+          <div className="space-y-3 rounded-lg border border-border p-3">
+            <div className="flex items-center gap-3">
+              <Label className={formLabelClass}>{t("group")}</Label>
+              <Select value={createGroupId} onValueChange={setCreateGroupId}>
+                <SelectTrigger className="flex-1">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent className="max-h-64">
+                  <SelectItem value={UNGROUPED_GROUP_VALUE} className={groupSelectItemClass}>
+                    {tGroups("ungrouped")}
                   </SelectItem>
-                )}
-                {groups.map(group => (
-                  <SelectItem key={group.id} value={group.id} className={groupSelectItemClass}>
-                    {group.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div className="flex items-center gap-3 rounded-lg border border-border p-3">
-            <Label className={formLabelClass}>{t("expiryTime")}</Label>
-            <Select value={expiryTime} onValueChange={setExpiryTime}>
-              <SelectTrigger className="flex-1">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {EXPIRY_OPTIONS.map((option, index) => {
-                  const labels = [t("oneHour"), t("oneDay"), t("threeDays"), t("permanent")]
-                  return (
-                    <SelectItem
-                      key={option.value}
-                      value={option.value.toString()}
-                      className={groupSelectItemClass}
-                    >
-                      {labels[index]}
+                  {!selectedGroupExists && selectedGroupName && (
+                    <SelectItem value={createGroupId} className={groupSelectItemClass}>
+                      {selectedGroupName}
                     </SelectItem>
-                  )
-                })}
-              </SelectContent>
-            </Select>
+                  )}
+                  {groups.map(group => (
+                    <SelectItem key={group.id} value={group.id} className={groupSelectItemClass}>
+                      {group.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="flex items-center gap-3">
+              <Label className={formLabelClass}>{t("expiryTime")}</Label>
+              <Select value={expiryTime} onValueChange={setExpiryTime}>
+                <SelectTrigger className="flex-1">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {EXPIRY_OPTIONS.map((option, index) => {
+                    const labels = [t("oneHour"), t("oneDay"), t("threeDays"), t("permanent")]
+                    return (
+                      <SelectItem
+                        key={option.value}
+                        value={option.value.toString()}
+                        className={groupSelectItemClass}
+                      >
+                        {labels[index]}
+                      </SelectItem>
+                    )
+                  })}
+                </SelectContent>
+              </Select>
+            </div>
           </div>
 
         </div>
