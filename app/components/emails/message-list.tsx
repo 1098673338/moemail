@@ -233,7 +233,7 @@ export function MessageList({ email, messageType, onMessageSelect, onMessagePref
   <>
     <div className="flex h-full min-h-0 flex-col">
       <div className="flex h-12 shrink-0 items-center justify-between gap-2 border-b border-gray-200 px-3">
-        <div className="flex min-w-0 items-center gap-2">
+        <div className="flex min-w-0 items-center gap-3">
           <Button
             variant="ghost"
             size="icon"
