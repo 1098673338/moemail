@@ -52,6 +52,8 @@ interface UserListItem {
   email?: string | null
   role?: string | null
   emailCount: number
+  maxEmails: number
+  sendLimit: number | null
 }
 
 const OPEN_DIALOG_SELECTOR = '[role="dialog"][data-state="open"], [role="alertdialog"][data-state="open"]'
@@ -109,6 +111,17 @@ export function PromotePanel() {
       return roleNames[role as keyof typeof roleNames]
     }
     return role || "-"
+  }
+
+  const getMailboxLimitDisplay = (limit?: number | null) => {
+    if (limit === EMAIL_CONFIG.UNLIMITED_LIMIT) return t("unlimited")
+    return typeof limit === "number" ? limit.toString() : "-"
+  }
+
+  const getSendLimitDisplay = (limit?: number | null) => {
+    if (limit === EMAIL_CONFIG.UNLIMITED_LIMIT) return t("unlimited")
+    if (limit == null || limit < 0) return t("sendDisabled")
+    return limit.toString()
   }
 
   const fetchUserList = async () => {
@@ -453,7 +466,7 @@ export function PromotePanel() {
       </div>
 
       <Dialog open={userListOpen} onOpenChange={handleUserListOpenChange}>
-        <DialogContent className="max-w-3xl">
+        <DialogContent className="max-w-4xl">
           <DialogHeader>
             <DialogTitle>{t("userListTitle")}</DialogTitle>
           </DialogHeader>
@@ -468,17 +481,19 @@ export function PromotePanel() {
                 {t("noUsers")}
               </div>
             ) : (
-              <div className="space-y-2">
-                <div className="grid grid-cols-[minmax(0,1fr)_110px_90px_56px] items-center gap-3 px-3 text-xs text-muted-foreground">
+              <div className="flex flex-col gap-2">
+                <div className="grid grid-cols-[minmax(0,1fr)_96px_72px_84px_84px_56px] items-center gap-3 px-3 text-xs text-muted-foreground">
                   <span>{t("userColumn")}</span>
                   <span>{t("roleColumn")}</span>
                   <span className="text-right">{t("emailCountColumn")}</span>
+                  <span className="text-right">{t("emailLimitColumn")}</span>
+                  <span className="text-right">{t("sendLimit")}</span>
                   <span className="text-right">{t("actionsColumn")}</span>
                 </div>
                 {userList.map(user => (
                   <div
                     key={user.id}
-                    className="grid grid-cols-[minmax(0,1fr)_110px_90px_56px] items-center gap-3 rounded-lg border border-border p-3"
+                    className="grid grid-cols-[minmax(0,1fr)_96px_72px_84px_84px_56px] items-center gap-3 rounded-lg border border-border p-3"
                   >
                     <div className="min-w-0">
                       <div className="truncate text-sm font-medium">
@@ -493,6 +508,12 @@ export function PromotePanel() {
                     </div>
                     <div className="text-right text-sm">
                       {user.emailCount}
+                    </div>
+                    <div className="text-right text-sm">
+                      {getMailboxLimitDisplay(user.maxEmails)}
+                    </div>
+                    <div className="text-right text-sm">
+                      {getSendLimitDisplay(user.sendLimit)}
                     </div>
                     <div className="flex justify-end">
                       <Button

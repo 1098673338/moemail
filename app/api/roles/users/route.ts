@@ -21,6 +21,13 @@ import { getUserId } from "@/lib/apiKey"
 
 export const runtime = "edge"
 
+const getDefaultSendLimitForRole = (roleName?: string | null) => {
+  if (roleName === ROLES.EMPEROR) return EMAIL_CONFIG.DEFAULT_DAILY_SEND_LIMITS.emperor
+  if (roleName === ROLES.DUKE) return EMAIL_CONFIG.DEFAULT_DAILY_SEND_LIMITS.duke
+  if (roleName === ROLES.KNIGHT) return EMAIL_CONFIG.DEFAULT_DAILY_SEND_LIMITS.knight
+  return EMAIL_CONFIG.DEFAULT_DAILY_SEND_LIMITS.civilian
+}
+
 export async function GET() {
   try {
     const canAccess = await checkPermission(PERMISSIONS.PROMOTE_USER)
@@ -29,6 +36,11 @@ export async function GET() {
     }
 
     const currentUserId = await getUserId()
+    const siteMaxEmailsValue = await getRequestContext().env.SITE_CONFIG.get("MAX_EMAILS")
+    const siteMaxEmails = siteMaxEmailsValue && siteMaxEmailsValue.trim() !== "" ? Number(siteMaxEmailsValue) : NaN
+    const defaultMaxEmails = Number.isInteger(siteMaxEmails) && siteMaxEmails >= 0
+      ? siteMaxEmails
+      : EMAIL_CONFIG.MAX_ACTIVE_EMAILS
     const db = createDb()
     const userRows = await db
       .select({
@@ -36,6 +48,8 @@ export async function GET() {
         name: users.name,
         username: users.username,
         email: users.email,
+        maxEmails: users.maxEmails,
+        sendLimit: users.sendLimit,
         role: roles.name,
         emailCount: sql<number>`count(distinct ${emails.id})`,
       })
@@ -46,11 +60,18 @@ export async function GET() {
       .groupBy(users.id)
       .orderBy(asc(users.username), asc(users.email), asc(users.name))
 
-    const normalizedUsers = userRows.map(user => ({
+    const normalizedUsers = userRows.map(user => {
+      const roleName = user.role ?? ROLES.CIVILIAN
+      return {
         ...user,
-        role: user.role ?? ROLES.CIVILIAN,
+        role: roleName,
         emailCount: Number(user.emailCount ?? 0),
-      }))
+        maxEmails: user.maxEmails != null && user.maxEmails >= 0
+          ? user.maxEmails
+          : defaultMaxEmails,
+        sendLimit: user.sendLimit ?? getDefaultSendLimitForRole(roleName),
+      }
+    })
 
     return Response.json({
       currentUserId,
