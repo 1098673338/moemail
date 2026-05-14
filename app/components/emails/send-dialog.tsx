@@ -111,7 +111,7 @@ export function SendDialog({ emailId, fromAddress, onSendSuccess }: SendDialogPr
         <DialogHeader>
           <DialogTitle>{t("title")}</DialogTitle>
         </DialogHeader>
-        <div className="space-y-4 py-4">
+        <div className="space-y-4">
           <div className="text-sm text-muted-foreground">
             {t("from")}: {fromAddress}
           </div>

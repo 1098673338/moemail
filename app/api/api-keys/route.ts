@@ -23,12 +23,7 @@ export async function GET() {
       orderBy: desc(apiKeys.createdAt),
     })
 
-    return NextResponse.json({
-      apiKeys: keys.map(key => ({
-        ...key,
-        key: undefined
-      }))
-    })
+    return NextResponse.json({ apiKeys: keys })
   } catch (error) {
     console.error("Failed to fetch API keys:", error)
     return NextResponse.json(
@@ -72,4 +67,4 @@ export async function POST(request: Request) {
       { status: 500 }
     )
   }
-} 
+}

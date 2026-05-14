@@ -69,7 +69,7 @@
     "name": "邮箱前缀",
     "namePlaceholder": "留空则随机生成",
     "nameInvalidWhitespace": "邮箱前缀不能包含空格",
-    "nameInvalidDot": "邮箱前缀不能包含点号",
+    "nameInvalidCharacters": "邮箱前缀只能包含字母、数字、下划线和连字符",
     "group": "分组",
     "addressPreview": "地址预览",
     "addressPreviewEmpty": "输入邮箱前缀后显示预览地址",

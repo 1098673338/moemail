@@ -1,6 +1,6 @@
 import { auth } from "@/lib/auth"
 import { NextResponse } from "next/server"
-import { i18n, type Locale } from "@/i18n/config"
+import { i18n } from "@/i18n/config"
 import { PERMISSIONS } from "@/lib/permissions"
 import { checkPermission } from "@/lib/auth"
 import { Permission } from "@/lib/permissions"
@@ -66,70 +66,26 @@ export async function middleware(request: Request) {
     })
   }
 
-  // Pages: 语言前缀
+  // Pages: keep Simplified Chinese internally, but do not expose the locale in URLs.
   const segments = pathname.split('/')
   const maybeLocale = segments[1]
-  const hasLocalePrefix = i18n.locales.includes(maybeLocale as any)
-  if (!hasLocalePrefix) {
-    const acceptLanguage = request.headers.get('Accept-Language')
-    const preferredLocale = resolvePreferredLocale(acceptLanguage)
-    const targetLocale = preferredLocale ?? i18n.defaultLocale
-    const redirectURL = new URL(`/${targetLocale}${pathname}${url.search}`, request.url)
+
+  if (maybeLocale === i18n.defaultLocale) {
+    const cleanPath = `/${segments.slice(2).join('/')}` || '/'
+    const redirectURL = new URL(`${cleanPath}${url.search}`, request.url)
     return NextResponse.redirect(redirectURL)
   }
 
-  return NextResponse.next()
-}
-
-function resolvePreferredLocale(acceptLanguageHeader: string | null): Locale | null {
-  if (!acceptLanguageHeader) return null
-
-  const candidates = parseAcceptLanguage(acceptLanguageHeader)
-  for (const lang of candidates) {
-    const match = matchLocale(lang)
-    if (match) {
-      return match
-    }
+  const legacyLocales = ['en', 'zh-TW', 'ja', 'ko']
+  if (legacyLocales.includes(maybeLocale)) {
+    const cleanPath = `/${segments.slice(2).join('/')}` || '/'
+    const redirectURL = new URL(`${cleanPath}${url.search}`, request.url)
+    return NextResponse.redirect(redirectURL)
   }
 
-  return null
-}
-
-function parseAcceptLanguage(header: string): string[] {
-  return header
-    .split(',')
-    .map((part) => {
-      const [lang, ...params] = part.trim().split(';')
-      const qualityParam = params.find((param) => param.trim().startsWith('q='))
-      const quality = qualityParam ? parseFloat(qualityParam.split('=')[1]) : 1
-      return { lang: lang.toLowerCase(), quality: isNaN(quality) ? 1 : quality }
-    })
-    .sort((a, b) => b.quality - a.quality)
-    .map((entry) => entry.lang)
-}
-
-function matchLocale(lang: string): Locale | null {
-  const exactMatch = i18n.locales.find((locale) => locale.toLowerCase() === lang)
-  if (exactMatch) return exactMatch
-
-  const base = lang.split('-')[0]
-
-  // Handle Chinese variants with explicit regions or scripts
-  if (base === 'zh') {
-    if (lang.includes('tw') || lang.includes('hk') || lang.includes('mo') || lang.includes('hant')) {
-      return 'zh-TW'
-    }
-    if (lang.includes('cn') || lang.includes('sg') || lang.includes('hans')) {
-      return 'zh-CN'
-    }
-    // default Chinese fallback
-    return 'zh-CN'
-  }
-
-  const baseMatch = i18n.locales.find((locale) => locale.toLowerCase().split('-')[0] === base)
-  if (baseMatch) return baseMatch
-
-  return null
+  const rewritePath = pathname === '/' ? `/${i18n.defaultLocale}` : `/${i18n.defaultLocale}${pathname}`
+  const rewriteURL = new URL(`${rewritePath}${url.search}`, request.url)
+  return NextResponse.rewrite(rewriteURL)
 }
 
 export const config = {

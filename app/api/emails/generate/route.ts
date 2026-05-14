@@ -1,5 +1,4 @@
 import { NextResponse } from "next/server"
-import { nanoid } from "nanoid"
 import { createDb } from "@/lib/db"
 import { emailGroups, emails, users } from "@/lib/schema"
 import { eq, and, gt, sql } from "drizzle-orm"
@@ -9,14 +8,14 @@ import { getRequestContext } from "@cloudflare/next-on-pages"
 import { getUserId } from "@/lib/apiKey"
 import { getUserRole } from "@/lib/auth"
 import { ROLES } from "@/lib/permissions"
+import { generateEmailName, getEmailNamePrefix, isValidEmailNamePrefix } from "@/lib/email-name"
 
 export const runtime = "edge"
 
-const getEmailNamePrefix = (value: string) => value.split("@")[0]
-
 const getEmailNameError = (value: string) => {
-  if (/\s/.test(value)) return "邮箱前缀不能包含空格"
-  if (value.includes(".")) return "邮箱前缀不能包含点号"
+  if (!isValidEmailNamePrefix(value)) {
+    return "邮箱前缀只能包含字母、数字、下划线和连字符"
+  }
   return null
 }
 
@@ -83,7 +82,7 @@ export async function POST(request: Request) {
       )
     }
 
-    const emailName = name ? getEmailNamePrefix(name) || nanoid(8) : nanoid(8)
+    const emailName = name ? getEmailNamePrefix(name) || generateEmailName() : generateEmailName()
     const emailNameError = getEmailNameError(emailName)
 
     if (emailNameError) {

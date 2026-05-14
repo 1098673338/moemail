@@ -4,6 +4,7 @@
   },
   "actions": {
     "ok": "确定",
+    "close": "关闭",
     "cancel": "取消",
     "save": "保存",
     "copy": "复制",

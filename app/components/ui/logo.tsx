@@ -1,13 +1,11 @@
 "use client"
 
 import Link from "next/link"
-import { useLocale } from "next-intl"
 import { useSession } from "next-auth/react"
 
 export function Logo() {
-  const locale = useLocale()
   const { data: session } = useSession()
-  const href = session?.user ? `/${locale}/moe` : `/${locale}`
+  const href = session?.user ? "/moe" : "/"
 
   return (
     <Link 

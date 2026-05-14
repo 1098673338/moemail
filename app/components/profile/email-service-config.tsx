@@ -3,7 +3,7 @@
 import React, { useState } from "react"
 import { useTranslations } from "next-intl"
 import { Button } from "@/components/ui/button"
-import { Zap, Eye, EyeOff } from "lucide-react"
+import { Zap, Eye, EyeOff, Loader2 } from "lucide-react"
 import { useToast } from "@/components/ui/use-toast"
 import { Input } from "@/components/ui/input"
 import { Switch } from "@/components/ui/switch"
@@ -60,9 +60,20 @@ export function EmailServiceConfig({ initialConfig }: EmailServiceConfigProps) {
 
   return (
     <div className="bg-background rounded-lg border border-gray-200 p-6">
-      <div className="flex items-center gap-2 mb-6">
-        <Zap className="w-5 h-5 text-primary" />
-        <h2 className="text-lg font-semibold">{t("title")}</h2>
+      <div className="mb-6 flex items-center justify-between gap-3">
+        <div className="flex min-w-0 items-center gap-2">
+          <Zap className="w-5 h-5 shrink-0 text-primary" />
+          <h2 className="truncate text-lg font-semibold">{t("title")}</h2>
+        </div>
+        <Button
+          onClick={handleSave}
+          disabled={loading}
+          size="sm"
+          className="h-8 shrink-0 gap-2"
+        >
+          {loading && <Loader2 className="h-4 w-4 animate-spin" />}
+          {loading ? t("saving") : t("save")}
+        </Button>
       </div>
 
       <div className="space-y-4">
@@ -148,13 +159,6 @@ export function EmailServiceConfig({ initialConfig }: EmailServiceConfigProps) {
           </>
         )}
 
-        <Button 
-          onClick={handleSave}
-          disabled={loading}
-          className="w-full"
-        >
-          {loading ? t("saving") : t("save")}
-        </Button>
       </div>
     </div>
   )

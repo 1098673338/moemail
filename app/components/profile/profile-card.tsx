@@ -1,10 +1,9 @@
 "use client"
 
 import { User } from "next-auth"
-import { useTranslations, useLocale } from "next-intl"
+import { useTranslations } from "next-intl"
 import Image from "next/image"
 import { Button } from "@/components/ui/button"
-import { signOut } from "next-auth/react"
 import { Github, Settings, Crown, Sword, User2, Gem, Mail, Loader2 } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { WebhookConfig, type WebhookConfigData } from "./webhook-config"
@@ -96,7 +95,6 @@ export function ProfileCard({ user }: ProfileCardProps) {
   const tAuth = useTranslations("auth.signButton")
   const tWebhook = useTranslations("profile.webhook")
   const tNav = useTranslations("common.nav")
-  const locale = useLocale()
   const router = useRouter()
   const userRoleNames = user.roles?.map((role) => role.name) as Role[] | undefined
   const checkPermission = (permission: Permission) => {
@@ -287,20 +285,13 @@ export function ProfileCard({ user }: ProfileCardProps) {
         />
       )}
 
-      <div className="flex flex-col sm:flex-row gap-4 px-1">
+      <div className="px-1">
         <Button
-          onClick={() => router.push(`/${locale}/moe`)}
-          className="flex-1 gap-2"
+          onClick={() => router.push("/moe")}
+          className="w-full gap-2"
         >
           <Mail className="w-4 h-4" />
           {tNav("backToMailbox")}
-        </Button>
-        <Button
-          variant="outline"
-          onClick={() => signOut({ callbackUrl: `/${locale}` })}
-          className="flex-1"
-        >
-          {tAuth("logout")}
         </Button>
       </div>
     </div>

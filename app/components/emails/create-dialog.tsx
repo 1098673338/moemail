@@ -5,16 +5,15 @@ import { useTranslations } from "next-intl"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { Copy, Plus, RefreshCw } from "lucide-react"
 import { useToast } from "@/components/ui/use-toast"
-import { nanoid } from "nanoid"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { EXPIRY_OPTIONS } from "@/types/email"
 import { useCopy } from "@/hooks/use-copy"
 import { useConfig } from "@/hooks/use-config"
 import { cn } from "@/lib/utils"
+import { generateEmailName, getEmailNamePrefix, isValidEmailNamePrefix } from "@/lib/email-name"
 
 interface CreateDialogProps {
   onEmailCreated: () => void
@@ -31,7 +30,6 @@ interface EmailGroup {
 
 const DEFAULT_EXPIRY_TIME = "0"
 const UNGROUPED_GROUP_VALUE = "__ungrouped__"
-const getEmailNamePrefix = (value: string) => value.split("@")[0]
 
 export function CreateDialog({ onEmailCreated, selectedGroupId, selectedGroupName }: CreateDialogProps) {
   const { config } = useConfig()
@@ -50,15 +48,14 @@ export function CreateDialog({ onEmailCreated, selectedGroupId, selectedGroupNam
   const selectedGroupExists = createGroupId === UNGROUPED_GROUP_VALUE
     || groups.some(group => group.id === createGroupId)
   const emailNamePrefix = getEmailNamePrefix(emailName)
-  const emailNameError = /\s/.test(emailNamePrefix)
-    ? t("nameInvalidWhitespace")
-    : emailNamePrefix.includes(".")
-      ? t("nameInvalidDot")
-      : ""
-  const formLabelClass = "w-16 shrink-0 whitespace-nowrap text-muted-foreground"
+  const emailNameError = emailNamePrefix && !isValidEmailNamePrefix(emailNamePrefix)
+    ? t("nameInvalidCharacters")
+    : ""
+  const formLabelClass = "w-12 shrink-0 whitespace-nowrap text-muted-foreground"
+  const formRowClass = "flex items-center gap-2"
   const groupSelectItemClass = "hover:bg-accent hover:text-accent-foreground"
 
-  const generateRandomName = () => setEmailName(nanoid(8))
+  const generateRandomName = () => setEmailName(generateEmailName())
   const getDefaultGroupId = () => (
     selectedGroupId && selectedGroupId !== "none" ? selectedGroupId : UNGROUPED_GROUP_VALUE
   )
@@ -163,28 +160,19 @@ export function CreateDialog({ onEmailCreated, selectedGroupId, selectedGroupNam
         <DialogHeader>
           <DialogTitle>{t("title")}</DialogTitle>
         </DialogHeader>
-        <div className="flex flex-col gap-4 py-4">
+        <div className="flex flex-col gap-4">
           <div className="flex min-w-0 flex-col gap-2">
             <div className="flex min-w-0 gap-2">
-              <TooltipProvider delayDuration={0}>
-                <Tooltip open={Boolean(emailNameError)}>
-                  <TooltipTrigger asChild>
-                    <Input
-                      value={emailName}
-                      onChange={(e) => setEmailName(e.target.value)}
-                      placeholder={t("namePlaceholder")}
-                      aria-invalid={Boolean(emailNameError)}
-                      className={cn(
-                        "min-w-0 flex-1",
-                        emailNameError && "border-destructive focus-visible:ring-destructive"
-                      )}
-                    />
-                  </TooltipTrigger>
-                  <TooltipContent side="top" className="bg-destructive text-destructive-foreground">
-                    {emailNameError}
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
+              <Input
+                value={emailName}
+                onChange={(e) => setEmailName(e.target.value)}
+                placeholder={t("namePlaceholder")}
+                aria-invalid={Boolean(emailNameError)}
+                className={cn(
+                  "min-w-0 flex-1",
+                  emailNameError && "border-destructive focus-visible:ring-destructive"
+                )}
+              />
               {(config?.emailDomainsArray?.length ?? 0) > 1 && (
                 <Select value={currentDomain} onValueChange={setCurrentDomain}>
                   <SelectTrigger className="w-[180px]">
@@ -207,33 +195,46 @@ export function CreateDialog({ onEmailCreated, selectedGroupId, selectedGroupNam
                 <RefreshCw className="w-4 h-4" />
               </Button>
             </div>
-            {emailNamePrefix && !emailNameError && (
+            {emailNamePrefix && (
               <div className="flex min-w-0 gap-2">
-                <div className="flex h-9 min-w-0 flex-1 items-center rounded-md bg-muted px-3 py-1 text-sm font-mono text-gray-700 transition-colors">
-                  <span className="min-w-0 truncate">{`${emailNamePrefix}@${currentDomain}`}</span>
-                </div>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  type="button"
-                  className="shrink-0 bg-muted hover:bg-muted/80"
-                  aria-label={tCommon("copy")}
-                  onClick={copyEmailAddress}
+                <div
+                  className={cn(
+                    "flex h-9 min-w-0 flex-1 items-center rounded-md px-3 py-1 text-sm transition-colors",
+                    emailNameError
+                      ? "bg-destructive text-destructive-foreground"
+                      : "bg-muted font-mono text-gray-700"
+                  )}
                 >
-                  <Copy className="h-4 w-4" />
-                </Button>
+                  <span className="min-w-0 truncate">
+                    {emailNameError || `${emailNamePrefix}@${currentDomain}`}
+                  </span>
+                </div>
+                {emailNameError ? (
+                  <div className="h-9 w-9 shrink-0" aria-hidden="true" />
+                ) : (
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    type="button"
+                    className="shrink-0 bg-muted hover:bg-muted/80"
+                    aria-label={tCommon("copy")}
+                    onClick={copyEmailAddress}
+                  >
+                    <Copy className="h-4 w-4" />
+                  </Button>
+                )}
               </div>
             )}
           </div>
 
           <div className="space-y-3 rounded-lg border border-border p-3">
-            <div className="flex items-center gap-3">
+            <div className={formRowClass}>
               <Label className={formLabelClass}>{t("group")}</Label>
               <Select value={createGroupId} onValueChange={setCreateGroupId}>
                 <SelectTrigger className="flex-1">
                   <SelectValue />
                 </SelectTrigger>
-                <SelectContent viewportClassName="max-h-64">
+                <SelectContent className="max-h-[16.5rem]">
                   <SelectItem value={UNGROUPED_GROUP_VALUE} className={groupSelectItemClass}>
                     {tGroups("ungrouped")}
                   </SelectItem>
@@ -251,7 +252,7 @@ export function CreateDialog({ onEmailCreated, selectedGroupId, selectedGroupNam
               </Select>
             </div>
 
-            <div className="flex items-center gap-3">
+            <div className={formRowClass}>
               <Label className={formLabelClass}>{t("expiryTime")}</Label>
               <Select value={expiryTime} onValueChange={setExpiryTime}>
                 <SelectTrigger className="flex-1">

@@ -5,7 +5,7 @@ import Image from "next/image"
 import { signOut, useSession } from "next-auth/react"
 import { LogIn } from "lucide-react"
 import { useRouter } from 'next/navigation'
-import { useTranslations, useLocale } from "next-intl"
+import { useTranslations } from "next-intl"
 import Link from "next/link"
 import { cn } from "@/lib/utils"
 
@@ -15,7 +15,6 @@ interface SignButtonProps {
 
 export function SignButton({ size = "default" }: SignButtonProps) {
   const router = useRouter()
-  const locale = useLocale()
   const { data: session, status } = useSession()
   const t = useTranslations("auth.signButton")
   const loading = status === "loading"
@@ -36,7 +35,7 @@ export function SignButton({ size = "default" }: SignButtonProps) {
 
   if (!session?.user) {
     return (
-      <Button onClick={() => router.push(`/${locale}/login`)} className={cn("gap-2", size === "lg" ? "px-8" : "")} size={size}>
+      <Button onClick={() => router.push("/login")} className={cn("gap-2", size === "lg" ? "px-8" : "")} size={size}>
         <LogIn className={size === "lg" ? "w-5 h-5" : "w-4 h-4"} />
         {t("login")}
       </Button>
@@ -46,7 +45,7 @@ export function SignButton({ size = "default" }: SignButtonProps) {
   return (
     <div className="flex items-center gap-y-4 gap-x-4">
       <Link 
-        href={`/${locale}/profile`}
+        href="/profile"
         className="flex items-center gap-2 hover:opacity-80 transition-opacity"
       >
         {session.user.image && (
@@ -60,7 +59,7 @@ export function SignButton({ size = "default" }: SignButtonProps) {
         )}
         <span className="inline-block text-sm">{session.user.name}</span>
       </Link>
-      <Button onClick={() => signOut({ callbackUrl: `/${locale}` })} variant="outline" className={cn("flex-shrink-0", size === "lg" ? "px-8" : "")} size={size}>
+      <Button onClick={() => signOut({ callbackUrl: "/" })} variant="outline" className={cn("flex-shrink-0", size === "lg" ? "px-8" : "")} size={size}>
         {t("logout")}
       </Button>
     </div>

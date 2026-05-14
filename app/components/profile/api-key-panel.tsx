@@ -17,7 +17,6 @@ import {
   DialogClose,
 } from "@/components/ui/dialog"
 import { Switch } from "@/components/ui/switch"
-import { Label } from "@/components/ui/label"
 import { useCopy } from "@/hooks/use-copy"
 
 export type ApiKeyData = {
@@ -95,10 +94,21 @@ export function ApiKeyPanel({
     }
   }
 
-  const handleDialogClose = () => {
-    setCreateDialogOpen(false)
+  const resetCreateDialog = () => {
     setNewKeyName("")
     setNewKey(null)
+  }
+
+  const handleCreateDialogOpenChange = (open: boolean) => {
+    setCreateDialogOpen(open)
+    if (!open) {
+      resetCreateDialog()
+    }
+  }
+
+  const handleDialogClose = () => {
+    setCreateDialogOpen(false)
+    resetCreateDialog()
   }
 
   const toggleApiKey = async (id: string, enabled: boolean) => {
@@ -155,13 +165,13 @@ export function ApiKeyPanel({
         </div>
         {
           canManageApiKey && (
-            <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
+            <Dialog open={createDialogOpen} onOpenChange={handleCreateDialogOpenChange}>
               <DialogTrigger asChild>
                 <Button
                   variant="outline"
                   size="sm"
                   className="h-8 gap-2"
-                  onClick={() => setCreateDialogOpen(true)}
+                  onClick={resetCreateDialog}
                 >
                   <Plus className="w-4 h-4" />
                   {t("create")}
@@ -173,41 +183,36 @@ export function ApiKeyPanel({
                     {newKey ? t("createSuccess") : t("create")}
                   </DialogTitle>
                   {newKey && (
-                    <DialogDescription className="text-destructive">
+                    <DialogDescription>
                       {t("description")}
                     </DialogDescription>
                   )}
                 </DialogHeader>
 
                 {!newKey ? (
-                  <div className="space-y-4 py-4">
-                    <div className="space-y-2">
-                      <Label>{t("name")}</Label>
-                      <Input
-                        value={newKeyName}
-                        onChange={(e) => setNewKeyName(e.target.value)}
-                        placeholder={t("namePlaceholder")}
-                      />
-                    </div>
+                  <div className="space-y-4">
+                    <Input
+                      value={newKeyName}
+                      onChange={(e) => setNewKeyName(e.target.value)}
+                      placeholder={t("namePlaceholder")}
+                    />
                   </div>
                 ) : (
-                  <div className="space-y-4 py-4">
-                    <div className="space-y-2">
-                      <Label>{t("key")}</Label>
-                      <div className="flex gap-2">
-                        <Input
-                          value={newKey}
-                          readOnly
-                          className="font-mono text-sm"
-                        />
-                        <Button
-                          variant="outline"
-                          size="icon"
-                          onClick={() => copyToClipboard(newKey)}
-                        >
-                          <Copy className="w-4 h-4" />
-                        </Button>
+                  <div className="space-y-4">
+                    <div className="flex min-w-0 gap-2">
+                      <div className="flex h-9 min-w-0 flex-1 items-center rounded-md bg-muted px-3 py-1 text-sm font-mono text-gray-700 transition-colors">
+                        <span className="min-w-0 truncate">{newKey}</span>
                       </div>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        type="button"
+                        className="shrink-0 bg-muted hover:bg-muted/80"
+                        aria-label={tCommon("copy")}
+                        onClick={() => copyToClipboard(newKey)}
+                      >
+                        <Copy className="w-4 h-4" />
+                      </Button>
                     </div>
                   </div>
                 )}
@@ -219,7 +224,7 @@ export function ApiKeyPanel({
                       onClick={handleDialogClose}
                       disabled={loading}
                     >
-                      {newKey ? tCommon("ok") : tCommon("cancel")}
+                      {newKey ? tCommon("close") : tCommon("cancel")}
                     </Button>
                   </DialogClose>
                   {!newKey && (
@@ -279,18 +284,29 @@ export function ApiKeyPanel({
                         {t("createdAt")}: {new Date(key.createdAt).toLocaleString()}
                       </div>
                     </div>
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-4">
                       <Switch
                         checked={key.enabled}
                         onCheckedChange={(checked) => toggleApiKey(key.id, checked)}
                       />
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => deleteApiKey(key.id)}
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </Button>
+                      <div className="flex items-center gap-2">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => key.key && copyToClipboard(key.key)}
+                          disabled={!key.key}
+                          aria-label={tCommon("copy")}
+                        >
+                          <Copy className="w-4 h-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => deleteApiKey(key.id)}
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      </div>
                     </div>
                   </div>
                 ))}

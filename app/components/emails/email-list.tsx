@@ -143,6 +143,27 @@ export function EmailList({ onEmailSelect, onGroupChange, selectedEmailId, refre
     setDragOverGroup(null)
   }
 
+  useEffect(() => {
+    if (!groupSortMode) return
+
+    const handleDocumentClick = (event: MouseEvent) => {
+      const target = event.target as Element | null
+      if (target?.closest("[data-group-sort-region='true']")) {
+        return
+      }
+
+      setGroupSortMode(false)
+      setDraggingGroupId(null)
+      setDragOverGroup(null)
+    }
+
+    document.addEventListener("click", handleDocumentClick)
+
+    return () => {
+      document.removeEventListener("click", handleDocumentClick)
+    }
+  }, [groupSortMode])
+
   const saveGroupOrder = async (orderedGroups: EmailGroup[], previousGroups: EmailGroup[]) => {
     setSavingGroupOrder(true)
 
@@ -294,6 +315,28 @@ export function EmailList({ onEmailSelect, onGroupChange, selectedEmailId, refre
     ])
   }
 
+  const resetGroupDialog = () => {
+    setGroupName("")
+  }
+
+  const handleGroupDialogOpenChange = (open: boolean) => {
+    setGroupDialogOpen(open)
+    if (!open) {
+      resetGroupDialog()
+    }
+  }
+
+  const closeEditGroupDialog = () => {
+    setEditingGroup(null)
+    setEditGroupName("")
+  }
+
+  const handleEditGroupDialogOpenChange = (open: boolean) => {
+    if (!open) {
+      closeEditGroupDialog()
+    }
+  }
+
   const createGroup = async () => {
     const name = groupName.trim()
     if (!name) return
@@ -319,8 +362,7 @@ export function EmailList({ onEmailSelect, onGroupChange, selectedEmailId, refre
       }
 
       setGroups(prev => [...prev, data.group!])
-      setGroupName("")
-      setGroupDialogOpen(false)
+      handleGroupDialogOpenChange(false)
       toast({
         title: tGroups("createSuccess"),
       })
@@ -382,8 +424,7 @@ export function EmailList({ onEmailSelect, onGroupChange, selectedEmailId, refre
       if (selectedGroupId === data.group.id) {
         onGroupChange?.(data.group.id, data.group.name)
       }
-      setEditingGroup(null)
-      setEditGroupName("")
+      closeEditGroupDialog()
       toast({
         title: tGroups("renameSuccess"),
       })
@@ -637,7 +678,7 @@ export function EmailList({ onEmailSelect, onGroupChange, selectedEmailId, refre
             >
               <RefreshCw className="h-4 w-4" />
             </Button>
-            <Dialog open={groupDialogOpen} onOpenChange={setGroupDialogOpen}>
+            <Dialog open={groupDialogOpen} onOpenChange={handleGroupDialogOpenChange}>
               <DialogTrigger asChild>
                 <Button
                   variant="ghost"
@@ -666,6 +707,15 @@ export function EmailList({ onEmailSelect, onGroupChange, selectedEmailId, refre
                 />
                 <DialogFooter>
                   <Button
+                    variant="outline"
+                    type="button"
+                    onClick={() => handleGroupDialogOpenChange(false)}
+                    disabled={creatingGroup}
+                  >
+                    {tCommon("cancel")}
+                  </Button>
+                  <Button
+                    type="button"
                     onClick={createGroup}
                     disabled={creatingGroup || !groupName.trim()}
                   >
@@ -703,7 +753,7 @@ export function EmailList({ onEmailSelect, onGroupChange, selectedEmailId, refre
           </span>
         </div>
 
-        <div className="shrink-0 border-b border-gray-200 p-2">
+        <div className="shrink-0 border-b border-gray-200 p-2" data-group-sort-region="true">
           <div className="space-y-2">
             <div className="grid grid-cols-2 gap-2">
               <button
@@ -897,27 +947,34 @@ export function EmailList({ onEmailSelect, onGroupChange, selectedEmailId, refre
                           {tCommon("delete")}
                         </DropdownMenuItem>
                         <div className="my-1 h-px bg-border" />
-                        {email.groupId && (
-                          <DropdownMenuItem onClick={() => moveEmailToGroup(email, null)}>
-                            <Check className="mr-2 h-4 w-4 opacity-0" />
-                            {tGroups("removeFromGroup")}
-                          </DropdownMenuItem>
-                        )}
-                        {groups.map(group => (
-                          <DropdownMenuItem
-                            key={group.id}
-                            disabled={email.groupId === group.id}
-                            onClick={() => moveEmailToGroup(email, group.id)}
-                          >
-                            <Check className={cn("mr-2 h-4 w-4", email.groupId === group.id ? "opacity-100" : "opacity-0")} />
-                            <span className="truncate">{group.name}</span>
-                          </DropdownMenuItem>
-                        ))}
-                        {groups.length === 0 && (
-                          <div className="px-2 py-3 text-center text-xs text-gray-500">
-                            {tGroups("noGroups")}
-                          </div>
-                        )}
+                        <div
+                          className="max-h-80 overflow-y-auto"
+                          onWheel={(event) => event.stopPropagation()}
+                          onTouchMove={(event) => event.stopPropagation()}
+                        >
+                          {email.groupId && (
+                            <DropdownMenuItem className="h-8" onClick={() => moveEmailToGroup(email, null)}>
+                              <Check className="mr-2 h-4 w-4 opacity-0" />
+                              {tGroups("removeFromGroup")}
+                            </DropdownMenuItem>
+                          )}
+                          {groups.map(group => (
+                            <DropdownMenuItem
+                              key={group.id}
+                              className="h-8"
+                              disabled={email.groupId === group.id}
+                              onClick={() => moveEmailToGroup(email, group.id)}
+                            >
+                              <Check className={cn("mr-2 h-4 w-4", email.groupId === group.id ? "opacity-100" : "opacity-0")} />
+                              <span className="truncate">{group.name}</span>
+                            </DropdownMenuItem>
+                          ))}
+                          {groups.length === 0 && (
+                            <div className="px-2 py-3 text-center text-xs text-gray-500">
+                              {tGroups("noGroups")}
+                            </div>
+                          )}
+                        </div>
                       </DropdownMenuContent>
                     </DropdownMenu>
                   </div>
@@ -981,12 +1038,7 @@ export function EmailList({ onEmailSelect, onGroupChange, selectedEmailId, refre
         />
       )}
 
-      <Dialog open={!!editingGroup} onOpenChange={(open) => {
-        if (!open) {
-          setEditingGroup(null)
-          setEditGroupName("")
-        }
-      }}>
+      <Dialog open={!!editingGroup} onOpenChange={handleEditGroupDialogOpenChange}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>{tGroups("renameTitle")}</DialogTitle>
@@ -1005,6 +1057,15 @@ export function EmailList({ onEmailSelect, onGroupChange, selectedEmailId, refre
           />
           <DialogFooter>
             <Button
+              variant="outline"
+              type="button"
+              onClick={closeEditGroupDialog}
+              disabled={savingGroup}
+            >
+              {tCommon("cancel")}
+            </Button>
+            <Button
+              type="button"
               onClick={updateGroup}
               disabled={savingGroup || !editGroupName.trim()}
             >

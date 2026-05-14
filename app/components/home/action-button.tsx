@@ -3,14 +3,13 @@
 import { Button } from "@/components/ui/button"
 import { Mail } from "lucide-react"
 import { useRouter } from "next/navigation"
-import { useTranslations, useLocale } from "next-intl"
+import { useTranslations } from "next-intl"
 import { SignButton } from "../auth/sign-button"
 import { useSession } from "next-auth/react"
 import { cn } from "@/lib/utils"
 
 export function ActionButton() {
   const router = useRouter()
-  const locale = useLocale()
   const t = useTranslations("home")
   const { data: session, status } = useSession()
   const isLoggedIn = !!session?.user
@@ -33,7 +32,7 @@ export function ActionButton() {
     return (
       <Button 
         size="lg" 
-        onClick={() => router.push(`/${locale}/moe`)}
+        onClick={() => router.push("/moe")}
         className="gap-2 bg-primary hover:bg-primary/90 text-white px-8"
       >
         <Mail className="w-5 h-5" />

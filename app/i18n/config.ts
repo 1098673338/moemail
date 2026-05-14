@@ -1,10 +1,10 @@
-export const locales = ['en', 'zh-CN', 'zh-TW', 'ja', 'ko'] as const
+export const locales = ['zh-CN'] as const
 export type Locale = typeof locales[number]
 
-export const defaultLocale: Locale = 'en'
+export const defaultLocale: Locale = 'zh-CN'
 
 export const i18n = {
   locales,
   defaultLocale,
-  localePrefix: 'as-needed',
+  localePrefix: 'never',
 }

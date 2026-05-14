@@ -1,23 +1,16 @@
 import { LoginForm } from "@/components/auth/login-form"
 import { auth } from "@/lib/auth"
 import { redirect } from "next/navigation"
-import type { Locale } from "@/i18n/config"
 import { getTurnstileConfig } from "@/lib/turnstile"
 import { getRegistrationEnabled } from "@/lib/registration"
 
 export const runtime = "edge"
 
-export default async function LoginPage({
-  params,
-}: {
-  params: Promise<{ locale: string }>
-}) {
-  const { locale: localeFromParams } = await params
-  const locale = localeFromParams as Locale
+export default async function LoginPage() {
   const session = await auth()
   
   if (session?.user) {
-    redirect(`/${locale}/moe`)
+    redirect("/moe")
   }
 
   const [turnstile, registrationEnabled] = await Promise.all([

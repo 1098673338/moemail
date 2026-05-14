@@ -2,7 +2,7 @@
 
 import { useCallback, useState } from "react"
 import { signIn } from "next-auth/react"
-import { useLocale, useTranslations } from "next-intl"
+import { useTranslations } from "next-intl"
 import { useToast } from "@/components/ui/use-toast"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -50,8 +50,7 @@ export function LoginForm({ registrationEnabled = true, turnstile }: LoginFormPr
   const [activeTab, setActiveTab] = useState<"login" | "register">("login")
   const { toast } = useToast()
   const t = useTranslations("auth.loginForm")
-  const locale = useLocale()
-  const mailboxPath = `/${locale}/moe`
+  const mailboxPath = "/moe"
 
   const turnstileSiteKey = turnstile?.siteKey ?? ""
   const turnstileEnabled = Boolean(turnstile?.enabled && turnstileSiteKey)

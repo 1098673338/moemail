@@ -60,12 +60,7 @@ export async function generateMetadata({
   const t = await getTranslations({ locale, namespace: "metadata" })
 
   const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "https://moemail.app"
-  
-  // Generate hreflang links for all supported locales
-  const languages: Record<string, string> = {}
-  i18n.locales.forEach((loc) => {
-    languages[loc] = `${baseUrl}/${loc}`
-  })
+  const canonicalUrl = baseUrl
 
   return {
     title: t("title"),
@@ -84,8 +79,8 @@ export async function generateMetadata({
     },
     openGraph: {
       type: "website",
-      locale: locale === "zh-CN" ? "zh_CN" : locale === "zh-TW" ? "zh_TW" : locale,
-      url: `${baseUrl}/${locale}`,
+      locale: "zh_CN",
+      url: canonicalUrl,
       title: t("title"),
       description: t("description"),
       siteName: "MoeMail",
@@ -96,8 +91,10 @@ export async function generateMetadata({
       description: t("description"),
     },
     alternates: {
-      canonical: `${baseUrl}/${locale}`,
-      languages,
+      canonical: canonicalUrl,
+      languages: {
+        "zh-CN": canonicalUrl,
+      },
     },
     manifest: '/manifest.json',
     icons: [

@@ -363,20 +363,31 @@ export function PromotePanel() {
   return (
     <div className="bg-background rounded-lg border border-gray-200 p-6">
       <div className="mb-6 flex items-center justify-between gap-3">
-        <div className="flex items-center gap-2">
-          <Users className="w-5 h-5 text-primary" />
-          <h2 className="text-lg font-semibold">{t("title")}</h2>
+        <div className="flex min-w-0 items-center gap-2">
+          <Users className="w-5 h-5 shrink-0 text-primary" />
+          <h2 className="truncate text-lg font-semibold">{t("title")}</h2>
         </div>
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          className="h-8 gap-2"
-          onClick={openUserList}
-        >
-          <List className="h-4 w-4" />
-          {t("userList")}
-        </Button>
+        <div className="flex shrink-0 items-center gap-2">
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="h-8 gap-2"
+            onClick={openUserList}
+          >
+            <List className="h-4 w-4" />
+            {t("userList")}
+          </Button>
+          <Button
+            onClick={handleAction}
+            disabled={loading || isUserFormDisabled}
+            size="sm"
+            className="h-8 gap-2"
+          >
+            {loading && <Loader2 className="w-4 h-4 animate-spin" />}
+            {t("saveConfig")}
+          </Button>
+        </div>
       </div>
 
       <div className="space-y-4">
@@ -396,7 +407,7 @@ export function PromotePanel() {
             onValueChange={(value) => setTargetRole(value as RoleWithoutEmperor)}
             disabled={isUserFormDisabled}
           >
-            <SelectTrigger className="w-56">
+            <SelectTrigger className="w-full">
               <SelectValue placeholder={!hasTargetUser ? t("searchFirst") : undefined} />
             </SelectTrigger>
             <SelectContent>
@@ -457,17 +468,6 @@ export function PromotePanel() {
             disabled={isUserFormDisabled}
           />
         </div>
-        <Button
-          onClick={handleAction}
-          disabled={loading || isUserFormDisabled}
-          className="w-full"
-        >
-          {loading ? (
-            <Loader2 className="w-4 h-4 animate-spin" />
-          ) : (
-            t("saveConfig")
-          )}
-        </Button>
       </div>
 
       <Dialog open={userListOpen} onOpenChange={handleUserListOpenChange}>
@@ -477,12 +477,12 @@ export function PromotePanel() {
           </DialogHeader>
           <div className="max-h-[520px] overflow-y-auto">
             {loadingUsers ? (
-              <div className="flex flex-col items-center justify-center py-10 text-sm text-muted-foreground">
+              <div className="flex min-h-32 flex-col items-center justify-center text-sm text-muted-foreground">
                 <Loader2 className="mb-3 h-6 w-6 animate-spin text-primary/50" />
                 {t("loadingUsers")}
               </div>
             ) : userList.length === 0 ? (
-              <div className="py-10 text-center text-sm text-muted-foreground">
+              <div className="flex min-h-32 items-center justify-center text-center text-sm text-muted-foreground">
                 {t("noUsers")}
               </div>
             ) : (

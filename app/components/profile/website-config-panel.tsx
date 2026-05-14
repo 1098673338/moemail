@@ -2,7 +2,7 @@
 
 import { useTranslations } from "next-intl"
 import { Button } from "@/components/ui/button"
-import { Eye, EyeOff, Gem, Settings, Sword, User2 } from "lucide-react"
+import { Eye, EyeOff, Gem, Loader2, Settings, Sword, User2 } from "lucide-react"
 import { useToast } from "@/components/ui/use-toast"
 import { useState } from "react"
 import { Role, ROLES } from "@/lib/permissions"
@@ -114,16 +114,27 @@ export function WebsiteConfigPanel({ initialConfig }: WebsiteConfigPanelProps) {
 
   return (
     <div className="bg-background rounded-lg border border-gray-200 p-6">
-      <div className="flex items-center gap-2 mb-6">
-        <Settings className="w-5 h-5 text-primary" />
-        <h2 className="text-lg font-semibold">{t("title")}</h2>
+      <div className="mb-6 flex items-center justify-between gap-3">
+        <div className="flex min-w-0 items-center gap-2">
+          <Settings className="w-5 h-5 shrink-0 text-primary" />
+          <h2 className="truncate text-lg font-semibold">{t("title")}</h2>
+        </div>
+        <Button
+          onClick={handleSave}
+          disabled={loading}
+          size="sm"
+          className="h-8 shrink-0 gap-2"
+        >
+          {loading && <Loader2 className="h-4 w-4 animate-spin" />}
+          {loading ? t("saving") : t("save")}
+        </Button>
       </div>
 
       <div className="space-y-4">
         <div className="grid grid-cols-[180px_minmax(0,1fr)] items-center gap-4">
           <span className="text-left text-sm">{t("defaultRole")}:</span>
           <Select value={defaultRole} onValueChange={setDefaultRole}>
-            <SelectTrigger className="w-44">
+            <SelectTrigger className="w-full">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -254,13 +265,6 @@ export function WebsiteConfigPanel({ initialConfig }: WebsiteConfigPanelProps) {
           </>
         )}
 
-        <Button 
-          onClick={handleSave}
-          disabled={loading}
-          className="w-full"
-        >
-          {t("save")}
-        </Button>
       </div>
     </div>
   )

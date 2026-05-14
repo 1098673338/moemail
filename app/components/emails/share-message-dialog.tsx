@@ -198,7 +198,12 @@ export function ShareMessageDialog({ emailId, messageId, messageSubject, trigger
                     ))}
                   </SelectContent>
                 </Select>
-                <Button onClick={createShare} disabled={creating} className="w-full sm:w-auto sm:min-w-[100px]">
+                <Button
+                  type="button"
+                  onClick={createShare}
+                  disabled={creating}
+                  className="w-full sm:w-auto sm:min-w-[100px]"
+                >
                   {creating ? t("creating") : t("createLink")}
                 </Button>
               </div>
@@ -207,14 +212,14 @@ export function ShareMessageDialog({ emailId, messageId, messageSubject, trigger
             {/* Active share links */}
             <div className="space-y-2">
               <Label>{t("activeLinks")}</Label>
-              <div className="max-h-[270px] overflow-y-auto">
+              <div className="min-h-[92px] max-h-[270px] overflow-y-auto">
                 {loading ? (
-                  <div className="text-sm text-gray-500 text-center py-8 flex flex-col items-center gap-2">
+                  <div className="flex min-h-[92px] flex-col items-center justify-center gap-2 text-center text-sm text-gray-500">
                     <div className="w-5 h-5 border border-primary/30 border-t-primary rounded-full animate-spin" />
                     <span>{t("loading")}</span>
                   </div>
                 ) : shares.length === 0 ? (
-                  <div className="text-sm text-gray-500 text-center py-4">
+                  <div className="flex min-h-[92px] items-center justify-center text-center text-sm text-gray-500">
                     {t("noLinks")}
                   </div>
                 ) : (
