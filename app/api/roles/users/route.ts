@@ -12,7 +12,7 @@ import {
   users,
   webhooks,
 } from "@/lib/schema"
-import { asc, eq, sql } from "drizzle-orm"
+import { and, asc, eq, gte, sql } from "drizzle-orm"
 import { checkPermission, ensureUserRoleRecords } from "@/lib/auth"
 import { PERMISSIONS, ROLES } from "@/lib/permissions"
 import { getRequestContext } from "@cloudflare/next-on-pages"
@@ -41,6 +41,8 @@ export async function GET() {
     const defaultMaxEmails = Number.isInteger(siteMaxEmails) && siteMaxEmails >= 0
       ? siteMaxEmails
       : EMAIL_CONFIG.MAX_ACTIVE_EMAILS
+    const today = new Date()
+    today.setHours(0, 0, 0, 0)
     const db = createDb()
     const userRows = await db
       .select({
@@ -52,11 +54,20 @@ export async function GET() {
         sendLimit: users.sendLimit,
         role: roles.name,
         emailCount: sql<number>`count(distinct ${emails.id})`,
+        sentCount: sql<number>`count(distinct ${messages.id})`,
       })
       .from(users)
       .leftJoin(userRoles, eq(userRoles.userId, users.id))
       .leftJoin(roles, eq(userRoles.roleId, roles.id))
       .leftJoin(emails, eq(emails.userId, users.id))
+      .leftJoin(
+        messages,
+        and(
+          eq(messages.emailId, emails.id),
+          eq(messages.type, "sent"),
+          gte(messages.receivedAt, today)
+        )
+      )
       .groupBy(users.id)
       .orderBy(asc(users.username), asc(users.email), asc(users.name))
 
@@ -66,6 +77,7 @@ export async function GET() {
         ...user,
         role: roleName,
         emailCount: Number(user.emailCount ?? 0),
+        sentCount: Number(user.sentCount ?? 0),
         maxEmails: user.maxEmails != null && user.maxEmails >= 0
           ? user.maxEmails
           : defaultMaxEmails,

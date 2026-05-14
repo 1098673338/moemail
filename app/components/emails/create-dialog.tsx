@@ -213,7 +213,7 @@ export function CreateDialog({ onEmailCreated, selectedGroupId, selectedGroupNam
             </div>
             {emailNamePrefix && !emailNameError && (
               <div className="flex min-w-0 gap-2">
-                <div className="flex h-9 min-w-0 flex-1 items-center rounded-md border border-input bg-transparent px-3 py-1 text-sm font-mono text-gray-700 transition-colors">
+                <div className="flex h-9 min-w-0 flex-1 items-center rounded-md border border-input bg-muted/40 px-3 py-1 text-sm font-mono text-gray-700 transition-colors">
                   <span className="min-w-0 truncate">{`${emailNamePrefix}@${currentDomain}`}</span>
                 </div>
                 <Button

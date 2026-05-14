@@ -252,7 +252,7 @@ export function MessageView({ emailId, messageId, messageType = 'received', init
 
   return (
     <div className="h-full flex flex-col">
-      <div className="p-4 space-y-2 border-b border-gray-200">
+      <div className="flex flex-col gap-0 border-b border-gray-200 p-4">
         <div className="flex items-start justify-between gap-2">
           <h3 className="text-base font-bold flex-1">{message.subject}</h3>
           <ShareMessageDialog 
@@ -266,7 +266,7 @@ export function MessageView({ emailId, messageId, messageType = 'received', init
             }
           />
         </div>
-        <div className="text-xs text-gray-500 space-y-1">
+        <div className="flex flex-col gap-[3px] text-xs text-gray-500">
           {!isSentMessage && message.from_address && (
             <p>{t("from")}: {message.from_address}</p>
           )}
