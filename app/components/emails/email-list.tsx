@@ -337,6 +337,8 @@ export function EmailList({ onEmailSelect, onGroupChange, selectedEmailId, refre
   }
 
   const handleGroupSelect = (groupId: string | null, groupName?: string) => {
+    if (groupId === selectedGroupId) return
+
     setSelectedGroupId(groupId)
     onGroupChange?.(groupId, groupName)
     onEmailSelect(null)
