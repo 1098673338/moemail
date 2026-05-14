@@ -32,7 +32,7 @@ export async function GET() {
   ])
 
   const parsedMaxEmails = Number(maxEmails)
-  const globalMaxEmails = Number.isFinite(parsedMaxEmails) && parsedMaxEmails >= 0
+  const globalMaxEmails = Number.isFinite(parsedMaxEmails) && parsedMaxEmails > 0
     ? parsedMaxEmails
     : EMAIL_CONFIG.MAX_ACTIVE_EMAILS
   const userId = await getUserId()
@@ -46,7 +46,7 @@ export async function GET() {
         maxEmails: true,
       },
     })
-    effectiveMaxEmails = user?.maxEmails ?? globalMaxEmails
+    effectiveMaxEmails = user?.maxEmails && user.maxEmails > 0 ? user.maxEmails : globalMaxEmails
   }
 
   return Response.json({
@@ -105,8 +105,8 @@ export async function POST(request: Request) {
   }
 
   const parsedMaxEmails = Number(maxEmails)
-  if (!Number.isInteger(parsedMaxEmails) || parsedMaxEmails < 0) {
-    return Response.json({ error: "每个用户最大邮箱数必须是大于等于 0 的整数" }, { status: 400 })
+  if (!Number.isInteger(parsedMaxEmails) || parsedMaxEmails <= 0) {
+    return Response.json({ error: "每个用户最大邮箱数必须是大于 0 的整数" }, { status: 400 })
   }
 
   const env = getRequestContext().env

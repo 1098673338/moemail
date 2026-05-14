@@ -700,7 +700,7 @@ export function EmailList({ onEmailSelect, onGroupChange, selectedEmailId, refre
             </Button>
           </div>
           <span className="shrink-0 text-xs text-gray-500">
-            {role === ROLES.EMPEROR || maxEmailsLimit === 0 ? (
+            {role === ROLES.EMPEROR ? (
               t("emailCountUnlimited", { count: total })
             ) : maxEmailsLimit === undefined ? (
               t("emailCount", { count: total, max: "..." })

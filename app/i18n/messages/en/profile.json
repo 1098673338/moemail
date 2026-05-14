@@ -132,7 +132,7 @@
     "sendLimit": "Send Limit",
     "sendLimitPlaceholder": "Blank means sending disabled",
     "unlimited": "Unlimited",
-    "maxEmailsInvalid": "Max emails must be an integer greater than or equal to 0",
+    "maxEmailsInvalid": "Max emails must be an integer greater than 0",
     "sendLimitInvalid": "Send limit must be blank or an integer greater than or equal to 0",
     "actions": "Actions",
     "promote": "Set as",

@@ -118,7 +118,7 @@ export function PromotePanel() {
     if (!targetUser) return
 
     const parsedMaxEmails = isTargetEmperor ? 0 : Number(maxEmails)
-    if (!isTargetEmperor && (!maxEmails.trim() || !Number.isInteger(parsedMaxEmails) || parsedMaxEmails < 0)) {
+    if (!isTargetEmperor && (!maxEmails.trim() || !Number.isInteger(parsedMaxEmails) || parsedMaxEmails <= 0)) {
       toast({
         title: t("updateFailed"),
         description: t("maxEmailsInvalid"),
@@ -239,10 +239,10 @@ export function PromotePanel() {
           <Input
             id="user-max-emails"
             type={isTargetEmperor ? "text" : "number"}
-            min="0"
+            min="1"
             value={isTargetEmperor ? t("unlimited") : maxEmails}
             onChange={(e) => setMaxEmails(e.target.value)}
-            placeholder="0"
+            placeholder="1"
             disabled={isUserFormDisabled}
           />
         </div>

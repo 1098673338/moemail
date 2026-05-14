@@ -132,7 +132,7 @@
     "sendLimit": "送信上限",
     "sendLimitPlaceholder": "空欄は送信不可",
     "unlimited": "無制限",
-    "maxEmailsInvalid": "最大メールボックス数は 0 以上の整数である必要があります",
+    "maxEmailsInvalid": "最大メールボックス数は 0 より大きい整数である必要があります",
     "sendLimitInvalid": "送信上限は空欄、または 0 以上の整数である必要があります",
     "actions": "操作",
     "promote": "設定",

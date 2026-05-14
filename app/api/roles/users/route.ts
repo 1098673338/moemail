@@ -41,7 +41,7 @@ export async function POST(request: Request) {
     }
 
     const siteMaxEmails = Number(await getRequestContext().env.SITE_CONFIG.get("MAX_EMAILS"))
-    const defaultMaxEmails = Number.isFinite(siteMaxEmails) && siteMaxEmails >= 0
+    const defaultMaxEmails = Number.isFinite(siteMaxEmails) && siteMaxEmails > 0
       ? siteMaxEmails
       : EMAIL_CONFIG.MAX_ACTIVE_EMAILS
 
@@ -57,7 +57,7 @@ export async function POST(request: Request) {
         username: user.username,
         email: user.email,
         role: roleName,
-        maxEmails: roleName === ROLES.EMPEROR ? 0 : user.maxEmails ?? defaultMaxEmails,
+        maxEmails: roleName === ROLES.EMPEROR ? 0 : user.maxEmails && user.maxEmails > 0 ? user.maxEmails : defaultMaxEmails,
         sendLimit: roleName === ROLES.EMPEROR ? 0 : user.sendLimit ?? null
       }
     })

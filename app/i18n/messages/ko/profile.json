@@ -132,7 +132,7 @@
     "sendLimit": "전송 한도",
     "sendLimitPlaceholder": "비워두면 전송 불가",
     "unlimited": "무제한",
-    "maxEmailsInvalid": "최대 이메일 수는 0 이상의 정수여야 합니다",
+    "maxEmailsInvalid": "최대 이메일 수는 0보다 큰 정수여야 합니다",
     "sendLimitInvalid": "전송 한도는 비워두거나 0 이상의 정수여야 합니다",
     "actions": "작업",
     "promote": "설정",

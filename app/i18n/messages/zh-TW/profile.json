@@ -132,7 +132,7 @@
     "sendLimit": "發件限額",
     "sendLimitPlaceholder": "留空表示不能發件",
     "unlimited": "無限制",
-    "maxEmailsInvalid": "最大郵箱數必須是大於等於 0 的整數",
+    "maxEmailsInvalid": "最大郵箱數必須是大於 0 的整數",
     "sendLimitInvalid": "發件限額必須留空或填寫大於等於 0 的整數",
     "actions": "操作",
     "promote": "設為",

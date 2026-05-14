@@ -149,7 +149,7 @@ export function WebsiteConfigPanel({ initialConfig }: WebsiteConfigPanelProps) {
           <span className="text-left text-sm">{t("maxEmails")}:</span>
           <Input 
             type="number"
-            min="0"
+            min="1"
             max="100"
             value={maxEmails}
             onChange={(e) => setMaxEmails(e.target.value)}

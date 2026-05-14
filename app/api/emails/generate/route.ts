@@ -30,7 +30,7 @@ export async function POST(request: Request) {
   try {
     if (userRole !== ROLES.EMPEROR) {
       const siteMaxEmails = Number(await env.SITE_CONFIG.get("MAX_EMAILS"))
-      const defaultMaxEmails = Number.isFinite(siteMaxEmails) && siteMaxEmails >= 0
+      const defaultMaxEmails = Number.isFinite(siteMaxEmails) && siteMaxEmails > 0
         ? siteMaxEmails
         : EMAIL_CONFIG.MAX_ACTIVE_EMAILS
       const user = await db.query.users.findFirst({
@@ -39,7 +39,7 @@ export async function POST(request: Request) {
           maxEmails: true,
         },
       })
-      const maxEmails = user?.maxEmails ?? defaultMaxEmails
+      const maxEmails = user?.maxEmails && user.maxEmails > 0 ? user.maxEmails : defaultMaxEmails
       const activeEmailsCount = await db
         .select({ count: sql<number>`count(*)` })
         .from(emails)
@@ -50,7 +50,7 @@ export async function POST(request: Request) {
           )
         )
       
-      if (maxEmails > 0 && Number(activeEmailsCount[0].count) >= maxEmails) {
+      if (Number(activeEmailsCount[0].count) >= maxEmails) {
         return NextResponse.json(
           { error: `已达到最大邮箱数量限制 (${maxEmails})` },
           { status: 403 }
