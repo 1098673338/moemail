@@ -28,9 +28,9 @@ export async function POST(request: Request) {
       );
     }
 
-    if (maxEmails !== undefined && (!Number.isInteger(maxEmails) || maxEmails <= 0)) {
+    if (maxEmails !== undefined && (!Number.isInteger(maxEmails) || maxEmails < 0)) {
       return Response.json(
-        { error: "最大邮箱数必须是大于 0 的整数" },
+        { error: "最大邮箱数必须是大于等于 0 的整数" },
         { status: 400 }
       );
     }

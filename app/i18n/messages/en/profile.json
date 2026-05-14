@@ -106,6 +106,10 @@
     "adminContact": "Admin Contact",
     "adminContactPlaceholder": "Email or other contact method",
     "maxEmails": "Max Emails per User",
+    "registration": {
+      "enable": "Open Registration",
+      "enableDescription": "When disabled, the login page hides sign-up and new users cannot create accounts through the registration API"
+    },
     "turnstile": {
       "enable": "Enable Cloudflare Turnstile",
       "enableDescription": "When enabled, username/password login and registration require Turnstile verification",
@@ -118,7 +122,8 @@
     "save": "Save Configuration",
     "saving": "Saving...",
     "saveSuccess": "Configuration saved successfully",
-    "saveFailed": "Failed to save configuration"
+    "saveFailed": "Failed to save configuration",
+    "maxEmailsInvalid": "Max emails per user must be an integer greater than or equal to 0"
   },
   "promote": {
     "title": "User Management",
@@ -130,9 +135,10 @@
     "role": "Role",
     "maxEmails": "Max Emails",
     "sendLimit": "Send Limit",
+    "searchFirst": "Enter a username or email first",
     "sendLimitPlaceholder": "Blank means sending disabled",
     "unlimited": "Unlimited",
-    "maxEmailsInvalid": "Max emails must be an integer greater than 0",
+    "maxEmailsInvalid": "Max emails must be an integer greater than or equal to 0",
     "sendLimitInvalid": "Send limit must be blank or an integer greater than or equal to 0",
     "actions": "Actions",
     "promote": "Set as",

@@ -64,6 +64,7 @@ const defaultWebsiteConfig: WebsiteConfigData = {
   emailDomains: "moemail.app",
   adminContact: "",
   maxEmails: EMAIL_CONFIG.MAX_ACTIVE_EMAILS.toString(),
+  registrationEnabled: true,
   turnstile: {
     enabled: false,
     siteKey: "",

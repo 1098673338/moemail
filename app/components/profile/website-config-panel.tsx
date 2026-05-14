@@ -23,6 +23,7 @@ export interface WebsiteConfigData {
   emailDomains: string
   adminContact: string
   maxEmails: string
+  registrationEnabled?: boolean
   turnstile?: {
     enabled: boolean
     siteKey: string
@@ -41,6 +42,7 @@ export function WebsiteConfigPanel({ initialConfig }: WebsiteConfigPanelProps) {
   const [emailDomains, setEmailDomains] = useState<string>(initialConfig.emailDomains)
   const [adminContact, setAdminContact] = useState<string>(initialConfig.adminContact)
   const [maxEmails, setMaxEmails] = useState<string>(initialConfig.maxEmails || EMAIL_CONFIG.MAX_ACTIVE_EMAILS.toString())
+  const [registrationEnabled, setRegistrationEnabled] = useState(initialConfig.registrationEnabled ?? true)
   const [turnstileEnabled, setTurnstileEnabled] = useState(Boolean(initialConfig.turnstile?.enabled))
   const [turnstileSiteKey, setTurnstileSiteKey] = useState(initialConfig.turnstile?.siteKey ?? "")
   const [turnstileSecretKey, setTurnstileSecretKey] = useState(initialConfig.turnstile?.secretKey ?? "")
@@ -55,6 +57,18 @@ export function WebsiteConfigPanel({ initialConfig }: WebsiteConfigPanelProps) {
   } as const
 
   const handleSave = async () => {
+    const normalizedMaxEmails = maxEmails.trim()
+    const parsedMaxEmails = Number(normalizedMaxEmails)
+
+    if (normalizedMaxEmails && (!Number.isInteger(parsedMaxEmails) || parsedMaxEmails < 0)) {
+      toast({
+        title: t("saveFailed"),
+        description: t("maxEmailsInvalid"),
+        variant: "destructive",
+      })
+      return
+    }
+
     setLoading(true)
     try {
       const res = await fetch("/api/config", {
@@ -64,7 +78,8 @@ export function WebsiteConfigPanel({ initialConfig }: WebsiteConfigPanelProps) {
           defaultRole, 
           emailDomains,
           adminContact,
-          maxEmails: maxEmails || EMAIL_CONFIG.MAX_ACTIVE_EMAILS.toString(),
+          maxEmails: normalizedMaxEmails || EMAIL_CONFIG.MAX_ACTIVE_EMAILS.toString(),
+          registrationEnabled,
           turnstile: {
             enabled: turnstileEnabled,
             siteKey: turnstileSiteKey,
@@ -73,7 +88,8 @@ export function WebsiteConfigPanel({ initialConfig }: WebsiteConfigPanelProps) {
         }),
       })
 
-      if (!res.ok) throw new Error(t("saveFailed"))
+      const data = await res.json().catch(() => null) as { error?: string } | null
+      if (!res.ok) throw new Error(data?.error || t("saveFailed"))
 
       toast({
         title: t("saveSuccess"),
@@ -149,11 +165,27 @@ export function WebsiteConfigPanel({ initialConfig }: WebsiteConfigPanelProps) {
           <span className="text-left text-sm">{t("maxEmails")}:</span>
           <Input 
             type="number"
-            min="1"
+            min="0"
             max="100"
             value={maxEmails}
             onChange={(e) => setMaxEmails(e.target.value)}
             placeholder={`${EMAIL_CONFIG.MAX_ACTIVE_EMAILS}`}
+          />
+        </div>
+
+        <div className="flex items-center justify-between">
+          <div className="space-y-0.5">
+            <Label htmlFor="registration-enabled" className="text-sm font-medium">
+              {t("registration.enable")}
+            </Label>
+            <p className="text-xs text-muted-foreground">
+              {t("registration.enableDescription")}
+            </p>
+          </div>
+          <Switch
+            id="registration-enabled"
+            checked={registrationEnabled}
+            onCheckedChange={setRegistrationEnabled}
           />
         </div>
 

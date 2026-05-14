@@ -40,8 +40,9 @@ export async function POST(request: Request) {
       return Response.json({ error: "未找到用户" }, { status: 404 })
     }
 
-    const siteMaxEmails = Number(await getRequestContext().env.SITE_CONFIG.get("MAX_EMAILS"))
-    const defaultMaxEmails = Number.isFinite(siteMaxEmails) && siteMaxEmails > 0
+    const siteMaxEmailsValue = await getRequestContext().env.SITE_CONFIG.get("MAX_EMAILS")
+    const siteMaxEmails = siteMaxEmailsValue && siteMaxEmailsValue.trim() !== "" ? Number(siteMaxEmailsValue) : NaN
+    const defaultMaxEmails = Number.isInteger(siteMaxEmails) && siteMaxEmails >= 0
       ? siteMaxEmails
       : EMAIL_CONFIG.MAX_ACTIVE_EMAILS
 
@@ -57,7 +58,9 @@ export async function POST(request: Request) {
         username: user.username,
         email: user.email,
         role: roleName,
-        maxEmails: roleName === ROLES.EMPEROR ? 0 : user.maxEmails && user.maxEmails > 0 ? user.maxEmails : defaultMaxEmails,
+        maxEmails: roleName === ROLES.EMPEROR
+          ? 0
+          : user.maxEmails != null && user.maxEmails >= 0 ? user.maxEmails : defaultMaxEmails,
         sendLimit: roleName === ROLES.EMPEROR ? 0 : user.sendLimit ?? null
       }
     })

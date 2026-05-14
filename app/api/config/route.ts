@@ -18,6 +18,7 @@ export async function GET() {
     emailDomains,
     adminContact,
     maxEmails,
+    registrationEnabled,
     turnstileEnabled,
     turnstileSiteKey,
     turnstileSecretKey
@@ -26,13 +27,14 @@ export async function GET() {
     env.SITE_CONFIG.get("EMAIL_DOMAINS"),
     env.SITE_CONFIG.get("ADMIN_CONTACT"),
     env.SITE_CONFIG.get("MAX_EMAILS"),
+    env.SITE_CONFIG.get("REGISTRATION_ENABLED"),
     env.SITE_CONFIG.get("TURNSTILE_ENABLED"),
     env.SITE_CONFIG.get("TURNSTILE_SITE_KEY"),
     env.SITE_CONFIG.get("TURNSTILE_SECRET_KEY")
   ])
 
-  const parsedMaxEmails = Number(maxEmails)
-  const globalMaxEmails = Number.isFinite(parsedMaxEmails) && parsedMaxEmails > 0
+  const parsedMaxEmails = maxEmails && maxEmails.trim() !== "" ? Number(maxEmails) : NaN
+  const globalMaxEmails = Number.isInteger(parsedMaxEmails) && parsedMaxEmails >= 0
     ? parsedMaxEmails
     : EMAIL_CONFIG.MAX_ACTIVE_EMAILS
   const userId = await getUserId()
@@ -46,7 +48,7 @@ export async function GET() {
         maxEmails: true,
       },
     })
-    effectiveMaxEmails = user?.maxEmails && user.maxEmails > 0 ? user.maxEmails : globalMaxEmails
+    effectiveMaxEmails = user?.maxEmails != null && user.maxEmails >= 0 ? user.maxEmails : globalMaxEmails
   }
 
   return Response.json({
@@ -55,6 +57,7 @@ export async function GET() {
     adminContact: adminContact || "",
     maxEmails: globalMaxEmails.toString(),
     effectiveMaxEmails,
+    registrationEnabled: registrationEnabled !== "false",
     turnstile: canManageConfig ? {
       enabled: turnstileEnabled === "true",
       siteKey: turnstileSiteKey || "",
@@ -77,12 +80,14 @@ export async function POST(request: Request) {
     emailDomains,
     adminContact,
     maxEmails,
+    registrationEnabled,
     turnstile
   } = await request.json() as { 
     defaultRole: Exclude<Role, typeof ROLES.EMPEROR>,
     emailDomains: string,
     adminContact: string,
     maxEmails: string,
+    registrationEnabled?: boolean,
     turnstile?: {
       enabled: boolean,
       siteKey: string,
@@ -104,9 +109,12 @@ export async function POST(request: Request) {
     return Response.json({ error: "Turnstile 启用时需要提供 Site Key 和 Secret Key" }, { status: 400 })
   }
 
-  const parsedMaxEmails = Number(maxEmails)
-  if (!Number.isInteger(parsedMaxEmails) || parsedMaxEmails <= 0) {
-    return Response.json({ error: "每个用户最大邮箱数必须是大于 0 的整数" }, { status: 400 })
+  const normalizedMaxEmails = maxEmails.trim()
+  const parsedMaxEmails = Number(normalizedMaxEmails)
+  if (!normalizedMaxEmails || !Number.isInteger(parsedMaxEmails) || parsedMaxEmails < 0) {
+    return Response.json({
+      error: "每个用户最大邮箱数必须是大于等于 0 的整数"
+    }, { status: 400 })
   }
 
   const env = getRequestContext().env
@@ -115,6 +123,7 @@ export async function POST(request: Request) {
     env.SITE_CONFIG.put("EMAIL_DOMAINS", emailDomains),
     env.SITE_CONFIG.put("ADMIN_CONTACT", adminContact),
     env.SITE_CONFIG.put("MAX_EMAILS", parsedMaxEmails.toString()),
+    env.SITE_CONFIG.put("REGISTRATION_ENABLED", (registrationEnabled ?? true).toString()),
     env.SITE_CONFIG.put("TURNSTILE_ENABLED", turnstileConfig.enabled.toString()),
     env.SITE_CONFIG.put("TURNSTILE_SITE_KEY", turnstileConfig.siteKey),
     env.SITE_CONFIG.put("TURNSTILE_SECRET_KEY", turnstileConfig.secretKey)

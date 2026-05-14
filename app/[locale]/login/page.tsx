@@ -3,6 +3,7 @@ import { auth } from "@/lib/auth"
 import { redirect } from "next/navigation"
 import type { Locale } from "@/i18n/config"
 import { getTurnstileConfig } from "@/lib/turnstile"
+import { getRegistrationEnabled } from "@/lib/registration"
 
 export const runtime = "edge"
 
@@ -19,11 +20,17 @@ export default async function LoginPage({
     redirect(`/${locale}/moe`)
   }
 
-  const turnstile = await getTurnstileConfig()
+  const [turnstile, registrationEnabled] = await Promise.all([
+    getTurnstileConfig(),
+    getRegistrationEnabled(),
+  ])
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-gray-50 to-gray-100">
-      <LoginForm turnstile={{ enabled: turnstile.enabled, siteKey: turnstile.siteKey }} />
+      <LoginForm
+        registrationEnabled={registrationEnabled}
+        turnstile={{ enabled: turnstile.enabled, siteKey: turnstile.siteKey }}
+      />
     </div>
   )
 }

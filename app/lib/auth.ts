@@ -13,6 +13,7 @@ import { authSchema, AuthSchema } from "@/lib/validation"
 import { generateAvatarUrl } from "./avatar"
 import { getUserId } from "./apiKey"
 import { verifyTurnstileToken } from "./turnstile"
+import { getRegistrationEnabled } from "./registration"
 
 const ROLE_DESCRIPTIONS: Record<Role, string> = {
   [ROLES.EMPEROR]: "皇帝（网站所有者）",
@@ -197,6 +198,21 @@ export const {
     },
   },
   callbacks: {
+    async signIn({ user, account }) {
+      if (account?.provider === "credentials") return true
+      if (await getRegistrationEnabled()) return true
+
+      if (!user.email) return false
+
+      const existingUser = await createDb().query.users.findFirst({
+        where: eq(users.email, user.email),
+        columns: {
+          id: true,
+        },
+      })
+
+      return Boolean(existingUser)
+    },
     async jwt({ token, user }) {
       if (user) {
         token.id = user.id

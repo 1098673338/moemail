@@ -106,6 +106,10 @@
     "adminContact": "管理員聯絡方式",
     "adminContactPlaceholder": "郵箱或其他聯絡方式",
     "maxEmails": "每個使用者最大郵箱數",
+    "registration": {
+      "enable": "開放註冊",
+      "enableDescription": "關閉後，登入頁不再顯示註冊入口，新使用者也無法透過註冊介面建立帳號"
+    },
     "turnstile": {
       "enable": "啟用 Cloudflare Turnstile",
       "enableDescription": "啟用後，使用者名稱與密碼的登入／註冊需要通過 Turnstile 驗證",
@@ -118,7 +122,8 @@
     "save": "儲存設定",
     "saving": "儲存中...",
     "saveSuccess": "設定儲存成功",
-    "saveFailed": "儲存設定失敗"
+    "saveFailed": "儲存設定失敗",
+    "maxEmailsInvalid": "每個使用者最大郵箱數必須是大於等於 0 的整數"
   },
   "promote": {
     "title": "使用者管理",
@@ -130,9 +135,10 @@
     "role": "角色",
     "maxEmails": "最大郵箱數",
     "sendLimit": "發件限額",
+    "searchFirst": "請先輸入使用者名稱或郵箱",
     "sendLimitPlaceholder": "留空表示不能發件",
     "unlimited": "無限制",
-    "maxEmailsInvalid": "最大郵箱數必須是大於 0 的整數",
+    "maxEmailsInvalid": "最大郵箱數必須是大於等於 0 的整數",
     "sendLimitInvalid": "發件限額必須留空或填寫大於等於 0 的整數",
     "actions": "操作",
     "promote": "設為",

@@ -106,6 +106,10 @@
     "adminContact": "管理者連絡先",
     "adminContactPlaceholder": "メールまたはその他の連絡先",
     "maxEmails": "ユーザーあたりの最大メールボックス数",
+    "registration": {
+      "enable": "登録を開放",
+      "enableDescription": "無効にすると、ログインページに登録入口を表示せず、新規ユーザーは登録 API からアカウントを作成できません"
+    },
     "turnstile": {
       "enable": "Cloudflare Turnstile を有効化",
       "enableDescription": "有効にすると、ユーザー名とパスワードでのログイン・登録に Turnstile 認証が必要になります",
@@ -118,7 +122,8 @@
     "save": "設定を保存",
     "saving": "保存中...",
     "saveSuccess": "設定を保存しました",
-    "saveFailed": "設定の保存に失敗しました"
+    "saveFailed": "設定の保存に失敗しました",
+    "maxEmailsInvalid": "ユーザーあたりの最大メールボックス数は 0 以上の整数である必要があります"
   },
   "promote": {
     "title": "ユーザー管理",
@@ -130,9 +135,10 @@
     "role": "ロール",
     "maxEmails": "最大メールボックス数",
     "sendLimit": "送信上限",
+    "searchFirst": "先にユーザー名またはメールを入力してください",
     "sendLimitPlaceholder": "空欄は送信不可",
     "unlimited": "無制限",
-    "maxEmailsInvalid": "最大メールボックス数は 0 より大きい整数である必要があります",
+    "maxEmailsInvalid": "最大メールボックス数は 0 以上の整数である必要があります",
     "sendLimitInvalid": "送信上限は空欄、または 0 以上の整数である必要があります",
     "actions": "操作",
     "promote": "設定",

@@ -29,8 +29,9 @@ export async function POST(request: Request) {
 
   try {
     if (userRole !== ROLES.EMPEROR) {
-      const siteMaxEmails = Number(await env.SITE_CONFIG.get("MAX_EMAILS"))
-      const defaultMaxEmails = Number.isFinite(siteMaxEmails) && siteMaxEmails > 0
+      const siteMaxEmailsValue = await env.SITE_CONFIG.get("MAX_EMAILS")
+      const siteMaxEmails = siteMaxEmailsValue && siteMaxEmailsValue.trim() !== "" ? Number(siteMaxEmailsValue) : NaN
+      const defaultMaxEmails = Number.isInteger(siteMaxEmails) && siteMaxEmails >= 0
         ? siteMaxEmails
         : EMAIL_CONFIG.MAX_ACTIVE_EMAILS
       const user = await db.query.users.findFirst({
@@ -39,7 +40,7 @@ export async function POST(request: Request) {
           maxEmails: true,
         },
       })
-      const maxEmails = user?.maxEmails && user.maxEmails > 0 ? user.maxEmails : defaultMaxEmails
+      const maxEmails = user?.maxEmails != null && user.maxEmails >= 0 ? user.maxEmails : defaultMaxEmails
       const activeEmailsCount = await db
         .select({ count: sql<number>`count(*)` })
         .from(emails)

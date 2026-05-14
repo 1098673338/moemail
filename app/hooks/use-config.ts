@@ -42,7 +42,7 @@ const useConfigStore = create<ConfigStore>((set) => ({
           emailDomains: data.emailDomains,
           emailDomainsArray: data.emailDomains.split(','),
           adminContact: data.adminContact || "",
-          maxEmails: Number.isFinite(parsedMaxEmails) && parsedMaxEmails > 0
+          maxEmails: Number.isInteger(parsedMaxEmails) && parsedMaxEmails >= 0
             ? parsedMaxEmails
             : EMAIL_CONFIG.MAX_ACTIVE_EMAILS
         },
