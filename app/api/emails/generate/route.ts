@@ -12,6 +12,8 @@ import { generateEmailName, getEmailNamePrefix, isValidEmailNamePrefix } from "@
 
 export const runtime = "edge"
 
+const MAX_TAG_LENGTH = 32
+
 const getEmailNameError = (value: string) => {
   if (!isValidEmailNamePrefix(value)) {
     return "邮箱前缀只能包含字母、数字、下划线和连字符"
@@ -58,11 +60,12 @@ export async function POST(request: Request) {
       }
     }
 
-    const { name, expiryTime, domain, groupId } = await request.json<{
+    const { name, expiryTime, domain, groupId, tag } = await request.json<{
       name?: string
       expiryTime: number
       domain: string
       groupId?: string | null
+      tag?: string | null
     }>()
 
     if (!EXPIRY_OPTIONS.some(option => option.value === expiryTime)) {
@@ -96,6 +99,16 @@ export async function POST(request: Request) {
     const selectedGroupId = typeof groupId === "string" && groupId.trim()
       ? groupId.trim()
       : null
+    const normalizedTag = typeof tag === "string" && tag.trim()
+      ? tag.trim()
+      : null
+
+    if (normalizedTag && normalizedTag.length > MAX_TAG_LENGTH) {
+      return NextResponse.json(
+        { error: `标签不能超过 ${MAX_TAG_LENGTH} 个字符` },
+        { status: 400 }
+      )
+    }
 
     if (selectedGroupId) {
       const group = await db.query.emailGroups.findFirst({
@@ -137,7 +150,8 @@ export async function POST(request: Request) {
       createdAt: now,
       expiresAt: expires,
       userId: userId!,
-      groupId: selectedGroupId
+      groupId: selectedGroupId,
+      tag: normalizedTag
     }
     
     const result = await db.insert(emails)

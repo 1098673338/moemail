@@ -70,6 +70,8 @@
     "namePlaceholder": "留空则随机生成",
     "nameInvalidWhitespace": "邮箱前缀不能包含空格",
     "nameInvalidCharacters": "邮箱前缀只能包含字母、数字、下划线和连字符",
+    "tag": "标签",
+    "tagPlaceholder": "输入或选择标签",
     "group": "分组",
     "addressPreview": "地址预览",
     "addressPreviewEmpty": "输入邮箱前缀后显示预览地址",
@@ -84,6 +86,13 @@
     "creating": "创建中...",
     "success": "邮箱创建成功",
     "failed": "创建邮箱失败"
+  },
+  "edit": {
+    "menu": "编辑",
+    "title": "编辑邮箱",
+    "saving": "保存中...",
+    "success": "邮箱已更新",
+    "failed": "更新邮箱失败"
   },
   "messages": {
     "received": "收件箱",

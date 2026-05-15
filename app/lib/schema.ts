@@ -60,6 +60,7 @@ export const emailGroups = sqliteTable("email_group", {
 export const emails = sqliteTable("email", {
   id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
   address: text("address").notNull().unique(),
+  tag: text("tag"),
   userId: text("userId").references(() => users.id, { onDelete: "cascade" }),
   groupId: text("group_id").references(() => emailGroups.id, { onDelete: "set null" }),
   createdAt: integer("created_at", { mode: "timestamp_ms" })

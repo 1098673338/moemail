@@ -5,8 +5,11 @@ import { eq, and, lt, or, sql, ne, isNull, desc } from "drizzle-orm"
 import { encodeCursor, decodeCursor } from "@/lib/cursor"
 import { getUserId } from "@/lib/apiKey"
 import { checkBasicSendPermission } from "@/lib/send-permissions"
+import { EXPIRY_OPTIONS } from "@/types/email"
 
 export const runtime = "edge"
+
+const MAX_TAG_LENGTH = 32
 
 export async function DELETE(
   request: Request,
@@ -59,7 +62,14 @@ export async function PATCH(
   try {
     const db = createDb()
     const { id } = await params
-    const { groupId } = await request.json() as { groupId?: string | null }
+    const body = await request.json() as {
+      expiryTime?: number
+      groupId?: string | null
+      tag?: string | null
+    }
+    const hasGroupId = "groupId" in body
+    const hasExpiryTime = "expiryTime" in body
+    const hasTag = "tag" in body
 
     const email = await db.query.emails.findFirst({
       where: and(
@@ -75,10 +85,14 @@ export async function PATCH(
       )
     }
 
-    if (groupId) {
+    const selectedGroupId = hasGroupId && typeof body.groupId === "string" && body.groupId.trim()
+      ? body.groupId.trim()
+      : null
+
+    if (selectedGroupId) {
       const group = await db.query.emailGroups.findFirst({
         where: and(
-          eq(emailGroups.id, groupId),
+          eq(emailGroups.id, selectedGroupId),
           eq(emailGroups.userId, userId)
         )
       })
@@ -91,15 +105,57 @@ export async function PATCH(
       }
     }
 
+    const updateData: Partial<typeof emails.$inferInsert> = {}
+
+    if (hasGroupId) {
+      updateData.groupId = selectedGroupId
+    }
+
+    if (hasTag) {
+      const normalizedTag = typeof body.tag === "string" && body.tag.trim()
+        ? body.tag.trim()
+        : null
+
+      if (normalizedTag && normalizedTag.length > MAX_TAG_LENGTH) {
+        return NextResponse.json(
+          { error: `标签不能超过 ${MAX_TAG_LENGTH} 个字符` },
+          { status: 400 }
+        )
+      }
+
+      updateData.tag = normalizedTag
+    }
+
+    if (hasExpiryTime) {
+      if (!EXPIRY_OPTIONS.some(option => option.value === body.expiryTime)) {
+        return NextResponse.json(
+          { error: "无效的过期时间" },
+          { status: 400 }
+        )
+      }
+
+      updateData.expiresAt = body.expiryTime === 0
+        ? new Date("9999-01-01T00:00:00.000Z")
+        : new Date(Date.now() + body.expiryTime!)
+    }
+
+    if (Object.keys(updateData).length === 0) {
+      return NextResponse.json({ success: true, email })
+    }
+
     await db.update(emails)
-      .set({ groupId: groupId || null })
+      .set(updateData)
       .where(eq(emails.id, id))
 
-    return NextResponse.json({ success: true, groupId: groupId || null })
+    const updatedEmail = await db.query.emails.findFirst({
+      where: eq(emails.id, id)
+    })
+
+    return NextResponse.json({ success: true, email: updatedEmail })
   } catch (error) {
-    console.error("Failed to move email:", error)
+    console.error("Failed to update email:", error)
     return NextResponse.json(
-      { error: "移动邮箱失败" },
+      { error: "更新邮箱失败" },
       { status: 500 }
     )
   }

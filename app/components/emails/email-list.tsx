@@ -4,6 +4,7 @@ import { useEffect, useState } from "react"
 import { useSession } from "next-auth/react"
 import { useTranslations } from "next-intl"
 import { ShareDialog } from "./share-dialog"
+import { EditDialog } from "./edit-dialog"
 import { AtSign, Check, Copy, Folder, FolderOpen, FolderPlus, GripVertical, Loader2, MoreHorizontal, Pencil, RefreshCw, Share2, Trash2 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
@@ -43,8 +44,9 @@ import { EMAIL_CONFIG } from "@/config"
 interface Email {
   id: string
   address: string
-  createdAt: number
-  expiresAt: number
+  tag?: string | null
+  createdAt: number | string | Date
+  expiresAt: number | string | Date
   groupId?: string | null
 }
 
@@ -79,6 +81,7 @@ export function EmailList({ onEmailSelect, onGroupChange, selectedEmailId, refre
   const { role } = useUserRole()
   const t = useTranslations("emails.list")
   const tGroups = useTranslations("emails.groups")
+  const tEdit = useTranslations("emails.edit")
   const tShare = useTranslations("emails.share")
   const tCommon = useTranslations("common.actions")
   const tFeedback = useTranslations("common.feedback")
@@ -98,6 +101,7 @@ export function EmailList({ onEmailSelect, onGroupChange, selectedEmailId, refre
   const [openMoreGroupId, setOpenMoreGroupId] = useState<string | null>(null)
   const [openMoreEmailId, setOpenMoreEmailId] = useState<string | null>(null)
   const [emailToShare, setEmailToShare] = useState<Email | null>(null)
+  const [emailToEdit, setEmailToEdit] = useState<Email | null>(null)
   const [editingGroup, setEditingGroup] = useState<EmailGroup | null>(null)
   const [editGroupName, setEditGroupName] = useState("")
   const [savingGroup, setSavingGroup] = useState(false)
@@ -518,6 +522,56 @@ export function EmailList({ onEmailSelect, onGroupChange, selectedEmailId, refre
     }, 0)
   }
 
+  const openEditDialog = (email: Email) => {
+    setOpenMoreEmailId(null)
+    window.setTimeout(() => {
+      setEmailToEdit(email)
+    }, 0)
+  }
+
+  const handleEmailUpdated = (updatedEmail: Email) => {
+    const previousEmail = emailToEdit
+    const previousGroupId = previousEmail?.groupId ?? null
+    const nextGroupId = updatedEmail.groupId ?? null
+    const staysVisible = selectedGroupId === null
+      || selectedGroupId === nextGroupId
+      || (selectedGroupId === "none" && !nextGroupId)
+
+    if (previousGroupId !== nextGroupId) {
+      setGroups(prev => prev.map(group => {
+        if (group.id === previousGroupId) {
+          return { ...group, emailCount: Math.max(group.emailCount - 1, 0) }
+        }
+
+        if (group.id === nextGroupId) {
+          return { ...group, emailCount: group.emailCount + 1 }
+        }
+
+        return group
+      }))
+    }
+
+    setEmails(prev => {
+      const updated = prev.map(item => (
+        item.id === updatedEmail.id ? updatedEmail : item
+      ))
+
+      return staysVisible ? updated : updated.filter(item => item.id !== updatedEmail.id)
+    })
+
+    if (!staysVisible) {
+      setTotal(prev => Math.max(prev - 1, 0))
+      if (selectedEmailId === updatedEmail.id) {
+        onEmailSelect(null)
+      }
+      return
+    }
+
+    if (selectedEmailId === updatedEmail.id) {
+      onEmailSelect(updatedEmail)
+    }
+  }
+
   const moveEmailToGroup = async (email: Email, groupId: string | null) => {
     setMovingEmailId(email.id)
 
@@ -892,7 +946,14 @@ export function EmailList({ onEmailSelect, onGroupChange, selectedEmailId, refre
                   onClick={() => onEmailSelect(email)}
                 >
                   <div className="min-w-0 flex-1">
-                    <div className="font-medium truncate">{email.address}</div>
+                    <div className="flex min-w-0 items-center gap-1.5 font-medium">
+                      <span className="min-w-0 truncate">{email.address}</span>
+                      {email.tag && (
+                        <span className="flex h-[18px] max-w-24 shrink-0 items-center rounded border border-primary/20 bg-primary/10 px-1.5 text-[10px] font-medium leading-none text-primary">
+                          <span className="min-w-0 truncate">{email.tag}</span>
+                        </span>
+                      )}
+                    </div>
                     <div className="truncate text-xs text-gray-500">
                       {new Date(email.expiresAt).getFullYear() === 9999 ? (
                         t("permanent")
@@ -933,6 +994,10 @@ export function EmailList({ onEmailSelect, onGroupChange, selectedEmailId, refre
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent side="right" align="start" sideOffset={8} className="w-48">
+                        <DropdownMenuItem onSelect={() => openEditDialog(email)}>
+                          <Pencil className="mr-2 h-4 w-4" />
+                          {tEdit("menu")}
+                        </DropdownMenuItem>
                         <DropdownMenuItem onSelect={() => openShareDialog(email)}>
                           <Share2 className="mr-2 h-4 w-4" />
                           {tShare("shareButton")}
@@ -1037,6 +1102,18 @@ export function EmailList({ onEmailSelect, onGroupChange, selectedEmailId, refre
           trigger={null}
         />
       )}
+
+      <EditDialog
+        email={emailToEdit}
+        groups={groups}
+        open={!!emailToEdit}
+        onOpenChange={(open) => {
+          if (!open) {
+            setEmailToEdit(null)
+          }
+        }}
+        onEmailUpdated={handleEmailUpdated}
+      />
 
       <Dialog open={!!editingGroup} onOpenChange={handleEditGroupDialogOpenChange}>
         <DialogContent>

@@ -1,14 +1,15 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useCallback, useEffect, useRef, useState } from "react"
 import { useTranslations } from "next-intl"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
-import { Copy, Plus, RefreshCw } from "lucide-react"
+import { ChevronDown, Copy, Plus, RefreshCw } from "lucide-react"
 import { useToast } from "@/components/ui/use-toast"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { EXPIRY_OPTIONS } from "@/types/email"
 import { useCopy } from "@/hooks/use-copy"
 import { useConfig } from "@/hooks/use-config"
@@ -28,8 +29,11 @@ interface EmailGroup {
   sortOrder: number
 }
 
+type CreateDropdown = "domain" | "group" | "expiry" | "tag"
+
 const DEFAULT_EXPIRY_TIME = "0"
 const UNGROUPED_GROUP_VALUE = "__ungrouped__"
+const MAX_TAG_LENGTH = 32
 
 export function CreateDialog({ onEmailCreated, selectedGroupId, selectedGroupName }: CreateDialogProps) {
   const { config } = useConfig()
@@ -43,6 +47,11 @@ export function CreateDialog({ onEmailCreated, selectedGroupId, selectedGroupNam
   const [expiryTime, setExpiryTime] = useState(DEFAULT_EXPIRY_TIME)
   const [groups, setGroups] = useState<EmailGroup[]>([])
   const [createGroupId, setCreateGroupId] = useState(UNGROUPED_GROUP_VALUE)
+  const [tag, setTag] = useState("")
+  const [tagOptions, setTagOptions] = useState<string[]>([])
+  const [tagMenuWidth, setTagMenuWidth] = useState<number>()
+  const [openDropdown, setOpenDropdown] = useState<CreateDropdown | null>(null)
+  const tagFieldRef = useRef<HTMLDivElement>(null)
   const { toast } = useToast()
   const { copyToClipboard } = useCopy()
   const selectedGroupExists = createGroupId === UNGROUPED_GROUP_VALUE
@@ -56,6 +65,16 @@ export function CreateDialog({ onEmailCreated, selectedGroupId, selectedGroupNam
   const groupSelectItemClass = "hover:bg-accent hover:text-accent-foreground"
 
   const generateRandomName = () => setEmailName(generateEmailName())
+  const updateTagMenuWidth = useCallback(() => {
+    setTagMenuWidth(tagFieldRef.current?.getBoundingClientRect().width)
+  }, [])
+  const handleDropdownOpenChange = (dropdown: CreateDropdown, nextOpen: boolean) => {
+    setOpenDropdown(currentDropdown => (
+      nextOpen
+        ? dropdown
+        : currentDropdown === dropdown ? null : currentDropdown
+    ))
+  }
   const getDefaultGroupId = () => (
     selectedGroupId && selectedGroupId !== "none" ? selectedGroupId : UNGROUPED_GROUP_VALUE
   )
@@ -66,6 +85,8 @@ export function CreateDialog({ onEmailCreated, selectedGroupId, selectedGroupNam
     setCurrentDomain(getDefaultDomain())
     setExpiryTime(DEFAULT_EXPIRY_TIME)
     setCreateGroupId(UNGROUPED_GROUP_VALUE)
+    setTag("")
+    setOpenDropdown(null)
   }
 
   const fetchGroups = async () => {
@@ -80,6 +101,18 @@ export function CreateDialog({ onEmailCreated, selectedGroupId, selectedGroupNam
     }
   }
 
+  const fetchTags = async () => {
+    try {
+      const response = await fetch("/api/emails/tags")
+      if (!response.ok) return
+
+      const data = await response.json() as { tags: string[] }
+      setTagOptions(data.tags)
+    } catch (error) {
+      console.error("Failed to fetch email tags:", error)
+    }
+  }
+
   const handleOpenChange = (nextOpen: boolean) => {
     setOpen(nextOpen)
     if (nextOpen) {
@@ -87,7 +120,10 @@ export function CreateDialog({ onEmailCreated, selectedGroupId, selectedGroupNam
       setCurrentDomain(getDefaultDomain())
       setExpiryTime(DEFAULT_EXPIRY_TIME)
       setCreateGroupId(getDefaultGroupId())
+      setTag("")
+      setOpenDropdown(null)
       fetchGroups()
+      fetchTags()
     }
     if (!nextOpen) {
       resetForm()
@@ -110,7 +146,8 @@ export function CreateDialog({ onEmailCreated, selectedGroupId, selectedGroupNam
           name: emailNamePrefix,
           domain: currentDomain,
           expiryTime: parseInt(expiryTime),
-          groupId: createGroupId === UNGROUPED_GROUP_VALUE ? null : createGroupId
+          groupId: createGroupId === UNGROUPED_GROUP_VALUE ? null : createGroupId,
+          tag: tag.trim() || null
         })
       })
 
@@ -145,6 +182,17 @@ export function CreateDialog({ onEmailCreated, selectedGroupId, selectedGroupNam
     }
   }, [config])
 
+  useEffect(() => {
+    if (!open) return
+
+    updateTagMenuWidth()
+    window.addEventListener("resize", updateTagMenuWidth)
+
+    return () => {
+      window.removeEventListener("resize", updateTagMenuWidth)
+    }
+  }, [open, updateTagMenuWidth])
+
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogTrigger asChild>
@@ -174,7 +222,15 @@ export function CreateDialog({ onEmailCreated, selectedGroupId, selectedGroupNam
                 )}
               />
               {(config?.emailDomainsArray?.length ?? 0) > 1 && (
-                <Select value={currentDomain} onValueChange={setCurrentDomain}>
+                <Select
+                  open={openDropdown === "domain"}
+                  onOpenChange={(nextOpen) => handleDropdownOpenChange("domain", nextOpen)}
+                  value={currentDomain}
+                  onValueChange={(value) => {
+                    setCurrentDomain(value)
+                    setOpenDropdown(null)
+                  }}
+                >
                   <SelectTrigger className="w-[180px]">
                     <SelectValue />
                   </SelectTrigger>
@@ -230,7 +286,15 @@ export function CreateDialog({ onEmailCreated, selectedGroupId, selectedGroupNam
           <div className="space-y-3 rounded-lg border border-border p-3">
             <div className={formRowClass}>
               <Label className={formLabelClass}>{t("group")}</Label>
-              <Select value={createGroupId} onValueChange={setCreateGroupId}>
+              <Select
+                open={openDropdown === "group"}
+                onOpenChange={(nextOpen) => handleDropdownOpenChange("group", nextOpen)}
+                value={createGroupId}
+                onValueChange={(value) => {
+                  setCreateGroupId(value)
+                  setOpenDropdown(null)
+                }}
+              >
                 <SelectTrigger className="flex-1">
                   <SelectValue />
                 </SelectTrigger>
@@ -254,7 +318,15 @@ export function CreateDialog({ onEmailCreated, selectedGroupId, selectedGroupNam
 
             <div className={formRowClass}>
               <Label className={formLabelClass}>{t("expiryTime")}</Label>
-              <Select value={expiryTime} onValueChange={setExpiryTime}>
+              <Select
+                open={openDropdown === "expiry"}
+                onOpenChange={(nextOpen) => handleDropdownOpenChange("expiry", nextOpen)}
+                value={expiryTime}
+                onValueChange={(value) => {
+                  setExpiryTime(value)
+                  setOpenDropdown(null)
+                }}
+              >
                 <SelectTrigger className="flex-1">
                   <SelectValue />
                 </SelectTrigger>
@@ -273,6 +345,55 @@ export function CreateDialog({ onEmailCreated, selectedGroupId, selectedGroupNam
                   })}
                 </SelectContent>
               </Select>
+            </div>
+
+            <div className={formRowClass}>
+              <Label className={formLabelClass} htmlFor="create-email-tag">
+                {t("tag")}
+              </Label>
+              <div
+                ref={tagFieldRef}
+                className="flex h-9 min-w-0 flex-1 items-center rounded-md border border-input bg-background transition-colors focus-within:ring-1 focus-within:ring-ring"
+              >
+                <Input
+                  id="create-email-tag"
+                  value={tag}
+                  maxLength={MAX_TAG_LENGTH}
+                  onChange={(event) => setTag(event.target.value)}
+                  placeholder={t("tagPlaceholder")}
+                  className="h-full min-w-0 flex-1 rounded-none border-0 bg-transparent px-3 py-1 focus-visible:ring-0"
+                />
+                <DropdownMenu open={openDropdown === "tag"} onOpenChange={(nextOpen) => {
+                  if (nextOpen) {
+                    updateTagMenuWidth()
+                  }
+                  handleDropdownOpenChange("tag", nextOpen)
+                }}>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      disabled={tagOptions.length === 0}
+                      aria-label={t("tag")}
+                      className="h-full w-10 shrink-0 rounded-l-none rounded-r-md hover:bg-transparent hover:text-current"
+                    >
+                      <ChevronDown className="h-4 w-4 opacity-50" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent
+                    align="end"
+                    sideOffset={5}
+                    style={tagMenuWidth ? { width: tagMenuWidth, minWidth: tagMenuWidth } : undefined}
+                  >
+                    {tagOptions.map(option => (
+                      <DropdownMenuItem key={option} onClick={() => setTag(option)}>
+                        <span className="truncate">{option}</span>
+                      </DropdownMenuItem>
+                    ))}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
             </div>
           </div>
 
