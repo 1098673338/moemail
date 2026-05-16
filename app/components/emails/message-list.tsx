@@ -55,6 +55,7 @@ interface MessageResponse {
 }
 
 type MessageType = 'received' | 'sent'
+const PREFETCH_MESSAGE_COUNT = 5
 
 export function MessageList({ email, messageType, onMessageSelect, onMessagePrefetch, selectedMessageId, refreshTrigger, emptyStateOffsetClass, onTotalChange, tabControls }: MessageListProps) {
   const t = useTranslations("emails.messages")
@@ -82,6 +83,14 @@ export function MessageList({ email, messageType, onMessageSelect, onMessagePref
   useEffect(() => {
     messagesRef.current = messages
   }, [messages])
+
+  useEffect(() => {
+    if (isCustomEmail || !onMessagePrefetch || messages.length === 0) return
+
+    messages.slice(0, PREFETCH_MESSAGE_COUNT).forEach(message => {
+      onMessagePrefetch(message.id, messageType, message)
+    })
+  }, [isCustomEmail, messageType, messages, onMessagePrefetch])
 
   const fetchMessages = async (cursor?: string, replace = false) => {
     if (isCustomEmail) {
@@ -307,6 +316,7 @@ export function MessageList({ email, messageType, onMessageSelect, onMessagePref
                 onClick={() => onMessageSelect(message.id, messageType, message)}
                 onFocus={() => onMessagePrefetch?.(message.id, messageType, message)}
                 onMouseEnter={() => onMessagePrefetch?.(message.id, messageType, message)}
+                onPointerDown={() => onMessagePrefetch?.(message.id, messageType, message)}
                 tabIndex={0}
                 className={cn(
                   "py-2 px-3 rounded cursor-pointer text-sm group",
