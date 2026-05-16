@@ -66,7 +66,7 @@
     "noGroups": "暂无分组"
   },
   "create": {
-    "title": "创建邮箱",
+    "title": "创建",
     "standardMode": "邮箱创建",
     "customMode": "自定义输入",
     "name": "邮箱前缀",
@@ -116,7 +116,7 @@
     "deleteFailed": "删除邮件失败"
   },
   "send": {
-    "title": "发送邮件",
+    "title": "发邮件",
     "trigger": "发邮件",
     "from": "发件人",
     "to": "收件人",
