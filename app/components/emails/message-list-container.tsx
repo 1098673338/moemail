@@ -12,7 +12,7 @@ interface MessageListContainerProps {
     isCustom?: boolean
   }
   onMessageSelect: (messageId: string | null, messageType?: MessageType, message?: MessageSummary) => void
-  onMessagePrefetch?: (messageId: string, messageType: MessageType, message: MessageSummary) => void
+  onMessagePrefetch?: (messageId: string, messageType: MessageType, message: MessageSummary) => void | Promise<unknown>
   selectedMessageId?: string | null
   refreshTrigger?: number
   canSendEmails: boolean

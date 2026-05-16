@@ -40,7 +40,7 @@ interface MessageListProps {
   }
   messageType: MessageType
   onMessageSelect: (messageId: string | null, messageType?: MessageType, message?: Message) => void
-  onMessagePrefetch?: (messageId: string, messageType: MessageType, message: Message) => void
+  onMessagePrefetch?: (messageId: string, messageType: MessageType, message: Message) => void | Promise<unknown>
   selectedMessageId?: string | null
   refreshTrigger?: number
   emptyStateOffsetClass?: string
@@ -56,8 +56,6 @@ interface MessageResponse {
 
 type MessageType = 'received' | 'sent'
 const PREFETCH_MESSAGE_COUNT = 5
-const BACKGROUND_PREFETCH_DELAY = 600
-const BACKGROUND_PREFETCH_STEP = 200
 
 export function MessageList({ email, messageType, onMessageSelect, onMessagePrefetch, selectedMessageId, refreshTrigger, emptyStateOffsetClass, onTotalChange, tabControls }: MessageListProps) {
   const t = useTranslations("emails.messages")
@@ -87,22 +85,27 @@ export function MessageList({ email, messageType, onMessageSelect, onMessagePref
   }, [messages])
 
   useEffect(() => {
-    if (isCustomEmail || !onMessagePrefetch || messages.length === 0) return
+    if (isCustomEmail || loading || refreshing || loadingMore || !onMessagePrefetch || messages.length === 0) return
 
-    messages.slice(0, PREFETCH_MESSAGE_COUNT).forEach(message => {
-      onMessagePrefetch(message.id, messageType, message)
-    })
+    let cancelled = false
 
-    const backgroundTimers = messages.slice(PREFETCH_MESSAGE_COUNT).map((message, index) => (
-      window.setTimeout(() => {
-        onMessagePrefetch(message.id, messageType, message)
-      }, BACKGROUND_PREFETCH_DELAY + index * BACKGROUND_PREFETCH_STEP)
-    ))
+    const prefetchMessages = async () => {
+      for (let index = 0; index < messages.length; index += PREFETCH_MESSAGE_COUNT) {
+        if (cancelled) return
+
+        const batch = messages.slice(index, index + PREFETCH_MESSAGE_COUNT)
+        await Promise.allSettled(
+          batch.map(message => Promise.resolve().then(() => onMessagePrefetch(message.id, messageType, message)))
+        )
+      }
+    }
+
+    void prefetchMessages()
 
     return () => {
-      backgroundTimers.forEach(timer => window.clearTimeout(timer))
+      cancelled = true
     }
-  }, [isCustomEmail, messageType, messages, onMessagePrefetch])
+  }, [isCustomEmail, loading, loadingMore, messageType, messages, onMessagePrefetch, refreshing])
 
   const fetchMessages = async (cursor?: string, replace = false) => {
     if (isCustomEmail) {
@@ -121,7 +124,6 @@ export function MessageList({ email, messageType, onMessageSelect, onMessagePref
         url.searchParams.set('type', 'sent')
       }
       url.searchParams.set('summary', '1')
-      url.searchParams.set('prefetch', String(PREFETCH_MESSAGE_COUNT))
       if (cursor) {
         url.searchParams.set('cursor', cursor)
       }
@@ -150,6 +152,11 @@ export function MessageList({ email, messageType, onMessageSelect, onMessagePref
           return
         }
         const uniqueNewMessages = newMessages.slice(0, lastDuplicateIndex)
+        setNextCursor(data.nextCursor)
+        if (uniqueNewMessages.length === 0) {
+          updateTotal(data.total)
+          return
+        }
         setMessages([...uniqueNewMessages, ...oldMessages])
         updateTotal(data.total)
         return

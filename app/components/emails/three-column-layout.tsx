@@ -64,7 +64,7 @@ export function ThreeColumnLayout() {
 
   const handleMessagePrefetch = useCallback((messageId: string, messageType: MessageType, message?: MessageSummary) => {
     if (!selectedEmail) return
-    prefetchMessage(selectedEmail.id, messageId, messageType, message).catch(() => {
+    return prefetchMessage(selectedEmail.id, messageId, messageType, message).then(() => undefined).catch(() => {
       // Prefetch is a best-effort speedup; the detail view still handles errors.
     })
   }, [selectedEmail])

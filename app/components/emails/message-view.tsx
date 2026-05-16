@@ -33,6 +33,20 @@ type ViewMode = "html" | "text"
 
 const messageCache = new Map<string, Message>()
 const messageRequestCache = new Map<string, Promise<Message>>()
+const MESSAGE_CACHE_STORAGE_PREFIX = "moemail:message-detail:"
+const MESSAGE_CACHE_INDEX_KEY = `${MESSAGE_CACHE_STORAGE_PREFIX}index`
+const MESSAGE_CACHE_TTL = 7 * 24 * 60 * 60 * 1000
+const MESSAGE_CACHE_MAX_ENTRIES = 200
+
+interface StoredMessage {
+  savedAt: number
+  message: Message
+}
+
+interface MessageCacheIndexItem {
+  key: string
+  savedAt: number
+}
 
 const getMessageCacheKey = (
   emailId: string,
@@ -42,6 +56,102 @@ const getMessageCacheKey = (
 
 const hasMessageBody = (message: Message | null) => {
   return typeof message?.content === "string" || typeof message?.html === "string"
+}
+
+const canUseStoredCache = () => {
+  try {
+    return typeof window !== "undefined" && typeof window.localStorage !== "undefined"
+  } catch {
+    return false
+  }
+}
+
+const getStorageKey = (cacheKey: string) => `${MESSAGE_CACHE_STORAGE_PREFIX}${cacheKey}`
+
+const readCacheIndex = (): MessageCacheIndexItem[] => {
+  if (!canUseStoredCache()) return []
+
+  try {
+    const rawIndex = window.localStorage.getItem(MESSAGE_CACHE_INDEX_KEY)
+    if (!rawIndex) return []
+
+    const parsedIndex = JSON.parse(rawIndex) as MessageCacheIndexItem[]
+    return Array.isArray(parsedIndex) ? parsedIndex : []
+  } catch {
+    return []
+  }
+}
+
+const writeCacheIndex = (index: MessageCacheIndexItem[]) => {
+  if (!canUseStoredCache()) return
+
+  try {
+    window.localStorage.setItem(MESSAGE_CACHE_INDEX_KEY, JSON.stringify(index))
+  } catch {
+    // Cache writes are best-effort; failing here should never block reading mail.
+  }
+}
+
+const pruneStoredCache = (index = readCacheIndex()) => {
+  if (!canUseStoredCache()) return
+
+  const now = Date.now()
+  const sortedIndex = [...index].sort((a, b) => b.savedAt - a.savedAt)
+  const keptIndex = sortedIndex
+    .filter(item => now - item.savedAt <= MESSAGE_CACHE_TTL)
+    .slice(0, MESSAGE_CACHE_MAX_ENTRIES)
+  const keptKeys = new Set(keptIndex.map(item => item.key))
+
+  sortedIndex.forEach(item => {
+    if (!keptKeys.has(item.key)) {
+      window.localStorage.removeItem(getStorageKey(item.key))
+    }
+  })
+
+  writeCacheIndex(keptIndex)
+}
+
+const readStoredMessage = (cacheKey: string) => {
+  if (!canUseStoredCache()) return null
+
+  try {
+    const rawMessage = window.localStorage.getItem(getStorageKey(cacheKey))
+    if (!rawMessage) return null
+
+    const stored = JSON.parse(rawMessage) as StoredMessage
+    if (!stored?.savedAt || !stored.message || Date.now() - stored.savedAt > MESSAGE_CACHE_TTL) {
+      window.localStorage.removeItem(getStorageKey(cacheKey))
+      pruneStoredCache()
+      return null
+    }
+
+    return hasMessageBody(stored.message) ? stored.message : null
+  } catch {
+    window.localStorage.removeItem(getStorageKey(cacheKey))
+    return null
+  }
+}
+
+const writeStoredMessage = (cacheKey: string, message: Message) => {
+  if (!canUseStoredCache() || !hasMessageBody(message)) return
+
+  const savedAt = Date.now()
+  const index = readCacheIndex().filter(item => item.key !== cacheKey)
+  const nextIndex = [{ key: cacheKey, savedAt }, ...index]
+
+  try {
+    window.localStorage.setItem(getStorageKey(cacheKey), JSON.stringify({ savedAt, message }))
+    pruneStoredCache(nextIndex)
+  } catch {
+    pruneStoredCache(nextIndex.slice(0, Math.floor(MESSAGE_CACHE_MAX_ENTRIES / 2)))
+
+    try {
+      window.localStorage.setItem(getStorageKey(cacheKey), JSON.stringify({ savedAt, message }))
+      writeCacheIndex([{ key: cacheKey, savedAt }, ...readCacheIndex().filter(item => item.key !== cacheKey)])
+    } catch {
+      // Ignore persistent-cache quota failures.
+    }
+  }
 }
 
 const cacheMessage = (
@@ -61,6 +171,11 @@ const cacheMessage = (
   }
 
   messageCache.set(cacheKey, nextMessage)
+
+  if (hasMessageBody(nextMessage)) {
+    writeStoredMessage(cacheKey, nextMessage)
+  }
+
   return nextMessage
 }
 
@@ -76,6 +191,14 @@ export async function prefetchMessage(
     : messageCache.get(cacheKey)
 
   if (cachedMessage && hasMessageBody(cachedMessage)) return cachedMessage
+
+  const storedMessage = readStoredMessage(cacheKey)
+  if (storedMessage) {
+    const restoredMessage = cacheMessage(emailId, messageId, messageType, storedMessage)
+    return initialMessage
+      ? cacheMessage(emailId, messageId, messageType, initialMessage)
+      : restoredMessage
+  }
 
   const existingRequest = messageRequestCache.get(cacheKey)
   if (existingRequest) return existingRequest
@@ -101,7 +224,7 @@ export async function prefetchMessage(
 export function MessageView({ emailId, messageId, messageType = 'received', initialMessage }: MessageViewProps) {
   const t = useTranslations("emails.messageView")
   const cacheKey = getMessageCacheKey(emailId, messageId, messageType)
-  const cachedInitialMessage = messageCache.get(cacheKey)
+  const cachedInitialMessage = messageCache.get(cacheKey) ?? readStoredMessage(cacheKey)
   const firstMessage = cachedInitialMessage ?? initialMessage ?? null
   const [message, setMessage] = useState<Message | null>(firstMessage)
   const [loading, setLoading] = useState(!hasMessageBody(firstMessage))
@@ -112,7 +235,7 @@ export function MessageView({ emailId, messageId, messageType = 'received', init
 
   useEffect(() => {
     const cacheKey = getMessageCacheKey(emailId, messageId, messageType)
-    const cachedMessage = messageCache.get(cacheKey)
+    const cachedMessage = messageCache.get(cacheKey) ?? readStoredMessage(cacheKey)
     const nextInitialMessage = cachedMessage ?? initialMessage ?? null
     let cancelled = false
 
