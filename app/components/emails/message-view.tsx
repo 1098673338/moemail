@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useRef, useCallback } from "react"
+import { useState, useEffect, useMemo } from "react"
 import { useTranslations } from "next-intl"
 import { Loader2, Share2 } from "lucide-react"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
@@ -57,6 +57,65 @@ const getMessageCacheKey = (
 const hasMessageBody = (message: Message | null) => {
   return typeof message?.content === "string" || typeof message?.html === "string"
 }
+
+const addLazyLoadingToImages = (html: string) => {
+  return html.replace(/<img\b[^>]*>/gi, (tag) => {
+    let nextTag = tag
+
+    if (!/\sloading\s*=/i.test(nextTag)) {
+      nextTag = nextTag.replace(/^<img/i, '<img loading="lazy"')
+    }
+
+    if (!/\sdecoding\s*=/i.test(nextTag)) {
+      nextTag = nextTag.replace(/^<img/i, '<img decoding="async"')
+    }
+
+    if (!/\sreferrerpolicy\s*=/i.test(nextTag)) {
+      nextTag = nextTag.replace(/^<img/i, '<img referrerpolicy="no-referrer"')
+    }
+
+    return nextTag
+  })
+}
+
+const buildHtmlDocument = (html: string) => `
+  <!DOCTYPE html>
+  <html>
+    <head>
+      <base target="_blank">
+      <style>
+        html, body {
+          margin: 0;
+          padding: 0;
+          min-height: 100%;
+          font-family: system-ui, -apple-system, sans-serif;
+          color: #000;
+          background: #fff;
+        }
+        body {
+          padding: 20px;
+        }
+        img {
+          max-width: 100%;
+          height: auto;
+        }
+        a {
+          color: #2563eb;
+        }
+        * {
+          -ms-overflow-style: none;
+          scrollbar-width: none;
+        }
+        *::-webkit-scrollbar {
+          display: none;
+          width: 0;
+          height: 0;
+        }
+      </style>
+    </head>
+    <body>${addLazyLoadingToImages(html)}</body>
+  </html>
+`
 
 const pruneMemoryCache = () => {
   while (messageCache.size > MESSAGE_CACHE_MAX_ENTRIES) {
@@ -243,7 +302,6 @@ export function MessageView({ emailId, messageId, messageType = 'received', init
   const [loading, setLoading] = useState(!hasMessageBody(firstMessage))
   const [error, setError] = useState<string | null>(null)
   const [viewMode, setViewMode] = useState<ViewMode>(firstMessage?.html ? "html" : "text")
-  const iframeRef = useRef<HTMLIFrameElement>(null)
   const { toast } = useToast()
 
   useEffect(() => {
@@ -301,84 +359,10 @@ export function MessageView({ emailId, messageId, messageType = 'received', init
     }
   }, [emailId, initialMessage, messageId, messageType, toast, t])
 
-  const updateIframeContent = useCallback(() => {
-    if (viewMode === "html" && message?.html && iframeRef.current) {
-      const iframe = iframeRef.current
-      const doc = iframe.contentDocument || iframe.contentWindow?.document
-
-      if (doc) {
-        doc.open()
-        doc.write(`
-          <!DOCTYPE html>
-          <html>
-            <head>
-              <base target="_blank">
-              <style>
-                html, body {
-                  margin: 0;
-                  padding: 0;
-                  min-height: 100%;
-                  font-family: system-ui, -apple-system, sans-serif;
-                  color: #000;
-                  background: #fff;
-                }
-                body {
-                  padding: 20px;
-                }
-                img {
-                  max-width: 100%;
-                  height: auto;
-                }
-                a {
-                  color: #2563eb;
-                }
-                * {
-                  -ms-overflow-style: none;
-                  scrollbar-width: none;
-                }
-                *::-webkit-scrollbar {
-                  display: none;
-                  width: 0;
-                  height: 0;
-                }
-              </style>
-            </head>
-            <body>${message.html}</body>
-          </html>
-        `)
-        doc.close()
-
-        // 更新高度以填充容器
-        const updateHeight = () => {
-          const container = iframe.parentElement
-          if (container) {
-            iframe.style.height = `${container.clientHeight}px`
-          }
-        }
-
-        updateHeight()
-        window.addEventListener('resize', updateHeight)
-
-        // 监听内容变化
-        const resizeObserver = new ResizeObserver(updateHeight)
-        resizeObserver.observe(doc.body)
-
-        // 监听图片加载
-        doc.querySelectorAll('img').forEach((img: HTMLImageElement) => {
-          img.onload = updateHeight
-        })
-
-        return () => {
-          window.removeEventListener('resize', updateHeight)
-          resizeObserver.disconnect()
-        }
-      }
-    }
+  const htmlDocument = useMemo(() => {
+    if (viewMode !== "html" || !message?.html) return undefined
+    return buildHtmlDocument(message.html)
   }, [message?.html, viewMode])
-
-  useEffect(() => {
-    return updateIframeContent()
-  }, [updateIframeContent])
 
   if (loading && !message) {
     return (
@@ -478,9 +462,10 @@ export function MessageView({ emailId, messageId, messageType = 'received', init
           </div>
         ) : viewMode === "html" && message.html ? (
           <iframe
-            ref={iframeRef}
+            srcDoc={htmlDocument}
             className="absolute inset-0 w-full h-full border-0 bg-transparent"
             sandbox="allow-same-origin allow-popups"
+            title={message.subject}
           />
         ) : (
           <div className="p-4 text-sm whitespace-pre-wrap">
