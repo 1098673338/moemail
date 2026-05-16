@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useCallback, useState } from "react"
 import { useTranslations } from "next-intl"
 import { EmailList } from "./email-list"
 import { MessageListContainer } from "./message-list-container"
@@ -62,12 +62,12 @@ export function ThreeColumnLayout() {
     setSelectedMessagePreview(message ?? null)
   }
 
-  const handleMessagePrefetch = (messageId: string, messageType: MessageType, message?: MessageSummary) => {
+  const handleMessagePrefetch = useCallback((messageId: string, messageType: MessageType, message?: MessageSummary) => {
     if (!selectedEmail) return
     prefetchMessage(selectedEmail.id, messageId, messageType, message).catch(() => {
       // Prefetch is a best-effort speedup; the detail view still handles errors.
     })
-  }
+  }, [selectedEmail])
 
   const handleSendSuccess = () => {
     setRefreshTrigger(prev => prev + 1)

@@ -56,6 +56,8 @@ interface MessageResponse {
 
 type MessageType = 'received' | 'sent'
 const PREFETCH_MESSAGE_COUNT = 5
+const BACKGROUND_PREFETCH_DELAY = 600
+const BACKGROUND_PREFETCH_STEP = 200
 
 export function MessageList({ email, messageType, onMessageSelect, onMessagePrefetch, selectedMessageId, refreshTrigger, emptyStateOffsetClass, onTotalChange, tabControls }: MessageListProps) {
   const t = useTranslations("emails.messages")
@@ -90,6 +92,16 @@ export function MessageList({ email, messageType, onMessageSelect, onMessagePref
     messages.slice(0, PREFETCH_MESSAGE_COUNT).forEach(message => {
       onMessagePrefetch(message.id, messageType, message)
     })
+
+    const backgroundTimers = messages.slice(PREFETCH_MESSAGE_COUNT).map((message, index) => (
+      window.setTimeout(() => {
+        onMessagePrefetch(message.id, messageType, message)
+      }, BACKGROUND_PREFETCH_DELAY + index * BACKGROUND_PREFETCH_STEP)
+    ))
+
+    return () => {
+      backgroundTimers.forEach(timer => window.clearTimeout(timer))
+    }
   }, [isCustomEmail, messageType, messages, onMessagePrefetch])
 
   const fetchMessages = async (cursor?: string, replace = false) => {
