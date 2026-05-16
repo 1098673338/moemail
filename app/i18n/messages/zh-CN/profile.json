@@ -59,7 +59,7 @@
     "enable": "启用邮件服务",
     "fixedRoleLimits": "固定权限规则",
     "emperorLimit": "皇帝可以无限发件，不受任何限制",
-    "civilianLimit": "永远不能发件",
+    "civilianLimit": "默认不能发件",
     "enableDescription": "开启后将使用 Resend 发送邮件",
     "apiKey": "Resend API Key",
     "apiKeyPlaceholder": "输入 Resend API Key",
