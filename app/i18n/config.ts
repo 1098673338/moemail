@@ -6,5 +6,5 @@ export const defaultLocale: Locale = 'zh-CN'
 export const i18n = {
   locales,
   defaultLocale,
-  localePrefix: 'never',
+  localePrefix: 'never' as const,
 }

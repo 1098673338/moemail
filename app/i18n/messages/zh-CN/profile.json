@@ -140,7 +140,7 @@
     "emailCountColumn": "邮箱数/上限",
     "actionsColumn": "操作",
     "deleteUserConfirm": "确认删除用户？",
-    "deleteUserDescription": "确定要删除用户 {name} 吗？该用户拥有 {count} 个邮箱，相关邮箱、邮件、分享链接、API Key 和 Webhook 都会被删除，此操作无法撤销。",
+    "deleteUserDescription": "确定要删除用户吗？所有信息都会被删除，此操作无法撤销。",
     "deletingUser": "删除中...",
     "deleteUserSuccess": "用户已删除",
     "deleteUserFailed": "删除用户失败",

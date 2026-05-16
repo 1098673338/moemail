@@ -30,6 +30,10 @@ export async function GET(
       return NextResponse.json({ error: "Email not found" }, { status: 404 })
     }
 
+    if (email.isCustom) {
+      return NextResponse.json({ shares: [], total: 0 })
+    }
+
     // 获取该邮箱的所有分享链接
     const shares = await db.query.emailShares.findMany({
       where: eq(emailShares.emailId, emailId),
@@ -69,6 +73,13 @@ export async function POST(
       return NextResponse.json({ error: "Email not found" }, { status: 404 })
     }
 
+    if (email.isCustom) {
+      return NextResponse.json(
+        { error: "自定义邮箱不能分享" },
+        { status: 400 }
+      )
+    }
+
     // 解析请求体
     const body = await request.json() as { expiresIn: number }
     const { expiresIn } = body // expiresIn 单位为毫秒，0表示永久
@@ -98,4 +109,3 @@ export async function POST(
     )
   }
 }
-

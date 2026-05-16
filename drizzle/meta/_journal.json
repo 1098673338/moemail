@@ -169,6 +169,20 @@
       "when": 1778853415346,
       "tag": "0023_ambiguous_snowbird",
       "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "6",
+      "when": 1778862969850,
+      "tag": "0024_uneven_toad",
+      "breakpoints": true
+    },
+    {
+      "idx": 25,
+      "version": "6",
+      "when": 1778872192693,
+      "tag": "0025_bouncy_marvel_boy",
+      "breakpoints": true
     }
   ]
 }

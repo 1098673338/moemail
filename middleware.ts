@@ -1,6 +1,6 @@
 import { auth } from "@/lib/auth"
 import { NextResponse } from "next/server"
-import { i18n } from "@/i18n/config"
+import type { NextRequest } from "next/server"
 import { PERMISSIONS } from "@/lib/permissions"
 import { checkPermission } from "@/lib/auth"
 import { Permission } from "@/lib/permissions"
@@ -15,7 +15,7 @@ const API_PERMISSIONS: Record<string, Permission> = {
   '/api/api-keys': PERMISSIONS.MANAGE_API_KEY,
 }
 
-export async function middleware(request: Request) {
+export async function middleware(request: NextRequest) {
   const url = new URL(request.url)
   const pathname = url.pathname
 
@@ -24,7 +24,6 @@ export async function middleware(request: Request) {
       return NextResponse.next()
     }
 
-    request.headers.delete("X-User-Id")
     const apiKey = request.headers.get("X-API-Key")
     if (apiKey) {
       return handleApiKeyAuth(apiKey, pathname)
@@ -66,26 +65,17 @@ export async function middleware(request: Request) {
     })
   }
 
-  // Pages: keep Simplified Chinese internally, but do not expose the locale in URLs.
   const segments = pathname.split('/')
   const maybeLocale = segments[1]
+  const hiddenLocales = ['zh-CN', 'en', 'zh-TW', 'ja', 'ko']
 
-  if (maybeLocale === i18n.defaultLocale) {
+  if (hiddenLocales.includes(maybeLocale)) {
     const cleanPath = `/${segments.slice(2).join('/')}` || '/'
     const redirectURL = new URL(`${cleanPath}${url.search}`, request.url)
     return NextResponse.redirect(redirectURL)
   }
 
-  const legacyLocales = ['en', 'zh-TW', 'ja', 'ko']
-  if (legacyLocales.includes(maybeLocale)) {
-    const cleanPath = `/${segments.slice(2).join('/')}` || '/'
-    const redirectURL = new URL(`${cleanPath}${url.search}`, request.url)
-    return NextResponse.redirect(redirectURL)
-  }
-
-  const rewritePath = pathname === '/' ? `/${i18n.defaultLocale}` : `/${i18n.defaultLocale}${pathname}`
-  const rewriteURL = new URL(`${rewritePath}${url.search}`, request.url)
-  return NextResponse.rewrite(rewriteURL)
+  return NextResponse.next()
 }
 
 export const config = {

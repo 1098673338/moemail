@@ -72,6 +72,7 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
         receivedAt: messages.receivedAt,
         sentAt: messages.sentAt,
         type: messages.type,
+        emailIsCustom: emails.isCustom,
       })
       .from(messages)
       .innerJoin(emails, eq(messages.emailId, emails.id))
@@ -82,7 +83,7 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
       ))
       .limit(1)
     
-    if (!message) {
+    if (!message || message.emailIsCustom) {
       return NextResponse.json(
         { error: "Message not found" },
         { status: 404 }

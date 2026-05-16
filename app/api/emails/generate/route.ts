@@ -60,42 +60,60 @@ export async function POST(request: Request) {
       }
     }
 
-    const { name, expiryTime, domain, groupId, tag } = await request.json<{
+    const { name, expiryTime, domain, groupId, tag, isCustom, address: customAddress } = await request.json<{
       name?: string
-      expiryTime: number
-      domain: string
+      expiryTime?: number
+      domain?: string
       groupId?: string | null
       tag?: string | null
+      isCustom?: boolean
+      address?: string
     }>()
 
-    if (!EXPIRY_OPTIONS.some(option => option.value === expiryTime)) {
+    const createCustomEmail = isCustom === true
+
+    if (!createCustomEmail && !EXPIRY_OPTIONS.some(option => option.value === expiryTime)) {
       return NextResponse.json(
         { error: "无效的过期时间" },
         { status: 400 }
       )
     }
 
-    const domainString = await env.SITE_CONFIG.get("EMAIL_DOMAINS")
-    const domains = domainString ? domainString.split(',') : ["moemail.app"]
+    let address: string
 
-    if (!domains || !domains.includes(domain)) {
-      return NextResponse.json(
-        { error: "无效的域名" },
-        { status: 400 }
-      )
+    if (createCustomEmail) {
+      address = typeof customAddress === "string" ? customAddress : ""
+
+      if (address.length === 0) {
+        return NextResponse.json(
+          { error: "请输入自定义邮箱" },
+          { status: 400 }
+        )
+      }
+    } else {
+      const domainString = await env.SITE_CONFIG.get("EMAIL_DOMAINS")
+      const domains = domainString ? domainString.split(',') : ["moemail.app"]
+
+      if (!domain || !domains.includes(domain)) {
+        return NextResponse.json(
+          { error: "无效的域名" },
+          { status: 400 }
+        )
+      }
+
+      const emailName = name ? getEmailNamePrefix(name) || generateEmailName() : generateEmailName()
+      const emailNameError = getEmailNameError(emailName)
+
+      if (emailNameError) {
+        return NextResponse.json(
+          { error: emailNameError },
+          { status: 400 }
+        )
+      }
+
+      address = `${emailName}@${domain}`
     }
 
-    const emailName = name ? getEmailNamePrefix(name) || generateEmailName() : generateEmailName()
-    const emailNameError = getEmailNameError(emailName)
-
-    if (emailNameError) {
-      return NextResponse.json(
-        { error: emailNameError },
-        { status: 400 }
-      )
-    }
-
-    const address = `${emailName}@${domain}`
     const selectedGroupId = typeof groupId === "string" && groupId.trim()
       ? groupId.trim()
       : null
@@ -141,12 +159,19 @@ export async function POST(request: Request) {
     }
 
     const now = new Date()
-    const expires = expiryTime === 0 
+    const expires = createCustomEmail || expiryTime === 0
       ? new Date('9999-01-01T00:00:00.000Z')
-      : new Date(now.getTime() + expiryTime)
+      : new Date(now.getTime() + expiryTime!)
+    const [minSortOrderRow] = await db.select({
+      sortOrder: sql<number>`coalesce(min(${emails.sortOrder}), 0)`,
+    })
+      .from(emails)
+      .where(eq(emails.userId, userId!))
     
     const emailData: typeof emails.$inferInsert = {
       address,
+      isCustom: createCustomEmail,
+      sortOrder: Number(minSortOrderRow?.sortOrder ?? 0) - 1,
       createdAt: now,
       expiresAt: expires,
       userId: userId!,

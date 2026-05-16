@@ -106,6 +106,11 @@ const handleEmail = async (message: ForwardableEmailMessage, env: Env) => {
       return
     }
 
+    if (targetEmail.isCustom) {
+      console.log(`Ignored custom email: ${message.to}`)
+      return
+    }
+
     const savedMessage = await db.insert(messages).values({
       emailId: targetEmail.id,
       fromAddress: message.from,

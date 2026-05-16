@@ -1,21 +1,21 @@
 "use client"
 
-import { useCallback, useEffect, useRef, useState } from "react"
+import { useEffect, useState } from "react"
 import { useTranslations } from "next-intl"
-import { ChevronDown } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { useToast } from "@/components/ui/use-toast"
+import { TagCombobox } from "@/components/emails/tag-combobox"
 import { EXPIRY_OPTIONS } from "@/types/email"
 
 interface Email {
   id: string
   address: string
   tag?: string | null
+  isCustom?: boolean
   createdAt: number | string | Date
   expiresAt: number | string | Date
   groupId?: string | null
@@ -58,21 +58,16 @@ export function EditDialog({ email, groups, open, onOpenChange, onEmailUpdated }
   const tGroups = useTranslations("emails.groups")
   const tCommon = useTranslations("common.actions")
   const [saving, setSaving] = useState(false)
+  const [customAddress, setCustomAddress] = useState("")
   const [expiryTime, setExpiryTime] = useState(DEFAULT_EXPIRY_TIME)
   const [editGroupId, setEditGroupId] = useState(UNGROUPED_GROUP_VALUE)
   const [tag, setTag] = useState("")
   const [tagOptions, setTagOptions] = useState<string[]>([])
-  const [tagMenuWidth, setTagMenuWidth] = useState<number>()
   const [openDropdown, setOpenDropdown] = useState<EditDropdown | null>(null)
-  const tagFieldRef = useRef<HTMLDivElement>(null)
   const { toast } = useToast()
   const formLabelClass = "w-12 shrink-0 whitespace-nowrap text-muted-foreground"
   const formRowClass = "flex items-center gap-2"
   const groupSelectItemClass = "hover:bg-accent hover:text-accent-foreground"
-
-  const updateTagMenuWidth = useCallback(() => {
-    setTagMenuWidth(tagFieldRef.current?.getBoundingClientRect().width)
-  }, [])
 
   const handleDropdownOpenChange = (dropdown: EditDropdown, nextOpen: boolean) => {
     setOpenDropdown(currentDropdown => (
@@ -98,6 +93,7 @@ export function EditDialog({ email, groups, open, onOpenChange, onEmailUpdated }
     if (!email) return
 
     setExpiryTime(getExpiryValue(email))
+    setCustomAddress(email.address)
     setEditGroupId(email.groupId ?? UNGROUPED_GROUP_VALUE)
     setTag(email.tag ?? "")
     setOpenDropdown(null)
@@ -116,14 +112,26 @@ export function EditDialog({ email, groups, open, onOpenChange, onEmailUpdated }
     setSaving(true)
 
     try {
+      const requestBody: {
+        address?: string
+        expiryTime?: number
+        groupId: string | null
+        tag: string | null
+      } = {
+        groupId: editGroupId === UNGROUPED_GROUP_VALUE ? null : editGroupId,
+        tag: tag.trim() || null,
+      }
+
+      if (!email.isCustom) {
+        requestBody.expiryTime = parseInt(expiryTime)
+      } else {
+        requestBody.address = customAddress
+      }
+
       const response = await fetch(`/api/emails/${email.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          expiryTime: parseInt(expiryTime),
-          groupId: editGroupId === UNGROUPED_GROUP_VALUE ? null : editGroupId,
-          tag: tag.trim() || null,
-        }),
+        body: JSON.stringify(requestBody),
       })
       const data = await response.json() as { email?: Email; error?: string }
 
@@ -158,25 +166,28 @@ export function EditDialog({ email, groups, open, onOpenChange, onEmailUpdated }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, email?.id])
 
-  useEffect(() => {
-    if (!open) return
-
-    updateTagMenuWidth()
-    window.addEventListener("resize", updateTagMenuWidth)
-
-    return () => {
-      window.removeEventListener("resize", updateTagMenuWidth)
-    }
-  }, [open, updateTagMenuWidth])
-
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent>
+      <DialogContent className="sm:max-w-[400px]">
         <DialogHeader>
           <DialogTitle>{tEdit("title")}</DialogTitle>
         </DialogHeader>
 
         <div className="flex flex-col gap-3">
+          {email?.isCustom && (
+            <div className={formRowClass}>
+              <Label className={formLabelClass} htmlFor="edit-email-address">
+                {tEdit("address")}
+              </Label>
+              <Input
+                id="edit-email-address"
+                value={customAddress}
+                onChange={(event) => setCustomAddress(event.target.value)}
+                className="min-w-0 flex-1"
+              />
+            </div>
+          )}
+
           <div className={formRowClass}>
             <Label className={formLabelClass}>{tCreate("group")}</Label>
             <Select
@@ -204,84 +215,54 @@ export function EditDialog({ email, groups, open, onOpenChange, onEmailUpdated }
             </Select>
           </div>
 
-          <div className={formRowClass}>
-            <Label className={formLabelClass}>{tCreate("expiryTime")}</Label>
-            <Select
-              open={openDropdown === "expiry"}
-              onOpenChange={(nextOpen) => handleDropdownOpenChange("expiry", nextOpen)}
-              value={expiryTime}
-              onValueChange={(value) => {
-                setExpiryTime(value)
-                setOpenDropdown(null)
-              }}
-            >
-              <SelectTrigger className="flex-1">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {EXPIRY_OPTIONS.map((option, index) => {
-                  const labels = [tCreate("oneHour"), tCreate("oneDay"), tCreate("threeDays"), tCreate("permanent")]
-                  return (
-                    <SelectItem
-                      key={option.value}
-                      value={option.value.toString()}
-                      className={groupSelectItemClass}
-                    >
-                      {labels[index]}
-                    </SelectItem>
-                  )
-                })}
-              </SelectContent>
-            </Select>
-          </div>
+          {!email?.isCustom && (
+            <div className={formRowClass}>
+              <Label className={formLabelClass}>{tCreate("expiryTime")}</Label>
+              <Select
+                open={openDropdown === "expiry"}
+                onOpenChange={(nextOpen) => handleDropdownOpenChange("expiry", nextOpen)}
+                value={expiryTime}
+                onValueChange={(value) => {
+                  setExpiryTime(value)
+                  setOpenDropdown(null)
+                }}
+              >
+                <SelectTrigger className="flex-1">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {EXPIRY_OPTIONS.map((option, index) => {
+                    const labels = [tCreate("oneHour"), tCreate("oneDay"), tCreate("threeDays"), tCreate("permanent")]
+                    return (
+                      <SelectItem
+                        key={option.value}
+                        value={option.value.toString()}
+                        className={groupSelectItemClass}
+                      >
+                        {labels[index]}
+                      </SelectItem>
+                    )
+                  })}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
 
           <div className={formRowClass}>
             <Label className={formLabelClass} htmlFor="edit-email-tag">
               {tCreate("tag")}
             </Label>
-            <div
-              ref={tagFieldRef}
-              className="flex h-9 min-w-0 flex-1 items-center rounded-md border border-input bg-background transition-colors focus-within:ring-1 focus-within:ring-ring"
-            >
-              <Input
-                id="edit-email-tag"
-                value={tag}
-                maxLength={MAX_TAG_LENGTH}
-                onChange={(event) => setTag(event.target.value)}
-                placeholder={tCreate("tagPlaceholder")}
-                className="h-full min-w-0 flex-1 rounded-none border-0 bg-transparent px-3 py-1 focus-visible:ring-0"
-              />
-              <DropdownMenu open={openDropdown === "tag"} onOpenChange={(nextOpen) => {
-                if (nextOpen) {
-                  updateTagMenuWidth()
-                }
-                handleDropdownOpenChange("tag", nextOpen)
-              }}>
-                <DropdownMenuTrigger asChild>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon"
-                    disabled={tagOptions.length === 0}
-                    aria-label={tCreate("tag")}
-                    className="h-full w-10 shrink-0 rounded-l-none rounded-r-md hover:bg-transparent hover:text-current"
-                  >
-                    <ChevronDown className="h-4 w-4 opacity-50" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent
-                  align="end"
-                  sideOffset={5}
-                  style={tagMenuWidth ? { width: tagMenuWidth, minWidth: tagMenuWidth } : undefined}
-                >
-                  {tagOptions.map(option => (
-                    <DropdownMenuItem key={option} onClick={() => setTag(option)}>
-                      <span className="truncate">{option}</span>
-                    </DropdownMenuItem>
-                  ))}
-                </DropdownMenuContent>
-              </DropdownMenu>
-            </div>
+            <TagCombobox
+              id="edit-email-tag"
+              value={tag}
+              options={tagOptions}
+              placeholder={tCreate("tagPlaceholder")}
+              open={openDropdown === "tag"}
+              onOpenChange={(nextOpen) => handleDropdownOpenChange("tag", nextOpen)}
+              onValueChange={setTag}
+              maxLength={MAX_TAG_LENGTH}
+              aria-label={tCreate("tag")}
+            />
           </div>
         </div>
 
@@ -289,7 +270,7 @@ export function EditDialog({ email, groups, open, onOpenChange, onEmailUpdated }
           <Button variant="outline" onClick={() => handleOpenChange(false)} disabled={saving}>
             {tCommon("cancel")}
           </Button>
-          <Button onClick={updateEmail} disabled={saving}>
+          <Button onClick={updateEmail} disabled={saving || Boolean(email?.isCustom && customAddress.length === 0)}>
             {saving ? tEdit("saving") : tCommon("save")}
           </Button>
         </div>

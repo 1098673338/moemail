@@ -63,10 +63,12 @@ export async function PATCH(
     const db = createDb()
     const { id } = await params
     const body = await request.json() as {
+      address?: string
       expiryTime?: number
       groupId?: string | null
       tag?: string | null
     }
+    const hasAddress = "address" in body
     const hasGroupId = "groupId" in body
     const hasExpiryTime = "expiryTime" in body
     const hasTag = "tag" in body
@@ -107,6 +109,33 @@ export async function PATCH(
 
     const updateData: Partial<typeof emails.$inferInsert> = {}
 
+    if (hasAddress && email.isCustom) {
+      const nextAddress = typeof body.address === "string" ? body.address : ""
+
+      if (nextAddress.length === 0) {
+        return NextResponse.json(
+          { error: "请输入自定义邮箱" },
+          { status: 400 }
+        )
+      }
+
+      const existingEmail = await db.query.emails.findFirst({
+        where: and(
+          eq(sql`LOWER(${emails.address})`, nextAddress.toLowerCase()),
+          ne(emails.id, id)
+        )
+      })
+
+      if (existingEmail) {
+        return NextResponse.json(
+          { error: "已经有这个邮箱地址了，请换一个名称或域名" },
+          { status: 409 }
+        )
+      }
+
+      updateData.address = nextAddress
+    }
+
     if (hasGroupId) {
       updateData.groupId = selectedGroupId
     }
@@ -126,7 +155,7 @@ export async function PATCH(
       updateData.tag = normalizedTag
     }
 
-    if (hasExpiryTime) {
+    if (hasExpiryTime && !email.isCustom) {
       if (!EXPIRY_OPTIONS.some(option => option.value === body.expiryTime)) {
         return NextResponse.json(
           { error: "无效的过期时间" },
@@ -178,15 +207,6 @@ export async function GET(
     const { id } = await params
 
     const userId = await getUserId()
-    if (messageType === 'sent') {
-      const permissionResult = await checkBasicSendPermission(userId!)
-      if (!permissionResult.canSend) {
-        return NextResponse.json(
-          { error: permissionResult.error || "您没有查看发送邮件的权限" },
-          { status: 403 }
-        )
-      }
-    }
 
     const email = await db.query.emails.findFirst({
       where: and(
@@ -200,6 +220,24 @@ export async function GET(
         { error: "无权限查看" },
         { status: 403 }
       )
+    }
+
+    if (email.isCustom) {
+      return NextResponse.json({
+        messages: [],
+        nextCursor: null,
+        total: 0
+      })
+    }
+
+    if (messageType === 'sent') {
+      const permissionResult = await checkBasicSendPermission(userId!)
+      if (!permissionResult.canSend) {
+        return NextResponse.json(
+          { error: permissionResult.error || "您没有查看发送邮件的权限" },
+          { status: 403 }
+        )
+      }
     }
 
     const baseConditions = and(

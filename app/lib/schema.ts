@@ -61,8 +61,10 @@ export const emails = sqliteTable("email", {
   id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
   address: text("address").notNull().unique(),
   tag: text("tag"),
+  isCustom: integer("is_custom", { mode: "boolean" }).notNull().default(false),
   userId: text("userId").references(() => users.id, { onDelete: "cascade" }),
   groupId: text("group_id").references(() => emailGroups.id, { onDelete: "set null" }),
+  sortOrder: integer("sort_order"),
   createdAt: integer("created_at", { mode: "timestamp_ms" })
     .notNull()
     .$defaultFn(() => new Date()),
@@ -71,6 +73,7 @@ export const emails = sqliteTable("email", {
   expiresAtIdx: index("email_expires_at_idx").on(table.expiresAt),
   userIdIdx: index("email_user_id_idx").on(table.userId),
   groupIdIdx: index("email_group_id_idx").on(table.groupId),
+  userSortOrderIdx: index("email_user_sort_order_idx").on(table.userId, table.sortOrder),
   addressLowerIdx: index("email_address_lower_idx").on(sql`LOWER(${table.address})`),
 }))
 

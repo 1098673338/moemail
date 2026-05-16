@@ -97,6 +97,13 @@ export async function POST(
       )
     }
 
+    if (email.isCustom) {
+      return NextResponse.json(
+        { error: "自定义邮箱不能发送邮件" },
+        { status: 400 }
+      )
+    }
+
     const env = getRequestContext().env
     const apiKey = await env.SITE_CONFIG.get("RESEND_API_KEY")
 

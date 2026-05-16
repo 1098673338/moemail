@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { useThrottle } from "@/hooks/use-throttle"
 import { useToast } from "@/components/ui/use-toast"
+import { useDeferredDialogTarget } from "@/hooks/use-deferred-dialog-target"
 import {
   Dialog,
   DialogContent,
@@ -45,6 +46,8 @@ interface Email {
   id: string
   address: string
   tag?: string | null
+  isCustom?: boolean
+  sortOrder?: number | null
   createdAt: number | string | Date
   expiresAt: number | string | Date
   groupId?: string | null
@@ -71,7 +74,7 @@ interface EmailGroup {
   sortOrder: number
 }
 
-type GroupDropPosition = "before" | "after"
+type DropPosition = "before" | "after"
 
 const EMPTY_STATE_CLASS = "pointer-events-none absolute inset-0 flex -translate-y-6 flex-col items-center justify-center px-6 text-center"
 
@@ -93,7 +96,6 @@ export function EmailList({ onEmailSelect, onGroupChange, selectedEmailId, refre
   const [nextCursor, setNextCursor] = useState<string | null>(null)
   const [loadingMore, setLoadingMore] = useState(false)
   const [total, setTotal] = useState(0)
-  const [emailToDelete, setEmailToDelete] = useState<Email | null>(null)
   const [groupDialogOpen, setGroupDialogOpen] = useState(false)
   const [groupName, setGroupName] = useState("")
   const [creatingGroup, setCreatingGroup] = useState(false)
@@ -105,24 +107,33 @@ export function EmailList({ onEmailSelect, onGroupChange, selectedEmailId, refre
   const [editingGroup, setEditingGroup] = useState<EmailGroup | null>(null)
   const [editGroupName, setEditGroupName] = useState("")
   const [savingGroup, setSavingGroup] = useState(false)
-  const [groupToDelete, setGroupToDelete] = useState<EmailGroup | null>(null)
   const [deletingGroup, setDeletingGroup] = useState(false)
   const [groupSortMode, setGroupSortMode] = useState(false)
   const [draggingGroupId, setDraggingGroupId] = useState<string | null>(null)
   const [dragOverGroup, setDragOverGroup] = useState<{
     groupId: string
-    position: GroupDropPosition
+    position: DropPosition
   } | null>(null)
   const [savingGroupOrder, setSavingGroupOrder] = useState(false)
+  const [draggingEmailId, setDraggingEmailId] = useState<string | null>(null)
+  const [dragOverEmail, setDragOverEmail] = useState<{
+    emailId: string
+    position: DropPosition
+  } | null>(null)
+  const [savingEmailOrder, setSavingEmailOrder] = useState(false)
   const { toast } = useToast()
   const { copyToClipboard } = useCopy()
   const maxEmailsLimit = config?.maxEmails
+  const emailDeleteDialog = useDeferredDialogTarget<Email>()
+  const groupDeleteDialog = useDeferredDialogTarget<EmailGroup>()
+  const emailToDelete = emailDeleteDialog.target
+  const groupToDelete = groupDeleteDialog.target
 
   const reorderGroups = (
     groupList: EmailGroup[],
     sourceGroupId: string,
     targetGroupId: string,
-    position: GroupDropPosition
+    position: DropPosition
   ) => {
     const sourceIndex = groupList.findIndex(group => group.id === sourceGroupId)
     const targetIndex = groupList.findIndex(group => group.id === targetGroupId)
@@ -140,11 +151,36 @@ export function EmailList({ onEmailSelect, onGroupChange, selectedEmailId, refre
     return nextGroups
   }
 
+  const reorderEmails = (
+    emailList: Email[],
+    sourceEmailId: string,
+    targetEmailId: string,
+    position: DropPosition
+  ) => {
+    const sourceIndex = emailList.findIndex(email => email.id === sourceEmailId)
+    const targetIndex = emailList.findIndex(email => email.id === targetEmailId)
+
+    if (sourceIndex < 0 || targetIndex < 0 || sourceIndex === targetIndex) {
+      return emailList
+    }
+
+    const nextEmails = [...emailList]
+    const [sourceEmail] = nextEmails.splice(sourceIndex, 1)
+    const nextTargetIndex = nextEmails.findIndex(email => email.id === targetEmailId)
+    const insertIndex = position === "after" ? nextTargetIndex + 1 : nextTargetIndex
+    nextEmails.splice(insertIndex, 0, sourceEmail)
+
+    return nextEmails
+  }
+
   const toggleGroupSortMode = () => {
     setGroupSortMode(prev => !prev)
     setOpenMoreGroupId(null)
+    setOpenMoreEmailId(null)
     setDraggingGroupId(null)
     setDragOverGroup(null)
+    setDraggingEmailId(null)
+    setDragOverEmail(null)
   }
 
   useEffect(() => {
@@ -152,13 +188,15 @@ export function EmailList({ onEmailSelect, onGroupChange, selectedEmailId, refre
 
     const handleDocumentClick = (event: MouseEvent) => {
       const target = event.target as Element | null
-      if (target?.closest("[data-group-sort-region='true']")) {
+      if (target?.closest("[data-sort-region='true']")) {
         return
       }
 
       setGroupSortMode(false)
       setDraggingGroupId(null)
       setDragOverGroup(null)
+      setDraggingEmailId(null)
+      setDragOverEmail(null)
     }
 
     document.addEventListener("click", handleDocumentClick)
@@ -194,6 +232,36 @@ export function EmailList({ onEmailSelect, onGroupChange, selectedEmailId, refre
       })
     } finally {
       setSavingGroupOrder(false)
+    }
+  }
+
+  const saveEmailOrder = async (orderedEmails: Email[], previousEmails: Email[]) => {
+    setSavingEmailOrder(true)
+
+    try {
+      const response = await fetch("/api/emails/order", {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          emailIds: orderedEmails.map(email => email.id),
+          groupId: selectedGroupId,
+        }),
+      })
+      const data = await response.json().catch(() => ({})) as { error?: string }
+
+      if (!response.ok) {
+        throw new Error(data.error || tGroups("sortFailed"))
+      }
+    } catch (error) {
+      setEmails(previousEmails)
+      toast({
+        title: error instanceof Error ? error.message : tGroups("sortFailed"),
+        variant: "destructive",
+      })
+    } finally {
+      setSavingEmailOrder(false)
     }
   }
 
@@ -246,6 +314,57 @@ export function EmailList({ onEmailSelect, onGroupChange, selectedEmailId, refre
   const handleGroupDragEnd = () => {
     setDraggingGroupId(null)
     setDragOverGroup(null)
+  }
+
+  const handleEmailDragStart = (event: React.DragEvent<HTMLButtonElement>, emailId: string) => {
+    if (!groupSortMode || savingEmailOrder) {
+      event.preventDefault()
+      return
+    }
+
+    event.dataTransfer.effectAllowed = "move"
+    event.dataTransfer.setData("text/plain", emailId)
+    setDraggingEmailId(emailId)
+  }
+
+  const handleEmailDragOver = (event: React.DragEvent<HTMLDivElement>, emailId: string) => {
+    if (!groupSortMode || savingEmailOrder) return
+
+    event.preventDefault()
+    event.dataTransfer.dropEffect = "move"
+    if (!draggingEmailId || draggingEmailId === emailId) {
+      setDragOverEmail(null)
+      return
+    }
+
+    const rect = event.currentTarget.getBoundingClientRect()
+    const position = event.clientY < rect.top + rect.height / 2 ? "before" : "after"
+    setDragOverEmail({ emailId, position })
+  }
+
+  const handleEmailDrop = (event: React.DragEvent<HTMLDivElement>, targetEmailId: string) => {
+    event.preventDefault()
+
+    if (!groupSortMode) return
+
+    const sourceEmailId = draggingEmailId || event.dataTransfer.getData("text/plain")
+    const position = dragOverEmail?.emailId === targetEmailId ? dragOverEmail.position : "before"
+    setDraggingEmailId(null)
+    setDragOverEmail(null)
+
+    if (!sourceEmailId || sourceEmailId === targetEmailId || savingEmailOrder) return
+
+    const previousEmails = emails
+    const orderedEmails = reorderEmails(emails, sourceEmailId, targetEmailId, position)
+    if (orderedEmails === emails) return
+
+    setEmails(orderedEmails)
+    saveEmailOrder(orderedEmails, previousEmails)
+  }
+
+  const handleEmailDragEnd = () => {
+    setDraggingEmailId(null)
+    setDragOverEmail(null)
   }
 
   const fetchGroups = async () => {
@@ -500,7 +619,7 @@ export function EmailList({ onEmailSelect, onGroupChange, selectedEmailId, refre
       })
     } finally {
       setDeletingGroup(false)
-      setGroupToDelete(null)
+      groupDeleteDialog.close()
     }
   }
 
@@ -512,7 +631,7 @@ export function EmailList({ onEmailSelect, onGroupChange, selectedEmailId, refre
       return
     }
 
-    setGroupToDelete(group)
+    groupDeleteDialog.openWithTarget(group)
   }
 
   const openShareDialog = (email: Email) => {
@@ -712,9 +831,11 @@ export function EmailList({ onEmailSelect, onGroupChange, selectedEmailId, refre
         variant: "destructive"
       })
     } finally {
-      setEmailToDelete(null)
+      emailDeleteDialog.close()
     }
   }
+
+  const canSortItems = groups.length >= 2 || emails.length >= 2
 
   if (!session) return null
 
@@ -743,7 +864,7 @@ export function EmailList({ onEmailSelect, onGroupChange, selectedEmailId, refre
                   <FolderPlus className="h-4 w-4" />
                 </Button>
               </DialogTrigger>
-              <DialogContent>
+              <DialogContent className="sm:max-w-[400px]">
                 <DialogHeader>
                   <DialogTitle>{tGroups("createTitle")}</DialogTitle>
                 </DialogHeader>
@@ -782,7 +903,7 @@ export function EmailList({ onEmailSelect, onGroupChange, selectedEmailId, refre
               variant="ghost"
               size="icon"
               onClick={toggleGroupSortMode}
-              disabled={groups.length < 2}
+              disabled={!canSortItems || savingGroupOrder || savingEmailOrder}
               className={cn(
                 "h-8 w-8",
                 groupSortMode && "bg-gray-200 hover:bg-gray-200"
@@ -807,13 +928,13 @@ export function EmailList({ onEmailSelect, onGroupChange, selectedEmailId, refre
           </span>
         </div>
 
-        <div className="shrink-0 border-b border-gray-200 p-2" data-group-sort-region="true">
+        <div className="shrink-0 border-b border-gray-200 p-2" data-sort-region="true">
           <div className="space-y-2">
             <div className="grid grid-cols-2 gap-2">
               <button
                 type="button"
                 className={cn(
-                  "flex h-8 min-w-0 items-center gap-2 rounded px-2 text-left text-sm transition-colors",
+                  "flex h-8 min-w-0 items-center gap-2 rounded pl-3 pr-1 text-left text-sm transition-colors",
                   selectedGroupId === null ? "bg-gray-200" : "hover:bg-gray-100"
                 )}
                 onClick={() => handleGroupSelect(null)}
@@ -824,7 +945,7 @@ export function EmailList({ onEmailSelect, onGroupChange, selectedEmailId, refre
               <button
                 type="button"
                 className={cn(
-                  "flex h-8 min-w-0 items-center gap-2 rounded px-2 text-left text-sm transition-colors",
+                  "flex h-8 min-w-0 items-center gap-2 rounded pl-3 pr-1 text-left text-sm transition-colors",
                   selectedGroupId === "none" ? "bg-gray-200" : "hover:bg-gray-100"
                 )}
                 onClick={() => handleGroupSelect("none")}
@@ -853,7 +974,7 @@ export function EmailList({ onEmailSelect, onGroupChange, selectedEmailId, refre
 	                  onDrop={(event) => handleGroupDrop(event, group.id)}
 	                  onClick={() => handleGroupSelect(group.id, group.name)}
 	                  className={cn(
-	                    "group relative flex h-8 w-full cursor-pointer items-center gap-1 rounded px-2 text-sm transition-colors",
+	                    "group relative flex h-8 w-full cursor-pointer items-center gap-1 rounded pl-3 pr-1 text-sm transition-colors",
 	                    selectedGroupId === group.id ? "bg-gray-200" : "hover:bg-gray-100",
 	                    draggingGroupId === group.id && "opacity-50"
 	                  )}
@@ -931,6 +1052,7 @@ export function EmailList({ onEmailSelect, onGroupChange, selectedEmailId, refre
         
         <div
           className="min-h-0 flex-1 overflow-auto p-2"
+          data-sort-region="true"
           onScroll={handleScroll}
         >
           {!loading && !refreshing && emails.length > 0 && (
@@ -938,13 +1060,50 @@ export function EmailList({ onEmailSelect, onGroupChange, selectedEmailId, refre
               {emails.map(email => (
                 <div
                   key={email.id}
-                  className={cn("flex items-center gap-2 py-2 px-3 rounded cursor-pointer text-sm group",
+                  className={cn(
+                    "relative flex min-h-12 items-center gap-2 rounded py-2 pl-3 pr-2.5 text-sm group",
                     selectedEmailId === email.id
                       ? "bg-gray-200"
-                      : "hover:bg-gray-100"
+                      : "hover:bg-gray-100",
+                    groupSortMode ? "cursor-default" : "cursor-pointer",
+                    draggingEmailId === email.id && "opacity-50"
                   )}
+                  onDragOver={(event) => handleEmailDragOver(event, email.id)}
+                  onDragLeave={(event) => {
+                    const nextTarget = event.relatedTarget as Node | null
+                    if (nextTarget && event.currentTarget.contains(nextTarget)) {
+                      return
+                    }
+
+                    if (dragOverEmail?.emailId === email.id) {
+                      setDragOverEmail(null)
+                    }
+                  }}
+                  onDrop={(event) => handleEmailDrop(event, email.id)}
                   onClick={() => onEmailSelect(email)}
                 >
+                  {dragOverEmail?.emailId === email.id && dragOverEmail.position === "before" && (
+                    <div className="pointer-events-none absolute left-2 right-2 top-0 h-0.5 rounded-full bg-gray-500" />
+                  )}
+                  {dragOverEmail?.emailId === email.id && dragOverEmail.position === "after" && (
+                    <div className="pointer-events-none absolute bottom-0 left-2 right-2 h-0.5 rounded-full bg-gray-500" />
+                  )}
+                  {groupSortMode && (
+                    <button
+                      type="button"
+                      draggable={!savingEmailOrder}
+                      className={cn(
+                        "flex h-8 w-4 shrink-0 cursor-grab items-center justify-center rounded text-gray-400 hover:bg-black/10 hover:text-gray-600 active:cursor-grabbing",
+                        savingEmailOrder && "cursor-not-allowed opacity-50"
+                      )}
+                      aria-label={tGroups("sortHandle")}
+                      onDragStart={(event) => handleEmailDragStart(event, email.id)}
+                      onDragEnd={handleEmailDragEnd}
+                      onClick={(event) => event.stopPropagation()}
+                    >
+                      <GripVertical className="h-3.5 w-3.5" />
+                    </button>
+                  )}
                   <div className="min-w-0 flex-1">
                     <div className="flex min-w-0 items-center gap-1.5 font-medium">
                       <span className="min-w-0 truncate">{email.address}</span>
@@ -954,21 +1113,24 @@ export function EmailList({ onEmailSelect, onGroupChange, selectedEmailId, refre
                         </span>
                       )}
                     </div>
-                    <div className="truncate text-xs text-gray-500">
-                      {new Date(email.expiresAt).getFullYear() === 9999 ? (
-                        t("permanent")
-                      ) : (
-                        `${t("expiresAt")}: ${new Date(email.expiresAt).toLocaleString()}`
-                      )}
-                    </div>
-                  </div>
-                  <div
-                    className={cn(
-                      "shrink-0 items-center justify-center gap-1 self-center",
-                      openMoreEmailId === email.id ? "flex" : "hidden group-hover:flex"
+                    {!email.isCustom && (
+                      <div className="truncate text-xs text-gray-500">
+                        {new Date(email.expiresAt).getFullYear() === 9999 ? (
+                          t("permanent")
+                        ) : (
+                          `${t("expiresAt")}: ${new Date(email.expiresAt).toLocaleString()}`
+                        )}
+                      </div>
                     )}
-                    onClick={(e) => e.stopPropagation()}
-                  >
+                  </div>
+                  {!groupSortMode && (
+                    <div
+                      className={cn(
+                        "shrink-0 items-center justify-center gap-1 self-center",
+                        openMoreEmailId === email.id ? "flex" : "hidden group-hover:flex"
+                      )}
+                      onClick={(e) => e.stopPropagation()}
+                    >
                     <Button
                       variant="ghost"
                       size="icon"
@@ -998,13 +1160,15 @@ export function EmailList({ onEmailSelect, onGroupChange, selectedEmailId, refre
                           <Pencil className="mr-2 h-4 w-4" />
                           {tEdit("menu")}
                         </DropdownMenuItem>
-                        <DropdownMenuItem onSelect={() => openShareDialog(email)}>
-                          <Share2 className="mr-2 h-4 w-4" />
-                          {tShare("shareButton")}
-                        </DropdownMenuItem>
+                        {!email.isCustom && (
+                          <DropdownMenuItem onSelect={() => openShareDialog(email)}>
+                            <Share2 className="mr-2 h-4 w-4" />
+                            {tShare("shareButton")}
+                          </DropdownMenuItem>
+                        )}
                         <DropdownMenuItem
                           onClick={() => {
-                            setEmailToDelete(email)
+                            emailDeleteDialog.openWithTarget(email)
                             setOpenMoreEmailId(null)
                           }}
                         >
@@ -1042,7 +1206,8 @@ export function EmailList({ onEmailSelect, onGroupChange, selectedEmailId, refre
                         </div>
                       </DropdownMenuContent>
                     </DropdownMenu>
-                  </div>
+                    </div>
+                  )}
                 </div>
               ))}
               {loadingMore && (
@@ -1069,18 +1234,18 @@ export function EmailList({ onEmailSelect, onGroupChange, selectedEmailId, refre
         )}
       </div>
 
-      <AlertDialog open={!!emailToDelete} onOpenChange={() => setEmailToDelete(null)}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
+      <AlertDialog open={emailDeleteDialog.open} onOpenChange={emailDeleteDialog.handleOpenChange}>
+        <AlertDialogContent className="sm:max-w-[400px]">
+          <AlertDialogHeader className="min-w-0">
             <AlertDialogTitle>{t("deleteConfirm")}</AlertDialogTitle>
-            <AlertDialogDescription>
-              {t("deleteDescription", { email: emailToDelete?.address || "" })}
+            <AlertDialogDescription className="min-w-0 break-words [overflow-wrap:anywhere]">
+              {t(emailToDelete?.isCustom ? "customDeleteDescription" : "deleteDescription")}
             </AlertDialogDescription>
           </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>{tCommon("cancel")}</AlertDialogCancel>
+          <AlertDialogFooter className="flex-wrap">
+            <AlertDialogCancel className="shrink-0">{tCommon("cancel")}</AlertDialogCancel>
             <AlertDialogAction
-              className="bg-destructive hover:bg-destructive/90"
+              className="shrink-0 bg-destructive hover:bg-destructive/90"
               onClick={() => emailToDelete && handleDelete(emailToDelete)}
             >
               {tCommon("delete")}
@@ -1116,7 +1281,7 @@ export function EmailList({ onEmailSelect, onGroupChange, selectedEmailId, refre
       />
 
       <Dialog open={!!editingGroup} onOpenChange={handleEditGroupDialogOpenChange}>
-        <DialogContent>
+        <DialogContent className="sm:max-w-[400px]">
           <DialogHeader>
             <DialogTitle>{tGroups("renameTitle")}</DialogTitle>
           </DialogHeader>
@@ -1152,24 +1317,25 @@ export function EmailList({ onEmailSelect, onGroupChange, selectedEmailId, refre
         </DialogContent>
       </Dialog>
 
-      <AlertDialog open={!!groupToDelete} onOpenChange={() => setGroupToDelete(null)}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
+      <AlertDialog open={groupDeleteDialog.open} onOpenChange={groupDeleteDialog.handleOpenChange}>
+        <AlertDialogContent className="sm:max-w-[400px]">
+          <AlertDialogHeader className="min-w-0">
             <AlertDialogTitle>{tGroups("deleteConfirm")}</AlertDialogTitle>
-            <AlertDialogDescription>
-              {tGroups("deleteDescription", { name: groupToDelete?.name || "" })}
+            <AlertDialogDescription className="min-w-0 break-words [overflow-wrap:anywhere]">
+              {tGroups("deleteDescription")}
             </AlertDialogDescription>
           </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>{tCommon("cancel")}</AlertDialogCancel>
+          <AlertDialogFooter className="flex-wrap">
+            <AlertDialogCancel className="shrink-0">{tCommon("cancel")}</AlertDialogCancel>
             <AlertDialogAction
+              className="shrink-0"
               disabled={deletingGroup}
               onClick={() => groupToDelete && deleteGroup(groupToDelete, false)}
             >
               {tGroups("moveEmailsToUngrouped")}
             </AlertDialogAction>
             <AlertDialogAction
-              className="bg-destructive hover:bg-destructive/90"
+              className="shrink-0 bg-destructive hover:bg-destructive/90"
               disabled={deletingGroup}
               onClick={() => groupToDelete && deleteGroup(groupToDelete, true)}
             >

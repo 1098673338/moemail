@@ -6,9 +6,10 @@ import { Share2, Copy, Trash2 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import {
   Dialog,
-  DialogContent,
+  DialogContentWithoutOverlay,
   DialogDescription,
   DialogHeader,
+  DialogStaticOverlay,
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog"
@@ -23,6 +24,7 @@ import {
 } from "@/components/ui/select"
 import { useToast } from "@/components/ui/use-toast"
 import { useCopy } from "@/hooks/use-copy"
+import { useDeferredDialogTarget } from "@/hooks/use-deferred-dialog-target"
 import { EXPIRY_OPTIONS } from "@/types/email"
 
 interface ShareDialogProps {
@@ -52,13 +54,14 @@ export function ShareDialog({ emailId, open: controlledOpen, onOpenChange, trigg
   const [loading, setLoading] = useState(false)
   const [creating, setCreating] = useState(false)
   const [expiryTime, setExpiryTime] = useState(EXPIRY_OPTIONS[1].value.toString())
-  const [deleteTarget, setDeleteTarget] = useState<ShareLink | null>(null)
+  const shareDeleteDialog = useDeferredDialogTarget<ShareLink>()
+  const deleteTarget = shareDeleteDialog.target
   const [deleting, setDeleting] = useState(false)
   const open = controlledOpen ?? internalOpen
 
   const handleOpenChange = (nextOpen: boolean) => {
     if (!nextOpen) {
-      setDeleteTarget(null)
+      shareDeleteDialog.clearNow()
       setDeleting(false)
     }
     setInternalOpen(nextOpen)
@@ -134,7 +137,7 @@ export function ShareDialog({ emailId, open: controlledOpen, onOpenChange, trigg
       })
     } finally {
       setDeleting(false)
-      setDeleteTarget(null)
+      shareDeleteDialog.clearNow()
     }
   }
 
@@ -154,9 +157,18 @@ export function ShareDialog({ emailId, open: controlledOpen, onOpenChange, trigg
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open])
 
+  const handleDeleteOpenChange = (nextOpen: boolean) => {
+    if (nextOpen || deleting) return
+    shareDeleteDialog.clearNow()
+  }
+
+  const sharedOverlayOpen = open || shareDeleteDialog.open
+
   return (
     <>
-      <Dialog open={open} onOpenChange={handleOpenChange}>
+      {sharedOverlayOpen && <DialogStaticOverlay />}
+
+      <Dialog open={open && !shareDeleteDialog.open} onOpenChange={handleOpenChange}>
         {trigger !== null && (
           <DialogTrigger asChild>
             {trigger ?? (
@@ -166,40 +178,16 @@ export function ShareDialog({ emailId, open: controlledOpen, onOpenChange, trigg
             )}
           </DialogTrigger>
         )}
-        <DialogContent
-          className="w-[calc(100vw-2rem)] max-w-[calc(100vw-2rem)] sm:max-w-[600px] max-h-[calc(100vh-2rem)] overflow-hidden p-4 sm:p-6"
+        <DialogContentWithoutOverlay
+          className="w-[calc(100vw-2rem)] max-w-[calc(100vw-2rem)] max-h-[calc(100vh-2rem)] overflow-hidden p-4 sm:max-w-[600px] sm:p-6"
           onInteractOutside={(e) => e.preventDefault()}
         >
           <DialogHeader>
-            <DialogTitle>{deleteTarget ? t("deleteConfirm") : t("title")}</DialogTitle>
-            <DialogDescription>
-              {deleteTarget ? t("deleteDescription") : t("description")}
-            </DialogDescription>
+            <DialogTitle>{t("title")}</DialogTitle>
+            <DialogDescription>{t("description")}</DialogDescription>
           </DialogHeader>
 
-          {deleteTarget ? (
-            <div className="flex flex-col gap-4 pt-2">
-              <div className="flex justify-end gap-2">
-                <Button
-                  variant="outline"
-                  type="button"
-                  disabled={deleting}
-                  onClick={() => setDeleteTarget(null)}
-                >
-                  {t("cancel")}
-                </Button>
-                <Button
-                  type="button"
-                  disabled={deleting}
-                  className="bg-destructive hover:bg-destructive/90"
-                  onClick={() => deleteShare(deleteTarget)}
-                >
-                  {t("delete")}
-                </Button>
-              </div>
-            </div>
-          ) : (
-            <div className="min-h-0 -mx-1 space-y-4 overflow-y-auto px-1 py-1">
+          <div className="min-h-0 -mx-1 space-y-4 overflow-y-auto px-1 py-1">
               {/* Create new share link */}
               <div className="space-y-2">
                 <Label>{t("expiryTime")}</Label>
@@ -292,7 +280,7 @@ export function ShareDialog({ emailId, open: controlledOpen, onOpenChange, trigg
                                   variant="ghost"
                                   size="icon"
                                   className="h-8 w-8"
-                                  onClick={() => setDeleteTarget(share)}
+                                  onClick={() => shareDeleteDialog.openWithTarget(share)}
                                 >
                                   <Trash2 className="h-4 w-4 text-black" />
                                 </Button>
@@ -337,9 +325,40 @@ export function ShareDialog({ emailId, open: controlledOpen, onOpenChange, trigg
                   )}
                 </div>
               </div>
+          </div>
+        </DialogContentWithoutOverlay>
+      </Dialog>
+
+      <Dialog open={shareDeleteDialog.open} onOpenChange={handleDeleteOpenChange}>
+        {deleteTarget && (
+          <DialogContentWithoutOverlay
+            className="w-[calc(100vw-2rem)] max-w-[calc(100vw-2rem)] max-h-[calc(100vh-2rem)] overflow-hidden p-4 sm:max-w-[400px] sm:p-6"
+            onInteractOutside={(e) => e.preventDefault()}
+          >
+            <DialogHeader>
+              <DialogTitle>{t("deleteConfirm")}</DialogTitle>
+              <DialogDescription>{t("deleteDescription")}</DialogDescription>
+            </DialogHeader>
+            <div className="flex justify-end gap-2 pt-2">
+              <Button
+                variant="outline"
+                type="button"
+                disabled={deleting}
+                onClick={shareDeleteDialog.clearNow}
+              >
+                {t("cancel")}
+              </Button>
+              <Button
+                type="button"
+                disabled={deleting}
+                className="bg-destructive hover:bg-destructive/90"
+                onClick={() => deleteShare(deleteTarget)}
+              >
+                {t("delete")}
+              </Button>
             </div>
-          )}
-        </DialogContent>
+          </DialogContentWithoutOverlay>
+        )}
       </Dialog>
     </>
   )

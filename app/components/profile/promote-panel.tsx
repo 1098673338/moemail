@@ -16,22 +16,16 @@ import {
 } from "@/components/ui/select"
 import {
   Dialog,
-  DialogContent,
+  DialogContentWithoutOverlay,
+  DialogDescription,
+  DialogFooter,
   DialogHeader,
+  DialogStaticOverlay,
   DialogTitle,
 } from "@/components/ui/dialog"
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog"
 import { EMAIL_CONFIG } from "@/config"
 import { normalizeConfigurableLimitInput } from "@/lib/validation"
+import { useDeferredDialogTarget } from "@/hooks/use-deferred-dialog-target"
 
 type RoleWithoutEmperor = Exclude<Role, typeof ROLES.EMPEROR>
 
@@ -85,7 +79,8 @@ export function PromotePanel() {
   const [userList, setUserList] = useState<UserListItem[]>([])
   const [currentUserId, setCurrentUserId] = useState<string | null>(null)
   const [loadingUsers, setLoadingUsers] = useState(false)
-  const [deleteUserTarget, setDeleteUserTarget] = useState<UserListItem | null>(null)
+  const deleteUserDialog = useDeferredDialogTarget<UserListItem>()
+  const deleteUserTarget = deleteUserDialog.target
   const [deletingUserId, setDeletingUserId] = useState<string | null>(null)
   const { toast } = useToast()
   const hasTargetUser = targetUser !== null
@@ -163,16 +158,15 @@ export function PromotePanel() {
   const handleUserListOpenChange = (nextOpen: boolean) => {
     setUserListOpen(nextOpen)
     if (!nextOpen) {
-      setDeleteUserTarget(null)
+      deleteUserDialog.clearNow()
       setDeletingUserId(null)
       restoreBodyPointerEventsIfNoDialog()
     }
   }
 
   const handleDeleteUserOpenChange = (nextOpen: boolean) => {
-    if (!nextOpen && !deletingUserId) {
-      setDeleteUserTarget(null)
-    }
+    if (nextOpen || deletingUserId) return
+    deleteUserDialog.clearNow()
   }
 
   const deleteUser = async (user: UserListItem) => {
@@ -208,7 +202,7 @@ export function PromotePanel() {
       })
     } finally {
       setDeletingUserId(null)
-      setDeleteUserTarget(null)
+      deleteUserDialog.clearNow()
       restoreBodyPointerEventsIfNoDialog()
     }
   }
@@ -355,6 +349,8 @@ export function PromotePanel() {
     }
   }
 
+  const sharedOverlayOpen = userListOpen || deleteUserDialog.open
+
   return (
     <div className="bg-background rounded-lg border border-gray-200 p-6">
       <div className="mb-6 flex items-center justify-between gap-3">
@@ -465,8 +461,10 @@ export function PromotePanel() {
         </div>
       </div>
 
-      <Dialog open={userListOpen} onOpenChange={handleUserListOpenChange}>
-        <DialogContent className="max-w-4xl">
+      {sharedOverlayOpen && <DialogStaticOverlay />}
+
+      <Dialog open={userListOpen && !deleteUserDialog.open} onOpenChange={handleUserListOpenChange}>
+        <DialogContentWithoutOverlay className="max-w-4xl">
           <DialogHeader>
             <DialogTitle>{t("userListTitle")}</DialogTitle>
           </DialogHeader>
@@ -477,7 +475,8 @@ export function PromotePanel() {
                 {t("loadingUsers")}
               </div>
             ) : userList.length === 0 ? (
-              <div className="flex min-h-32 items-center justify-center text-center text-sm text-muted-foreground">
+              <div className="flex min-h-32 flex-col items-center justify-center text-center text-sm text-muted-foreground">
+                <Users className="mb-3 h-6 w-6 text-primary/50" />
                 {t("noUsers")}
               </div>
             ) : (
@@ -522,7 +521,7 @@ export function PromotePanel() {
                           || user.id === currentUserId
                           || deletingUserId === user.id
                         }
-                        onClick={() => setDeleteUserTarget(user)}
+                        onClick={() => deleteUserDialog.openWithTarget(user)}
                       >
                         {deletingUserId === user.id ? (
                           <Loader2 className="h-4 w-4 animate-spin" />
@@ -536,39 +535,44 @@ export function PromotePanel() {
               </div>
             )}
           </div>
-        </DialogContent>
+        </DialogContentWithoutOverlay>
       </Dialog>
 
-      <AlertDialog open={!!deleteUserTarget} onOpenChange={handleDeleteUserOpenChange}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>{t("deleteUserConfirm")}</AlertDialogTitle>
-            <AlertDialogDescription>
-              {deleteUserTarget
-                ? t("deleteUserDescription", {
-                  name: getUserDisplayName(deleteUserTarget),
-                  count: deleteUserTarget.emailCount,
-                })
-                : ""}
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel disabled={Boolean(deletingUserId)}>{tCommon("cancel")}</AlertDialogCancel>
-            <AlertDialogAction
-              className="bg-destructive hover:bg-destructive/90"
-              disabled={Boolean(deletingUserId)}
-              onClick={(event) => {
-                event.preventDefault()
-                if (deleteUserTarget) {
-                  void deleteUser(deleteUserTarget)
-                }
-              }}
-            >
-              {deletingUserId ? t("deletingUser") : tCommon("delete")}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      <Dialog open={deleteUserDialog.open} onOpenChange={handleDeleteUserOpenChange}>
+        {deleteUserTarget && (
+          <DialogContentWithoutOverlay className="sm:max-w-[400px]">
+            <DialogHeader className="min-w-0">
+              <DialogTitle>{t("deleteUserConfirm")}</DialogTitle>
+              <DialogDescription className="min-w-0 break-words [overflow-wrap:anywhere]">
+                {t("deleteUserDescription")}
+              </DialogDescription>
+            </DialogHeader>
+            <DialogFooter className="flex-wrap">
+              <Button
+                type="button"
+                variant="outline"
+                className="shrink-0"
+                disabled={Boolean(deletingUserId)}
+                onClick={deleteUserDialog.clearNow}
+              >
+                {tCommon("cancel")}
+              </Button>
+              <Button
+                type="button"
+                className="shrink-0 bg-destructive hover:bg-destructive/90"
+                disabled={Boolean(deletingUserId)}
+                onClick={() => {
+                  if (deleteUserTarget) {
+                    void deleteUser(deleteUserTarget)
+                  }
+                }}
+              >
+                {deletingUserId ? t("deletingUser") : tCommon("delete")}
+              </Button>
+            </DialogFooter>
+          </DialogContentWithoutOverlay>
+        )}
+      </Dialog>
     </div>
   )
 } 

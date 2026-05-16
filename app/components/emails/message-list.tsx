@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button"
 import { useThrottle } from "@/hooks/use-throttle"
 import { EMAIL_CONFIG } from "@/config"
 import { useToast } from "@/components/ui/use-toast"
+import { useDeferredDialogTarget } from "@/hooks/use-deferred-dialog-target"
 import { ShareMessageDialog } from "./share-message-dialog"
 import {
   AlertDialog,
@@ -35,6 +36,7 @@ interface MessageListProps {
   email: {
     id: string
     address: string
+    isCustom?: boolean
   }
   messageType: MessageType
   onMessageSelect: (messageId: string | null, messageType?: MessageType, message?: Message) => void
@@ -58,15 +60,17 @@ export function MessageList({ email, messageType, onMessageSelect, onMessagePref
   const t = useTranslations("emails.messages")
   const tCommon = useTranslations("common.actions")
   const tFeedback = useTranslations("common.feedback")
+  const isCustomEmail = Boolean(email.isCustom)
   const [messages, setMessages] = useState<Message[]>([])
-  const [loading, setLoading] = useState(true)
+  const [loading, setLoading] = useState(!isCustomEmail)
   const [refreshing, setRefreshing] = useState(false)
   const [nextCursor, setNextCursor] = useState<string | null>(null)
   const [loadingMore, setLoadingMore] = useState(false)
   const pollTimeoutRef = useRef<Timer>(null)
   const messagesRef = useRef<Message[]>([]) // 添加 ref 来追踪最新的消息列表
   const [total, setTotal] = useState(0)
-  const [messageToDelete, setMessageToDelete] = useState<Message | null>(null)
+  const messageDeleteDialog = useDeferredDialogTarget<Message>()
+  const messageToDelete = messageDeleteDialog.target
   const { toast } = useToast()
 
   const updateTotal = (nextTotal: number) => {
@@ -80,6 +84,16 @@ export function MessageList({ email, messageType, onMessageSelect, onMessagePref
   }, [messages])
 
   const fetchMessages = async (cursor?: string, replace = false) => {
+    if (isCustomEmail) {
+      setMessages([])
+      setNextCursor(null)
+      updateTotal(0)
+      setLoading(false)
+      setRefreshing(false)
+      setLoadingMore(false)
+      return
+    }
+
     try {
       const url = new URL(`/api/emails/${email.id}`, window.location.origin)
       if (messageType === 'sent') {
@@ -147,6 +161,14 @@ export function MessageList({ email, messageType, onMessageSelect, onMessagePref
   }
 
   const handleRefresh = async () => {
+    if (isCustomEmail) {
+      setMessages([])
+      setNextCursor(null)
+      updateTotal(0)
+      setRefreshing(false)
+      return
+    }
+
     setRefreshing(true)
     await fetchMessages(undefined, true)
   }
@@ -199,12 +221,22 @@ export function MessageList({ email, messageType, onMessageSelect, onMessagePref
         variant: "destructive"
       })
     } finally {
-      setMessageToDelete(null)
+      messageDeleteDialog.close()
     }
   }
 
   useEffect(() => {
     if (!email.id) {
+      return
+    }
+    if (isCustomEmail) {
+      stopPolling()
+      setLoading(false)
+      setRefreshing(false)
+      setLoadingMore(false)
+      setMessages([])
+      setNextCursor(null)
+      updateTotal(0)
       return
     }
     setLoading(true)
@@ -216,15 +248,23 @@ export function MessageList({ email, messageType, onMessageSelect, onMessagePref
       stopPolling() 
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [email.id])
+  }, [email.id, isCustomEmail])
 
   useEffect(() => {
+    if (isCustomEmail) {
+      setMessages([])
+      setNextCursor(null)
+      updateTotal(0)
+      setRefreshing(false)
+      return
+    }
+
     if (refreshTrigger && refreshTrigger > 0) {
       setRefreshing(true)
       fetchMessages(undefined, true)
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [refreshTrigger])
+  }, [refreshTrigger, isCustomEmail])
 
   return (
   <>
@@ -307,7 +347,7 @@ export function MessageList({ email, messageType, onMessageSelect, onMessagePref
                       className="h-8 w-8 hover:bg-black/10"
                       onClick={(e) => {
                         e.stopPropagation()
-                        setMessageToDelete(message)
+                        messageDeleteDialog.openWithTarget(message)
                       }}
                     >
                       <Trash2 className="h-4 w-4" />
@@ -330,18 +370,18 @@ export function MessageList({ email, messageType, onMessageSelect, onMessagePref
         )}
       </div>
     </div>
-    <AlertDialog open={!!messageToDelete} onOpenChange={() => setMessageToDelete(null)}>
-      <AlertDialogContent>
-        <AlertDialogHeader>
+    <AlertDialog open={messageDeleteDialog.open} onOpenChange={messageDeleteDialog.handleOpenChange}>
+      <AlertDialogContent className="sm:max-w-[400px]">
+        <AlertDialogHeader className="min-w-0">
           <AlertDialogTitle>{t("deleteConfirm")}</AlertDialogTitle>
-          <AlertDialogDescription>
-            {t("deleteDescription", { subject: messageToDelete?.subject || "" })}
+          <AlertDialogDescription className="min-w-0 break-words [overflow-wrap:anywhere]">
+            {t("deleteDescription")}
           </AlertDialogDescription>
         </AlertDialogHeader>
-        <AlertDialogFooter>
-          <AlertDialogCancel>{tCommon("cancel")}</AlertDialogCancel>
+        <AlertDialogFooter className="flex-wrap">
+          <AlertDialogCancel className="shrink-0">{tCommon("cancel")}</AlertDialogCancel>
           <AlertDialogAction
-              className="bg-destructive hover:bg-destructive/90"
+              className="shrink-0 bg-destructive hover:bg-destructive/90"
               onClick={() => messageToDelete && handleDelete(messageToDelete)}
           >
             {tCommon("delete")}

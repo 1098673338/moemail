@@ -9,6 +9,7 @@ interface MessageListContainerProps {
   email: {
     id: string
     address: string
+    isCustom?: boolean
   }
   onMessageSelect: (messageId: string | null, messageType?: MessageType, message?: MessageSummary) => void
   onMessagePrefetch?: (messageId: string, messageType: MessageType, message: MessageSummary) => void
@@ -41,6 +42,7 @@ export function MessageListContainer({
   sendPermissionLoading = false,
 }: MessageListContainerProps) {
   const t = useTranslations("emails.messages")
+  const isCustomEmail = Boolean(email.isCustom)
   const [activeTab, setActiveTab] = useState<'received' | 'sent'>('received')
   const [messageCounts, setMessageCounts] = useState<Record<'received' | 'sent', number>>({
     received: 0,
@@ -48,6 +50,11 @@ export function MessageListContainer({
   })
 
   useEffect(() => {
+    if (isCustomEmail) {
+      setMessageCounts({ received: 0, sent: 0 })
+      return
+    }
+
     if (!email.id || !canSendEmails) return
 
     let cancelled = false
@@ -87,7 +94,7 @@ export function MessageListContainer({
     return () => {
       cancelled = true
     }
-  }, [email.id, canSendEmails, activeTab, refreshTrigger])
+  }, [email.id, canSendEmails, activeTab, refreshTrigger, isCustomEmail])
 
   const handleTabChange = (tabId: string) => {
     setActiveTab(tabId as 'received' | 'sent')

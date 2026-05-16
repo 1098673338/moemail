@@ -14,6 +14,7 @@ import { Copy, Inbox, MailOpen } from "lucide-react"
 interface Email {
   id: string
   address: string
+  isCustom?: boolean
 }
 
 type MessageType = 'received' | 'sent'
@@ -49,6 +50,7 @@ export function ThreeColumnLayout() {
   const emailColumnStyle = { gridColumn: "span 4 / span 4" }
   const messageListColumnStyle = { gridColumn: "span 6 / span 6" }
   const contentColumnStyle = { gridColumn: "span 14 / span 14" }
+  const showMessageList = Boolean(selectedEmail && !selectedEmail.isCustom)
 
   const copyEmailAddress = () => {
     copyToClipboard(selectedEmail?.address || "")
@@ -119,8 +121,8 @@ export function ThreeColumnLayout() {
 
         <div className={columnClass} style={messageListColumnStyle}>
           <div className={headerClass}>
-            <h2 className={selectedEmail ? actionTitleClass : titleClass}>
-              {selectedEmail ? (
+            <h2 className={showMessageList ? actionTitleClass : titleClass}>
+              {showMessageList && selectedEmail ? (
                 <div className="w-full flex justify-between items-center gap-2">
                   <div className="flex items-center gap-2">
                     <span className="truncate min-w-0">{selectedEmail.address}</span>
@@ -131,7 +133,7 @@ export function ThreeColumnLayout() {
                       <Copy className="size-4" />
                     </div>
                   </div>
-                  {selectedEmail && canSendEmails && (
+                  {canSendEmails && (
                     <SendDialog 
                       emailId={selectedEmail.id} 
                       fromAddress={selectedEmail.address}
@@ -144,7 +146,7 @@ export function ThreeColumnLayout() {
               )}
             </h2>
           </div>
-          {selectedEmail ? (
+          {showMessageList && selectedEmail ? (
             <div className="min-h-0 flex-1 overflow-auto">
               <MessageListContainer
                 email={selectedEmail}
