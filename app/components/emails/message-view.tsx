@@ -44,15 +44,38 @@ const hasMessageBody = (message: Message | null) => {
   return typeof message?.content === "string" || typeof message?.html === "string"
 }
 
+const cacheMessage = (
+  emailId: string,
+  messageId: string,
+  messageType: 'received' | 'sent',
+  message: Message
+) => {
+  const cacheKey = getMessageCacheKey(emailId, messageId, messageType)
+  const currentMessage = messageCache.get(cacheKey)
+  const definedFields = Object.fromEntries(
+    Object.entries(message).filter(([, value]) => value !== undefined)
+  ) as Message
+  const nextMessage = {
+    ...currentMessage,
+    ...definedFields,
+  }
+
+  messageCache.set(cacheKey, nextMessage)
+  return nextMessage
+}
+
 export async function prefetchMessage(
   emailId: string,
   messageId: string,
-  messageType: 'received' | 'sent' = 'received'
+  messageType: 'received' | 'sent' = 'received',
+  initialMessage?: Message
 ) {
   const cacheKey = getMessageCacheKey(emailId, messageId, messageType)
-  const cachedMessage = messageCache.get(cacheKey)
+  const cachedMessage = initialMessage
+    ? cacheMessage(emailId, messageId, messageType, initialMessage)
+    : messageCache.get(cacheKey)
 
-  if (cachedMessage) return cachedMessage
+  if (cachedMessage && hasMessageBody(cachedMessage)) return cachedMessage
 
   const existingRequest = messageRequestCache.get(cacheKey)
   if (existingRequest) return existingRequest
@@ -65,8 +88,7 @@ export async function prefetchMessage(
       }
 
       const data = await response.json() as { message: Message }
-      messageCache.set(cacheKey, data.message)
-      return data.message
+      return cacheMessage(emailId, messageId, messageType, data.message)
     })
     .finally(() => {
       messageRequestCache.delete(cacheKey)

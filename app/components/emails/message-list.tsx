@@ -109,6 +109,7 @@ export function MessageList({ email, messageType, onMessageSelect, onMessagePref
         url.searchParams.set('type', 'sent')
       }
       url.searchParams.set('summary', '1')
+      url.searchParams.set('prefetch', String(PREFETCH_MESSAGE_COUNT))
       if (cursor) {
         url.searchParams.set('cursor', cursor)
       }

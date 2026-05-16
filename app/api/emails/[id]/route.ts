@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server"
 import { createDb } from "@/lib/db"
 import { emailGroups, emails, messages } from "@/lib/schema"
-import { eq, and, lt, or, sql, ne, isNull, desc } from "drizzle-orm"
+import { eq, and, lt, or, sql, ne, isNull, desc, inArray } from "drizzle-orm"
 import { encodeCursor, decodeCursor } from "@/lib/cursor"
 import { getUserId } from "@/lib/apiKey"
 import { checkBasicSendPermission } from "@/lib/send-permissions"
@@ -201,6 +201,10 @@ export async function GET(
   const messageType = searchParams.get('type')
   const summaryOnly = searchParams.get('summary') === '1' || searchParams.get('summary') === 'true'
   const countOnly = searchParams.get('countOnly') === '1' || searchParams.get('countOnly') === 'true'
+  const prefetchParam = Number(searchParams.get('prefetch') ?? 0)
+  const bodyPrefetchCount = summaryOnly && Number.isFinite(prefetchParam)
+    ? Math.min(Math.max(Math.floor(prefetchParam), 0), PAGE_SIZE)
+    : 0
 
   try {
     const db = createDb()
@@ -318,6 +322,29 @@ export async function GET(
         )
       : null
     const messageList = hasMore ? results.slice(0, PAGE_SIZE) : results
+    const prefetchedBodies = new Map<string, { content: string | null; html: string | null }>()
+
+    if (summaryOnly && bodyPrefetchCount > 0 && messageList.length > 0) {
+      const bodyIds = messageList.slice(0, bodyPrefetchCount).map(msg => msg.id)
+      const bodies = await db
+        .select({
+          id: messages.id,
+          content: messages.content,
+          html: messages.html,
+        })
+        .from(messages)
+        .where(and(
+          eq(messages.emailId, id),
+          inArray(messages.id, bodyIds)
+        ))
+
+      bodies.forEach(body => {
+        prefetchedBodies.set(body.id, {
+          content: body.content,
+          html: body.html,
+        })
+      })
+    }
 
     return NextResponse.json({ 
       messages: messageList.map(msg => {
@@ -331,7 +358,19 @@ export async function GET(
           type: msg.type as 'received' | 'sent' | undefined,
         }
 
-        if (summaryOnly) return message
+        if (summaryOnly) {
+          const prefetchedBody = prefetchedBodies.get(msg.id)
+
+          if (prefetchedBody) {
+            return {
+              ...message,
+              content: prefetchedBody.content,
+              html: prefetchedBody.html,
+            }
+          }
+
+          return message
+        }
 
         const fullMessage = msg as typeof messages.$inferSelect
         return {
