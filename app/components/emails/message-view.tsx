@@ -33,20 +33,20 @@ type ViewMode = "html" | "text"
 
 const messageCache = new Map<string, Message>()
 const messageRequestCache = new Map<string, Promise<Message>>()
-const MESSAGE_CACHE_STORAGE_PREFIX = "moemail:message-detail:"
-const MESSAGE_CACHE_INDEX_KEY = `${MESSAGE_CACHE_STORAGE_PREFIX}index`
+const MESSAGE_CACHE_DB_NAME = "moemail-message-cache"
+const MESSAGE_CACHE_DB_VERSION = 1
+const MESSAGE_CACHE_STORE_NAME = "messages"
 const MESSAGE_CACHE_TTL = 7 * 24 * 60 * 60 * 1000
 const MESSAGE_CACHE_MAX_ENTRIES = 100
+const HTML_RENDER_IDLE_TIMEOUT = 300
 
 interface StoredMessage {
+  key: string
   savedAt: number
   message: Message
 }
 
-interface MessageCacheIndexItem {
-  key: string
-  savedAt: number
-}
+let messageCacheDbPromise: Promise<IDBDatabase | null> | null = null
 
 const getMessageCacheKey = (
   emailId: string,
@@ -127,97 +127,134 @@ const pruneMemoryCache = () => {
 
 const canUseStoredCache = () => {
   try {
-    return typeof window !== "undefined" && typeof window.localStorage !== "undefined"
+    return typeof window !== "undefined" && typeof window.indexedDB !== "undefined"
   } catch {
     return false
   }
 }
 
-const getStorageKey = (cacheKey: string) => `${MESSAGE_CACHE_STORAGE_PREFIX}${cacheKey}`
-
-const readCacheIndex = (): MessageCacheIndexItem[] => {
-  if (!canUseStoredCache()) return []
-
-  try {
-    const rawIndex = window.localStorage.getItem(MESSAGE_CACHE_INDEX_KEY)
-    if (!rawIndex) return []
-
-    const parsedIndex = JSON.parse(rawIndex) as MessageCacheIndexItem[]
-    return Array.isArray(parsedIndex) ? parsedIndex : []
-  } catch {
-    return []
-  }
-}
-
-const writeCacheIndex = (index: MessageCacheIndexItem[]) => {
-  if (!canUseStoredCache()) return
-
-  try {
-    window.localStorage.setItem(MESSAGE_CACHE_INDEX_KEY, JSON.stringify(index))
-  } catch {
-    // Cache writes are best-effort; failing here should never block reading mail.
-  }
-}
-
-const pruneStoredCache = (index = readCacheIndex()) => {
-  if (!canUseStoredCache()) return
-
-  const now = Date.now()
-  const sortedIndex = [...index].sort((a, b) => b.savedAt - a.savedAt)
-  const keptIndex = sortedIndex
-    .filter(item => now - item.savedAt <= MESSAGE_CACHE_TTL)
-    .slice(0, MESSAGE_CACHE_MAX_ENTRIES)
-  const keptKeys = new Set(keptIndex.map(item => item.key))
-
-  sortedIndex.forEach(item => {
-    if (!keptKeys.has(item.key)) {
-      window.localStorage.removeItem(getStorageKey(item.key))
-    }
+const requestToPromise = <T,>(request: IDBRequest<T>) => {
+  return new Promise<T>((resolve, reject) => {
+    request.onsuccess = () => resolve(request.result)
+    request.onerror = () => reject(request.error)
   })
-
-  writeCacheIndex(keptIndex)
 }
 
-const readStoredMessage = (cacheKey: string) => {
-  if (!canUseStoredCache()) return null
+const transactionDone = (transaction: IDBTransaction) => {
+  return new Promise<void>((resolve, reject) => {
+    transaction.oncomplete = () => resolve()
+    transaction.onerror = () => reject(transaction.error)
+    transaction.onabort = () => reject(transaction.error)
+  })
+}
+
+const openMessageCacheDb = () => {
+  if (!canUseStoredCache()) return Promise.resolve(null)
+
+  if (!messageCacheDbPromise) {
+    messageCacheDbPromise = new Promise<IDBDatabase | null>((resolve) => {
+      const request = window.indexedDB.open(MESSAGE_CACHE_DB_NAME, MESSAGE_CACHE_DB_VERSION)
+
+      request.onupgradeneeded = () => {
+        const db = request.result
+        const store = db.objectStoreNames.contains(MESSAGE_CACHE_STORE_NAME)
+          ? request.transaction?.objectStore(MESSAGE_CACHE_STORE_NAME)
+          : db.createObjectStore(MESSAGE_CACHE_STORE_NAME, { keyPath: "key" })
+
+        if (store && !store.indexNames.contains("savedAt")) {
+          store.createIndex("savedAt", "savedAt")
+        }
+      }
+
+      request.onsuccess = () => resolve(request.result)
+      request.onerror = () => resolve(null)
+      request.onblocked = () => resolve(null)
+    })
+  }
+
+  return messageCacheDbPromise
+}
+
+const pruneStoredCache = async () => {
+  const db = await openMessageCacheDb()
+  if (!db) return
 
   try {
-    const rawMessage = window.localStorage.getItem(getStorageKey(cacheKey))
-    if (!rawMessage) return null
+    const readTransaction = db.transaction(MESSAGE_CACHE_STORE_NAME, "readonly")
+    const allMessages = await requestToPromise<StoredMessage[]>(
+      readTransaction.objectStore(MESSAGE_CACHE_STORE_NAME).getAll()
+    )
+    const now = Date.now()
+    const sortedMessages = allMessages
+      .filter(item => item?.key && item?.savedAt)
+      .sort((a, b) => b.savedAt - a.savedAt)
+    const keysToDelete = sortedMessages
+      .filter((item, index) => index >= MESSAGE_CACHE_MAX_ENTRIES || now - item.savedAt > MESSAGE_CACHE_TTL)
+      .map(item => item.key)
 
-    const stored = JSON.parse(rawMessage) as StoredMessage
+    if (keysToDelete.length === 0) return
+
+    const writeTransaction = db.transaction(MESSAGE_CACHE_STORE_NAME, "readwrite")
+    const store = writeTransaction.objectStore(MESSAGE_CACHE_STORE_NAME)
+    keysToDelete.forEach(key => store.delete(key))
+    await transactionDone(writeTransaction)
+  } catch {
+    // IndexedDB cache pruning is best-effort.
+  }
+}
+
+const deleteStoredMessage = async (cacheKey: string) => {
+  const db = await openMessageCacheDb()
+  if (!db) return
+
+  try {
+    const transaction = db.transaction(MESSAGE_CACHE_STORE_NAME, "readwrite")
+    transaction.objectStore(MESSAGE_CACHE_STORE_NAME).delete(cacheKey)
+    await transactionDone(transaction)
+  } catch {
+    // Ignore cache delete failures.
+  }
+}
+
+const readStoredMessage = async (cacheKey: string) => {
+  const db = await openMessageCacheDb()
+  if (!db) return null
+
+  try {
+    const transaction = db.transaction(MESSAGE_CACHE_STORE_NAME, "readonly")
+    const stored = await requestToPromise<StoredMessage | undefined>(
+      transaction.objectStore(MESSAGE_CACHE_STORE_NAME).get(cacheKey)
+    )
+
     if (!stored?.savedAt || !stored.message || Date.now() - stored.savedAt > MESSAGE_CACHE_TTL) {
-      window.localStorage.removeItem(getStorageKey(cacheKey))
-      pruneStoredCache()
+      void deleteStoredMessage(cacheKey)
+      void pruneStoredCache()
       return null
     }
 
     return hasMessageBody(stored.message) ? stored.message : null
   } catch {
-    window.localStorage.removeItem(getStorageKey(cacheKey))
     return null
   }
 }
 
-const writeStoredMessage = (cacheKey: string, message: Message) => {
+const writeStoredMessage = async (cacheKey: string, message: Message) => {
   if (!canUseStoredCache() || !hasMessageBody(message)) return
 
-  const savedAt = Date.now()
-  const index = readCacheIndex().filter(item => item.key !== cacheKey)
-  const nextIndex = [{ key: cacheKey, savedAt }, ...index]
-
   try {
-    window.localStorage.setItem(getStorageKey(cacheKey), JSON.stringify({ savedAt, message }))
-    pruneStoredCache(nextIndex)
-  } catch {
-    pruneStoredCache(nextIndex.slice(0, Math.floor(MESSAGE_CACHE_MAX_ENTRIES / 2)))
+    const db = await openMessageCacheDb()
+    if (!db) return
 
-    try {
-      window.localStorage.setItem(getStorageKey(cacheKey), JSON.stringify({ savedAt, message }))
-      writeCacheIndex([{ key: cacheKey, savedAt }, ...readCacheIndex().filter(item => item.key !== cacheKey)])
-    } catch {
-      // Ignore persistent-cache quota failures.
-    }
+    const transaction = db.transaction(MESSAGE_CACHE_STORE_NAME, "readwrite")
+    transaction.objectStore(MESSAGE_CACHE_STORE_NAME).put({
+      key: cacheKey,
+      savedAt: Date.now(),
+      message,
+    } satisfies StoredMessage)
+    await transactionDone(transaction)
+    void pruneStoredCache()
+  } catch {
+    // Ignore persistent-cache failures.
   }
 }
 
@@ -245,7 +282,7 @@ const cacheMessage = (
   pruneMemoryCache()
 
   if (hasMessageBody(nextMessage)) {
-    writeStoredMessage(cacheKey, nextMessage)
+    void writeStoredMessage(cacheKey, nextMessage)
   }
 
   return nextMessage
@@ -264,30 +301,30 @@ export async function prefetchMessage(
 
   if (cachedMessage && hasMessageBody(cachedMessage)) return cachedMessage
 
-  const storedMessage = readStoredMessage(cacheKey)
-  if (storedMessage) {
-    const restoredMessage = cacheMessage(emailId, messageId, messageType, storedMessage)
-    return initialMessage
-      ? cacheMessage(emailId, messageId, messageType, initialMessage)
-      : restoredMessage
-  }
-
   const existingRequest = messageRequestCache.get(cacheKey)
   if (existingRequest) return existingRequest
 
-  const request = fetch(`/api/emails/${emailId}/${messageId}${messageType === 'sent' ? '?type=sent' : ''}`)
-    .then(async (response) => {
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => null) as { error?: string } | null
-        throw new Error(errorData?.error || "Failed to load message")
-      }
+  const request = (async () => {
+    const storedMessage = await readStoredMessage(cacheKey)
+    if (storedMessage) {
+      const restoredMessage = cacheMessage(emailId, messageId, messageType, storedMessage)
+      return initialMessage
+        ? cacheMessage(emailId, messageId, messageType, initialMessage)
+        : restoredMessage
+    }
 
-      const data = await response.json() as { message: Message }
-      return cacheMessage(emailId, messageId, messageType, data.message)
-    })
-    .finally(() => {
-      messageRequestCache.delete(cacheKey)
-    })
+    const response = await fetch(`/api/emails/${emailId}/${messageId}${messageType === 'sent' ? '?type=sent' : ''}`)
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => null) as { error?: string } | null
+      throw new Error(errorData?.error || "Failed to load message")
+    }
+
+    const data = await response.json() as { message: Message }
+    return cacheMessage(emailId, messageId, messageType, data.message)
+  })().finally(() => {
+    messageRequestCache.delete(cacheKey)
+  })
 
   messageRequestCache.set(cacheKey, request)
   return request
@@ -296,17 +333,18 @@ export async function prefetchMessage(
 export function MessageView({ emailId, messageId, messageType = 'received', initialMessage }: MessageViewProps) {
   const t = useTranslations("emails.messageView")
   const cacheKey = getMessageCacheKey(emailId, messageId, messageType)
-  const cachedInitialMessage = messageCache.get(cacheKey) ?? readStoredMessage(cacheKey)
+  const cachedInitialMessage = messageCache.get(cacheKey)
   const firstMessage = cachedInitialMessage ?? initialMessage ?? null
   const [message, setMessage] = useState<Message | null>(firstMessage)
   const [loading, setLoading] = useState(!hasMessageBody(firstMessage))
   const [error, setError] = useState<string | null>(null)
   const [viewMode, setViewMode] = useState<ViewMode>(firstMessage?.html ? "html" : "text")
+  const [htmlReady, setHtmlReady] = useState(false)
   const { toast } = useToast()
 
   useEffect(() => {
     const cacheKey = getMessageCacheKey(emailId, messageId, messageType)
-    const cachedMessage = messageCache.get(cacheKey) ?? readStoredMessage(cacheKey)
+    const cachedMessage = messageCache.get(cacheKey)
     const nextInitialMessage = cachedMessage ?? initialMessage ?? null
     let cancelled = false
 
@@ -359,10 +397,43 @@ export function MessageView({ emailId, messageId, messageType = 'received', init
     }
   }, [emailId, initialMessage, messageId, messageType, toast, t])
 
+  useEffect(() => {
+    setHtmlReady(false)
+
+    if (viewMode !== "html" || !message?.html) return
+
+    let cancelled = false
+    const idleWindow = window as typeof window & {
+      requestIdleCallback?: (callback: () => void, options?: { timeout?: number }) => number
+      cancelIdleCallback?: (handle: number) => void
+    }
+    const markReady = () => {
+      if (!cancelled) {
+        setHtmlReady(true)
+      }
+    }
+
+    if (typeof idleWindow.requestIdleCallback === "function") {
+      const idleHandle = idleWindow.requestIdleCallback(markReady, { timeout: HTML_RENDER_IDLE_TIMEOUT })
+
+      return () => {
+        cancelled = true
+        idleWindow.cancelIdleCallback?.(idleHandle)
+      }
+    }
+
+    const frameHandle = window.requestAnimationFrame(markReady)
+
+    return () => {
+      cancelled = true
+      window.cancelAnimationFrame(frameHandle)
+    }
+  }, [message?.html, message?.id, viewMode])
+
   const htmlDocument = useMemo(() => {
-    if (viewMode !== "html" || !message?.html) return undefined
+    if (viewMode !== "html" || !htmlReady || !message?.html) return undefined
     return buildHtmlDocument(message.html)
-  }, [message?.html, viewMode])
+  }, [htmlReady, message?.html, viewMode])
 
   if (loading && !message) {
     return (
@@ -461,12 +532,23 @@ export function MessageView({ emailId, messageId, messageType = 'received', init
             </button>
           </div>
         ) : viewMode === "html" && message.html ? (
+          htmlDocument ? (
           <iframe
             srcDoc={htmlDocument}
             className="absolute inset-0 w-full h-full border-0 bg-transparent"
             sandbox="allow-same-origin allow-popups"
             title={message.subject}
           />
+          ) : message.content ? (
+            <div className="p-4 text-sm whitespace-pre-wrap">
+              {message.content}
+            </div>
+          ) : (
+            <div className="flex h-full flex-col items-center justify-center px-6 text-center text-sm text-gray-500">
+              <Loader2 className="mb-3 h-8 w-8 animate-spin text-primary/40" />
+              <p>{t("loading")}</p>
+            </div>
+          )
         ) : (
           <div className="p-4 text-sm whitespace-pre-wrap">
             {message.content}

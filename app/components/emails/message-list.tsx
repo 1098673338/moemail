@@ -55,7 +55,7 @@ interface MessageResponse {
 }
 
 type MessageType = 'received' | 'sent'
-const AUTO_PREFETCH_MESSAGE_COUNT = 10
+const AUTO_PREFETCH_MESSAGE_COUNT = 5
 
 export function MessageList({ email, messageType, onMessageSelect, onMessagePrefetch, selectedMessageId, refreshTrigger, emptyStateOffsetClass, onTotalChange, tabControls }: MessageListProps) {
   const t = useTranslations("emails.messages")
