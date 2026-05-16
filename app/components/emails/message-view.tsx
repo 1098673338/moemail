@@ -36,7 +36,7 @@ const messageRequestCache = new Map<string, Promise<Message>>()
 const MESSAGE_CACHE_STORAGE_PREFIX = "moemail:message-detail:"
 const MESSAGE_CACHE_INDEX_KEY = `${MESSAGE_CACHE_STORAGE_PREFIX}index`
 const MESSAGE_CACHE_TTL = 7 * 24 * 60 * 60 * 1000
-const MESSAGE_CACHE_MAX_ENTRIES = 200
+const MESSAGE_CACHE_MAX_ENTRIES = 100
 
 interface StoredMessage {
   savedAt: number
@@ -56,6 +56,14 @@ const getMessageCacheKey = (
 
 const hasMessageBody = (message: Message | null) => {
   return typeof message?.content === "string" || typeof message?.html === "string"
+}
+
+const pruneMemoryCache = () => {
+  while (messageCache.size > MESSAGE_CACHE_MAX_ENTRIES) {
+    const oldestKey = messageCache.keys().next().value as string | undefined
+    if (!oldestKey) return
+    messageCache.delete(oldestKey)
+  }
 }
 
 const canUseStoredCache = () => {
@@ -170,7 +178,12 @@ const cacheMessage = (
     ...definedFields,
   }
 
+  if (currentMessage) {
+    messageCache.delete(cacheKey)
+  }
+
   messageCache.set(cacheKey, nextMessage)
+  pruneMemoryCache()
 
   if (hasMessageBody(nextMessage)) {
     writeStoredMessage(cacheKey, nextMessage)

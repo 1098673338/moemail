@@ -55,7 +55,7 @@ interface MessageResponse {
 }
 
 type MessageType = 'received' | 'sent'
-const PREFETCH_MESSAGE_COUNT = 5
+const AUTO_PREFETCH_MESSAGE_COUNT = 10
 
 export function MessageList({ email, messageType, onMessageSelect, onMessagePrefetch, selectedMessageId, refreshTrigger, emptyStateOffsetClass, onTotalChange, tabControls }: MessageListProps) {
   const t = useTranslations("emails.messages")
@@ -90,13 +90,12 @@ export function MessageList({ email, messageType, onMessageSelect, onMessagePref
     let cancelled = false
 
     const prefetchMessages = async () => {
-      for (let index = 0; index < messages.length; index += PREFETCH_MESSAGE_COUNT) {
+      for (const message of messages.slice(0, AUTO_PREFETCH_MESSAGE_COUNT)) {
         if (cancelled) return
 
-        const batch = messages.slice(index, index + PREFETCH_MESSAGE_COUNT)
-        await Promise.allSettled(
-          batch.map(message => Promise.resolve().then(() => onMessagePrefetch(message.id, messageType, message)))
-        )
+        await Promise.resolve()
+          .then(() => onMessagePrefetch(message.id, messageType, message))
+          .catch(() => undefined)
       }
     }
 
@@ -337,6 +336,7 @@ export function MessageList({ email, messageType, onMessageSelect, onMessagePref
                 onFocus={() => onMessagePrefetch?.(message.id, messageType, message)}
                 onMouseEnter={() => onMessagePrefetch?.(message.id, messageType, message)}
                 onPointerDown={() => onMessagePrefetch?.(message.id, messageType, message)}
+                onContextMenu={() => onMessagePrefetch?.(message.id, messageType, message)}
                 tabIndex={0}
                 className={cn(
                   "py-2 px-3 rounded cursor-pointer text-sm group",
