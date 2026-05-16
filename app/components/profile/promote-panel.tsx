@@ -350,6 +350,14 @@ export function PromotePanel() {
   }
 
   const sharedOverlayOpen = userListOpen || deleteUserDialog.open
+  const handleOverlayClick = () => {
+    if (deleteUserDialog.open) {
+      handleDeleteUserOpenChange(false)
+      return
+    }
+
+    handleUserListOpenChange(false)
+  }
 
   return (
     <div className="bg-background rounded-lg border border-gray-200 p-6">
@@ -461,7 +469,7 @@ export function PromotePanel() {
         </div>
       </div>
 
-      {sharedOverlayOpen && <DialogStaticOverlay />}
+      {sharedOverlayOpen && <DialogStaticOverlay onClick={handleOverlayClick} />}
 
       <Dialog open={userListOpen && !deleteUserDialog.open} onOpenChange={handleUserListOpenChange}>
         <DialogContentWithoutOverlay className="max-w-4xl">

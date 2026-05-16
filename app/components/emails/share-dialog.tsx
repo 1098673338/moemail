@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, type ReactNode } from "react"
+import { useState, useEffect, type PointerEvent, type ReactNode } from "react"
 import { useTranslations } from "next-intl"
 import { Share2, Copy, Trash2 } from "lucide-react"
 import { cn } from "@/lib/utils"
@@ -163,10 +163,23 @@ export function ShareDialog({ emailId, open: controlledOpen, onOpenChange, trigg
   }
 
   const sharedOverlayOpen = open || shareDeleteDialog.open
+  const handleOverlayPointerDown = (event: PointerEvent<HTMLDivElement>) => {
+    event.preventDefault()
+    event.stopPropagation()
+
+    if (shareDeleteDialog.open) {
+      if (!deleting) {
+        shareDeleteDialog.clearNow()
+      }
+      return
+    }
+
+    handleOpenChange(false)
+  }
 
   return (
     <>
-      {sharedOverlayOpen && <DialogStaticOverlay />}
+      {sharedOverlayOpen && <DialogStaticOverlay onPointerDownCapture={handleOverlayPointerDown} />}
 
       <Dialog open={open && !shareDeleteDialog.open} onOpenChange={handleOpenChange}>
         {trigger !== null && (
@@ -180,7 +193,6 @@ export function ShareDialog({ emailId, open: controlledOpen, onOpenChange, trigg
         )}
         <DialogContentWithoutOverlay
           className="w-[calc(100vw-2rem)] max-w-[calc(100vw-2rem)] max-h-[calc(100vh-2rem)] overflow-hidden p-4 sm:max-w-[600px] sm:p-6"
-          onInteractOutside={(e) => e.preventDefault()}
         >
           <DialogHeader>
             <DialogTitle>{t("title")}</DialogTitle>
@@ -333,7 +345,6 @@ export function ShareDialog({ emailId, open: controlledOpen, onOpenChange, trigg
         {deleteTarget && (
           <DialogContentWithoutOverlay
             className="w-[calc(100vw-2rem)] max-w-[calc(100vw-2rem)] max-h-[calc(100vh-2rem)] overflow-hidden p-4 sm:max-w-[400px] sm:p-6"
-            onInteractOutside={(e) => e.preventDefault()}
           >
             <DialogHeader>
               <DialogTitle>{t("deleteConfirm")}</DialogTitle>

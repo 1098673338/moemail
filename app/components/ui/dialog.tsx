@@ -41,7 +41,7 @@ const DialogStaticOverlay = ({
   return createPortal(
     <div
       aria-hidden="true"
-      className={cn("fixed inset-0 z-50 bg-black/80", className)}
+      className={cn("fixed inset-0 z-50 bg-black/80 pointer-events-auto", className)}
       {...props}
     />,
     document.body

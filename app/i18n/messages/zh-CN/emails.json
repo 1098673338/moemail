@@ -67,8 +67,8 @@
   },
   "create": {
     "title": "创建",
-    "standardMode": "邮箱创建",
-    "customMode": "自定义输入",
+    "standardMode": "邮箱",
+    "customMode": "自定义",
     "name": "邮箱前缀",
     "namePlaceholder": "留空则随机生成",
     "customAddressPlaceholder": "请输入内容",

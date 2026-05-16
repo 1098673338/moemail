@@ -85,7 +85,7 @@ export function CreateDialog({ onEmailCreated, selectedGroupId, selectedGroupNam
     setCustomAddress("")
     setCurrentDomain(getDefaultDomain())
     setExpiryTime(DEFAULT_EXPIRY_TIME)
-    setCreateGroupId(UNGROUPED_GROUP_VALUE)
+    setCreateGroupId(getDefaultGroupId())
     setTag("")
     setOpenDropdown(null)
   }
@@ -117,20 +117,13 @@ export function CreateDialog({ onEmailCreated, selectedGroupId, selectedGroupNam
   const handleOpenChange = (nextOpen: boolean) => {
     setOpen(nextOpen)
     if (nextOpen) {
-      setCreateMode("standard")
-      setEmailName("")
-      setCustomAddress("")
-      setCurrentDomain(getDefaultDomain())
-      setExpiryTime(DEFAULT_EXPIRY_TIME)
-      setCreateGroupId(getDefaultGroupId())
-      setTag("")
-      setOpenDropdown(null)
+      resetForm()
       fetchGroups()
       fetchTags()
+      return
     }
-    if (!nextOpen) {
-      resetForm()
-    }
+
+    setOpenDropdown(null)
   }
 
   const copyEmailAddress = () => {
@@ -178,7 +171,7 @@ export function CreateDialog({ onEmailCreated, selectedGroupId, selectedGroupNam
       })
       onEmailCreated()
       setOpen(false)
-      resetForm()
+      setOpenDropdown(null)
     } catch {
       toast({
         title: t("failed"),
