@@ -107,7 +107,7 @@ export function SendDialog({ emailId, fromAddress, onSendSuccess }: SendDialogPr
           </TooltipContent>
         </Tooltip>
       </TooltipProvider>
-      <DialogContent className="sm:max-w-[1200px]">
+      <DialogContent className="sm:max-w-[1000px]">
         <DialogHeader>
           <DialogTitle>{t("title")}</DialogTitle>
         </DialogHeader>
