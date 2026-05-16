@@ -200,10 +200,10 @@ export function CreateDialog({ onEmailCreated, selectedGroupId, selectedGroupNam
       <DialogTrigger asChild>
         <Button
           size="sm"
-          className="h-8 gap-2"
+          className="h-8 gap-1"
         >
           <Plus className="w-4 h-4" />
-          <span className="hidden sm:inline">{t("title")}</span>
+          <span className="hidden sm:inline">{t("create")}</span>
         </Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-[400px]">

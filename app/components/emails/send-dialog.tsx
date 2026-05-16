@@ -95,7 +95,7 @@ export function SendDialog({ emailId, fromAddress, onSendSuccess }: SendDialogPr
             <TooltipTrigger asChild>
               <Button 
                 size="sm"
-                className="h-8 gap-2"
+                className="h-8 gap-1"
               >
                 <Send className="h-4 w-4" />
                 <span className="hidden sm:inline">{t("trigger")}</span>
