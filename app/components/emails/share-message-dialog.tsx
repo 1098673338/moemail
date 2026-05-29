@@ -25,7 +25,7 @@ import {
 import { useToast } from "@/components/ui/use-toast"
 import { useCopy } from "@/hooks/use-copy"
 import { useDeferredDialogTarget } from "@/hooks/use-deferred-dialog-target"
-import { EXPIRY_OPTIONS } from "@/types/email"
+import { SHARE_EXPIRY_OPTIONS } from "@/types/email"
 
 interface ShareMessageDialogProps {
   emailId: string
@@ -52,7 +52,7 @@ export function ShareMessageDialog({ emailId, messageId, messageSubject, trigger
   const [shares, setShares] = useState<ShareLink[]>([])
   const [loading, setLoading] = useState(false)
   const [creating, setCreating] = useState(false)
-  const [expiryTime, setExpiryTime] = useState(EXPIRY_OPTIONS[1].value.toString())
+  const [expiryTime, setExpiryTime] = useState(SHARE_EXPIRY_OPTIONS[1].value.toString())
   const shareDeleteDialog = useDeferredDialogTarget<ShareLink>()
   const deleteTarget = shareDeleteDialog.target
   const [deleting, setDeleting] = useState(false)
@@ -209,7 +209,7 @@ export function ShareMessageDialog({ emailId, messageId, messageSubject, trigger
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    {EXPIRY_OPTIONS.map(option => (
+                    {SHARE_EXPIRY_OPTIONS.map(option => (
                       <SelectItem key={option.value} value={option.value.toString()}>
                         {option.label}
                       </SelectItem>

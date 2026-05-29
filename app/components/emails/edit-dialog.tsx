@@ -232,7 +232,7 @@ export function EditDialog({ email, groups, open, onOpenChange, onEmailUpdated }
                 </SelectTrigger>
                 <SelectContent>
                   {EXPIRY_OPTIONS.map((option, index) => {
-                    const labels = [tCreate("oneHour"), tCreate("oneDay"), tCreate("threeDays"), tCreate("permanent")]
+                    const labels = [tCreate("oneHour"), tCreate("oneDay"), tCreate("threeDays"), tCreate("fifteenDays"), tCreate("thirtyDays"), tCreate("permanent")]
                     return (
                       <SelectItem
                         key={option.value}
