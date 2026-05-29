@@ -47,7 +47,7 @@ export function formatUtcPlus8Date(value: Date | string | number) {
     shiftedDate.getUTCFullYear(),
     padDatePart(shiftedDate.getUTCMonth() + 1),
     padDatePart(shiftedDate.getUTCDate()),
-  ].join("-")
+  ].join("/")
 }
 
 export function formatUtcPlus8DateTimeToMinute(value: Date | string | number) {
