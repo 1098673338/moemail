@@ -386,6 +386,9 @@ export function EmailList({ onEmailSelect, onGroupChange, selectedEmailId, refre
       if (cursor) {
         url.searchParams.set('cursor', cursor)
       }
+      if (!cursor) {
+        url.searchParams.set('all', '1')
+      }
       if (groupId) {
         url.searchParams.set('groupId', groupId)
       }

@@ -14,6 +14,7 @@ export async function GET(request: Request) {
   const { searchParams } = new URL(request.url)
   const cursor = searchParams.get('cursor')
   const groupId = searchParams.get('groupId')
+  const loadAll = searchParams.get('all') === '1'
   const offset = cursor ? Math.max(Number(cursor) || 0, 0) : 0
   
   const db = createDb()
@@ -37,7 +38,7 @@ export async function GET(request: Request) {
       .where(and(...conditions))
     const totalCount = Number(totalResult[0].count)
 
-    const results = await db.select()
+    const query = db.select()
       .from(emails)
       .where(and(...conditions))
       .orderBy(
@@ -46,10 +47,12 @@ export async function GET(request: Request) {
         desc(emails.createdAt),
         desc(emails.id)
       )
-      .limit(PAGE_SIZE + 1)
-      .offset(offset)
+
+    const results = loadAll
+      ? await query
+      : await query.limit(PAGE_SIZE + 1).offset(offset)
     
-    const hasMore = results.length > PAGE_SIZE
+    const hasMore = !loadAll && results.length > PAGE_SIZE
     const nextCursor = hasMore ? String(offset + PAGE_SIZE) : null
     const emailList = hasMore ? results.slice(0, PAGE_SIZE) : results
 

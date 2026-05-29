@@ -2,7 +2,7 @@ import { NextResponse } from "next/server"
 import { createDb } from "@/lib/db"
 import { emailGroups, emails } from "@/lib/schema"
 import { getUserId } from "@/lib/apiKey"
-import { asc, eq, sql } from "drizzle-orm"
+import { and, asc, eq, gt, sql } from "drizzle-orm"
 
 export const runtime = "edge"
 
@@ -25,7 +25,10 @@ export async function GET() {
       emailCount: sql<number>`count(${emails.id})`,
     })
       .from(emailGroups)
-      .leftJoin(emails, eq(emails.groupId, emailGroups.id))
+      .leftJoin(emails, and(
+        eq(emails.groupId, emailGroups.id),
+        gt(emails.expiresAt, new Date())
+      ))
       .where(eq(emailGroups.userId, userId))
       .groupBy(emailGroups.id)
       .orderBy(asc(emailGroups.sortOrder), asc(emailGroups.createdAt), asc(emailGroups.name))
