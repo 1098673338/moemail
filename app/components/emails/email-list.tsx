@@ -41,7 +41,7 @@ import { useUserRole } from "@/hooks/use-user-role"
 import { useConfig } from "@/hooks/use-config"
 import { useCopy } from "@/hooks/use-copy"
 import { EMAIL_CONFIG } from "@/config"
-import { formatUtcPlus8DateTimeToMinute } from "@/lib/date-format"
+import { formatUtcPlus8Date } from "@/lib/date-format"
 
 interface Email {
   id: string
@@ -1127,7 +1127,7 @@ export function EmailList({ onEmailSelect, onGroupChange, selectedEmailId, refre
                     )}
                     {email.isCustom && (
                       <div className="truncate text-xs text-gray-500">
-                        {formatUtcPlus8DateTimeToMinute(email.createdAt)}
+                        {formatUtcPlus8Date(email.createdAt)}
                       </div>
                     )}
                   </div>

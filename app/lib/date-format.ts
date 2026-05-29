@@ -34,6 +34,22 @@ export function formatUtcPlus8DateTime(value: Date | string | number) {
   ].join(":")
 }
 
+export function formatUtcPlus8Date(value: Date | string | number) {
+  const date = new Date(value)
+
+  if (isNaN(date.getTime())) {
+    return ""
+  }
+
+  const shiftedDate = new Date(date.getTime() + UTC_PLUS_8_OFFSET_MS)
+
+  return [
+    shiftedDate.getUTCFullYear(),
+    padDatePart(shiftedDate.getUTCMonth() + 1),
+    padDatePart(shiftedDate.getUTCDate()),
+  ].join("-")
+}
+
 export function formatUtcPlus8DateTimeToMinute(value: Date | string | number) {
   const date = new Date(value)
 
