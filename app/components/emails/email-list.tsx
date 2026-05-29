@@ -41,6 +41,7 @@ import { useUserRole } from "@/hooks/use-user-role"
 import { useConfig } from "@/hooks/use-config"
 import { useCopy } from "@/hooks/use-copy"
 import { EMAIL_CONFIG } from "@/config"
+import { formatUtcPlus8DateTimeToMinute } from "@/lib/date-format"
 
 interface Email {
   id: string
@@ -702,7 +703,7 @@ export function EmailList({ onEmailSelect, onGroupChange, selectedEmailId, refre
         },
         body: JSON.stringify({ groupId }),
       })
-      const data = await response.json() as { error?: string }
+      const data = await response.json() as { email?: Email; error?: string }
 
       if (!response.ok) {
         toast({
@@ -728,9 +729,11 @@ export function EmailList({ onEmailSelect, onGroupChange, selectedEmailId, refre
         return group
       }))
 
+      const updatedEmail = data.email ?? { ...email, groupId }
+
       setEmails(prev => {
         const updated = prev.map(item => (
-          item.id === email.id ? { ...item, groupId } : item
+          item.id === email.id ? updatedEmail : item
         ))
 
         return staysVisible ? updated : updated.filter(item => item.id !== email.id)
@@ -1120,6 +1123,11 @@ export function EmailList({ onEmailSelect, onGroupChange, selectedEmailId, refre
                         ) : (
                           `${t("expiresAt")}: ${new Date(email.expiresAt).toLocaleString()}`
                         )}
+                      </div>
+                    )}
+                    {email.isCustom && (
+                      <div className="truncate text-xs text-gray-500">
+                        {t("createdAt")}: {formatUtcPlus8DateTimeToMinute(email.createdAt)}
                       </div>
                     )}
                   </div>

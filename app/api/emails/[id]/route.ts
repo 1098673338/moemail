@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server"
 import { createDb } from "@/lib/db"
 import { emailGroups, emails, messages } from "@/lib/schema"
-import { eq, and, lt, or, sql, ne, isNull, desc } from "drizzle-orm"
+import { eq, and, lt, or, sql, ne, isNull, desc, gt } from "drizzle-orm"
 import { encodeCursor, decodeCursor } from "@/lib/cursor"
 import { getUserId } from "@/lib/apiKey"
 import { checkBasicSendPermission } from "@/lib/send-permissions"
@@ -138,6 +138,27 @@ export async function PATCH(
 
     if (hasGroupId) {
       updateData.groupId = selectedGroupId
+
+      if ((email.groupId ?? null) !== selectedGroupId) {
+        const targetGroupConditions = [
+          eq(emails.userId, userId),
+          gt(emails.expiresAt, new Date()),
+        ]
+
+        if (selectedGroupId) {
+          targetGroupConditions.push(eq(emails.groupId, selectedGroupId))
+        } else {
+          targetGroupConditions.push(isNull(emails.groupId))
+        }
+
+        const [minSortOrderRow] = await db.select({
+          sortOrder: sql<number>`coalesce(min(${emails.sortOrder}), 0)`,
+        })
+          .from(emails)
+          .where(and(...targetGroupConditions))
+
+        updateData.sortOrder = Number(minSortOrderRow?.sortOrder ?? 0) - 1
+      }
     }
 
     if (hasTag) {
