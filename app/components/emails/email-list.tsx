@@ -1127,7 +1127,7 @@ export function EmailList({ onEmailSelect, onGroupChange, selectedEmailId, refre
                     )}
                     {email.isCustom && (
                       <div className="truncate text-xs text-gray-500">
-                        {t("createdAt")}: {formatUtcPlus8DateTimeToMinute(email.createdAt)}
+                        {formatUtcPlus8DateTimeToMinute(email.createdAt)}
                       </div>
                     )}
                   </div>
