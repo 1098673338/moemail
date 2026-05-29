@@ -1120,11 +1120,16 @@ export function EmailList({ onEmailSelect, onGroupChange, selectedEmailId, refre
                       )}
                     </div>
                     {!email.isCustom && (
-                      <div className="truncate text-xs text-gray-500">
+                      <div className={cn(
+                        "truncate text-xs",
+                        new Date(email.expiresAt).getFullYear() === 9999
+                          ? "text-gray-500"
+                          : "text-destructive"
+                      )}>
                         {new Date(email.expiresAt).getFullYear() === 9999 ? (
                           t("permanent")
                         ) : (
-                          `${t("expiresAt")}: ${new Date(email.expiresAt).toLocaleString()}`
+                          new Date(email.expiresAt).toLocaleString()
                         )}
                       </div>
                     )}
