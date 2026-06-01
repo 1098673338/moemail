@@ -41,7 +41,7 @@ import { useUserRole } from "@/hooks/use-user-role"
 import { useConfig } from "@/hooks/use-config"
 import { useCopy } from "@/hooks/use-copy"
 import { EMAIL_CONFIG } from "@/config"
-import { formatUtcPlus8Date, formatUtcPlus8DateTime, isPermanentDate } from "@/lib/date-format"
+import { formatUtcPlus8Date, formatUtcPlus8DateTime } from "@/lib/date-format"
 
 interface Email {
   id: string
@@ -441,16 +441,14 @@ export function EmailList({ onEmailSelect, onGroupChange, selectedEmailId, refre
     return groups.find(group => group.id === selectedGroupId)?.name || tGroups("all")
   }
 
-  const getExportEmailGroupName = (email: Email) => {
-    if (selectedGroupId !== null) return getSelectedGroupName()
-    if (!email.groupId) return tGroups("ungrouped")
-
-    return groups.find(group => group.id === email.groupId)?.name || ""
-  }
-
   const sanitizeFileName = (value: string) => {
     const sanitized = value.trim().replace(/[\\/:*?"<>|]+/g, "-").replace(/\s+/g, "-")
     return sanitized || "emails"
+  }
+
+  const formatExportAddedTime = (value: Date | string | number) => {
+    const formattedTime = formatUtcPlus8DateTime(value)
+    return formattedTime ? `${formattedTime} UTC+8` : ""
   }
 
   const escapeCsvValue = (value: string | number | null | undefined) => {
@@ -497,27 +495,16 @@ export function EmailList({ onEmailSelect, onGroupChange, selectedEmailId, refre
       }
 
       const groupName = getSelectedGroupName()
+      const hasCustomEmails = data.emails.some(email => email.isCustom)
       const rows = [
-        [
-          tGroups("exportHeaderType"),
-          tGroups("exportHeaderContent"),
-          tGroups("exportHeaderTag"),
-          tGroups("exportHeaderGroup"),
-          tGroups("exportHeaderCreatedAt"),
-          tGroups("exportHeaderExpiresAt"),
-          "ID",
-        ],
-        ...data.emails.map(email => [
-          email.isCustom ? tGroups("exportTypeCustom") : tGroups("exportTypeEmail"),
-          email.address,
-          email.tag ?? "",
-          getExportEmailGroupName(email),
-          formatUtcPlus8DateTime(email.createdAt),
-          email.isCustom
-            ? ""
-            : isPermanentDate(email.expiresAt) ? t("permanent") : formatUtcPlus8DateTime(email.expiresAt),
-          email.id,
-        ]),
+        hasCustomEmails
+          ? [tGroups("exportHeaderContent"), tGroups("exportHeaderAddedAt")]
+          : [tGroups("exportHeaderContent")],
+        ...data.emails.map(email => (
+          hasCustomEmails
+            ? [email.address, email.isCustom ? formatExportAddedTime(email.createdAt) : ""]
+            : [email.address]
+        )),
       ]
       const timestamp = formatUtcPlus8DateTime(Date.now()).replace(/[: ]/g, "-")
       const filename = `${sanitizeFileName(groupName)}-${timestamp}.csv`
