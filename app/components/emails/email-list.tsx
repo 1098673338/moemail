@@ -5,7 +5,7 @@ import { useSession } from "next-auth/react"
 import { useTranslations } from "next-intl"
 import { ShareDialog } from "./share-dialog"
 import { EditDialog } from "./edit-dialog"
-import { AtSign, Check, Copy, Folder, FolderOpen, FolderPlus, GripVertical, Loader2, MoreHorizontal, Pencil, RefreshCw, Share2, Trash2 } from "lucide-react"
+import { AtSign, Check, Copy, Download, Folder, FolderOpen, FolderPlus, GripVertical, Loader2, MoreHorizontal, Pencil, RefreshCw, Share2, Trash2 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -41,7 +41,7 @@ import { useUserRole } from "@/hooks/use-user-role"
 import { useConfig } from "@/hooks/use-config"
 import { useCopy } from "@/hooks/use-copy"
 import { EMAIL_CONFIG } from "@/config"
-import { formatUtcPlus8Date } from "@/lib/date-format"
+import { formatUtcPlus8Date, formatUtcPlus8DateTime, isPermanentDate } from "@/lib/date-format"
 
 interface Email {
   id: string
@@ -122,6 +122,7 @@ export function EmailList({ onEmailSelect, onGroupChange, selectedEmailId, refre
     position: DropPosition
   } | null>(null)
   const [savingEmailOrder, setSavingEmailOrder] = useState(false)
+  const [exportingEmails, setExportingEmails] = useState(false)
   const { toast } = useToast()
   const { copyToClipboard } = useCopy()
   const maxEmailsLimit = config?.maxEmails
@@ -430,6 +431,108 @@ export function EmailList({ onEmailSelect, onGroupChange, selectedEmailId, refre
       setLoading(false)
       setRefreshing(false)
       setLoadingMore(false)
+    }
+  }
+
+  const getSelectedGroupName = () => {
+    if (selectedGroupId === null) return tGroups("all")
+    if (selectedGroupId === "none") return tGroups("ungrouped")
+
+    return groups.find(group => group.id === selectedGroupId)?.name || tGroups("all")
+  }
+
+  const getExportEmailGroupName = (email: Email) => {
+    if (selectedGroupId !== null) return getSelectedGroupName()
+    if (!email.groupId) return tGroups("ungrouped")
+
+    return groups.find(group => group.id === email.groupId)?.name || ""
+  }
+
+  const sanitizeFileName = (value: string) => {
+    const sanitized = value.trim().replace(/[\\/:*?"<>|]+/g, "-").replace(/\s+/g, "-")
+    return sanitized || "emails"
+  }
+
+  const escapeCsvValue = (value: string | number | null | undefined) => {
+    const text = String(value ?? "")
+
+    if (/[",\r\n]/.test(text)) {
+      return `"${text.replace(/"/g, '""')}"`
+    }
+
+    return text
+  }
+
+  const downloadCsv = (filename: string, rows: string[][]) => {
+    const csv = rows
+      .map(row => row.map(escapeCsvValue).join(","))
+      .join("\r\n")
+    const blob = new Blob([`\uFEFF${csv}`], { type: "text/csv;charset=utf-8" })
+    const url = window.URL.createObjectURL(blob)
+    const link = document.createElement("a")
+
+    link.href = url
+    link.download = filename
+    document.body.appendChild(link)
+    link.click()
+    link.remove()
+    window.URL.revokeObjectURL(url)
+  }
+
+  const exportSelectedGroupEmails = async () => {
+    setExportingEmails(true)
+
+    try {
+      const url = new URL("/api/emails", window.location.origin)
+      url.searchParams.set("all", "1")
+      if (selectedGroupId) {
+        url.searchParams.set("groupId", selectedGroupId)
+      }
+
+      const response = await fetch(url)
+      const data = await response.json().catch(() => ({})) as Partial<EmailResponse> & { error?: string }
+
+      if (!response.ok || !Array.isArray(data.emails)) {
+        throw new Error(data.error || tGroups("exportFailed"))
+      }
+
+      const groupName = getSelectedGroupName()
+      const rows = [
+        [
+          tGroups("exportHeaderType"),
+          tGroups("exportHeaderContent"),
+          tGroups("exportHeaderTag"),
+          tGroups("exportHeaderGroup"),
+          tGroups("exportHeaderCreatedAt"),
+          tGroups("exportHeaderExpiresAt"),
+          "ID",
+        ],
+        ...data.emails.map(email => [
+          email.isCustom ? tGroups("exportTypeCustom") : tGroups("exportTypeEmail"),
+          email.address,
+          email.tag ?? "",
+          getExportEmailGroupName(email),
+          formatUtcPlus8DateTime(email.createdAt),
+          email.isCustom
+            ? ""
+            : isPermanentDate(email.expiresAt) ? t("permanent") : formatUtcPlus8DateTime(email.expiresAt),
+          email.id,
+        ]),
+      ]
+      const timestamp = formatUtcPlus8DateTime(Date.now()).replace(/[: ]/g, "-")
+      const filename = `${sanitizeFileName(groupName)}-${timestamp}.csv`
+
+      downloadCsv(filename, rows)
+      toast({
+        title: tGroups("exportSuccess", { count: data.emails.length }),
+      })
+    } catch (error) {
+      toast({
+        title: error instanceof Error ? error.message : tGroups("exportFailed"),
+        variant: "destructive",
+      })
+    } finally {
+      setExportingEmails(false)
     }
   }
 
@@ -920,6 +1023,20 @@ export function EmailList({ onEmailSelect, onGroupChange, selectedEmailId, refre
                 <Check className="h-4 w-4" />
               ) : (
                 <GripVertical className="h-4 w-4" />
+              )}
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={exportSelectedGroupEmails}
+              disabled={exportingEmails || loading || refreshing || total === 0}
+              className="h-8 w-8"
+              aria-label={tGroups("export")}
+            >
+              {exportingEmails ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Download className="h-4 w-4" />
               )}
             </Button>
           </div>

@@ -63,6 +63,17 @@
     "sortDone": "完成排序",
     "sortHandle": "拖拽排序",
     "sortFailed": "保存排序失败",
+    "export": "导出当前分组",
+    "exportSuccess": "已导出 {count} 条内容",
+    "exportFailed": "导出失败",
+    "exportTypeEmail": "邮箱",
+    "exportTypeCustom": "自定义内容",
+    "exportHeaderType": "类型",
+    "exportHeaderContent": "内容",
+    "exportHeaderTag": "标签",
+    "exportHeaderGroup": "分组",
+    "exportHeaderCreatedAt": "创建时间",
+    "exportHeaderExpiresAt": "过期时间",
     "noGroups": "暂无分组"
   },
   "create": {
