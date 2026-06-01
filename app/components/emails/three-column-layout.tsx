@@ -1,6 +1,6 @@
 "use client"
 
-import { useCallback, useState } from "react"
+import { useCallback, useEffect, useMemo, useState } from "react"
 import { useTranslations } from "next-intl"
 import { EmailList } from "./email-list"
 import { MessageListContainer } from "./message-list-container"
@@ -8,8 +8,10 @@ import { MessageView, prefetchMessage } from "./message-view"
 import { CreateDialog } from "./create-dialog"
 import { SendDialog } from "./send-dialog"
 import { useCopy } from "@/hooks/use-copy"
+import { useConfig } from "@/hooks/use-config"
 import { useSendPermission } from "@/hooks/use-send-permission"
 import { Copy, Inbox, MailOpen } from "lucide-react"
+import { findCustomEmailSiteForContent } from "@/lib/custom-email-sites"
 
 interface Email {
   id: string
@@ -40,7 +42,9 @@ export function ThreeColumnLayout() {
   const [selectedGroupName, setSelectedGroupName] = useState<string | undefined>()
   const [refreshTrigger, setRefreshTrigger] = useState(0)
   const [emailRefreshTrigger, setEmailRefreshTrigger] = useState(0)
+  const [openedCustomSiteDomains, setOpenedCustomSiteDomains] = useState<string[]>([])
   const { copyToClipboard } = useCopy()
+  const { config } = useConfig()
   const { canSend: canSendEmails, loading: sendPermissionLoading } = useSendPermission()
 
   const columnClass = "min-h-0 border border-gray-200 bg-background rounded-lg overflow-hidden flex flex-col"
@@ -51,6 +55,24 @@ export function ThreeColumnLayout() {
   const messageListColumnStyle = { gridColumn: "span 6 / span 6" }
   const contentColumnStyle = { gridColumn: "span 14 / span 14" }
   const showMessageList = Boolean(selectedEmail && !selectedEmail.isCustom)
+  const customEmailSite = selectedEmail?.isCustom
+    ? findCustomEmailSiteForContent(selectedEmail.address, config?.customEmailSites ?? [])
+    : null
+  const showCustomEmailSite = Boolean(customEmailSite)
+  const customEmailSiteColumnStyle = { gridColumn: "span 20 / span 20" }
+  const openedCustomSites = useMemo(() => (
+    openedCustomSiteDomains
+      .map(domain => config?.customEmailSites.find(site => site.domain === domain))
+      .filter((site): site is NonNullable<typeof site> => Boolean(site))
+  ), [config?.customEmailSites, openedCustomSiteDomains])
+
+  useEffect(() => {
+    if (!customEmailSite) return
+
+    setOpenedCustomSiteDomains(prev => (
+      prev.includes(customEmailSite.domain) ? prev : [...prev, customEmailSite.domain]
+    ))
+  }, [customEmailSite])
 
   const copyEmailAddress = () => {
     copyToClipboard(selectedEmail?.address || "")
@@ -119,6 +141,7 @@ export function ThreeColumnLayout() {
           </div>
         </div>
 
+        {!showCustomEmailSite && (
         <div className={columnClass} style={messageListColumnStyle}>
           <div className={headerClass}>
             <h2 className={showMessageList ? actionTitleClass : titleClass}>
@@ -165,9 +188,20 @@ export function ThreeColumnLayout() {
             </div>
           )}
         </div>
+        )}
 
-        <div className={columnClass} style={contentColumnStyle}>
-          {selectedEmail && selectedMessageId ? (
+        <div className={columnClass} style={showCustomEmailSite ? customEmailSiteColumnStyle : contentColumnStyle}>
+          <div className={showCustomEmailSite ? "relative min-h-0 flex-1 overflow-hidden bg-white" : "hidden"}>
+            {openedCustomSites.map(site => (
+              <iframe
+                key={site.domain}
+                src={site.url}
+                title={site.domain}
+                className={site.domain === customEmailSite?.domain ? "h-full w-full border-0" : "hidden"}
+              />
+            ))}
+          </div>
+          {!showCustomEmailSite && selectedEmail && selectedMessageId ? (
             <div className="min-h-0 flex-1 overflow-auto">
               <MessageView
                 emailId={selectedEmail.id}
@@ -183,7 +217,7 @@ export function ThreeColumnLayout() {
                 }}
               />
             </div>
-          ) : (
+          ) : !showCustomEmailSite && (
             <div className="flex flex-1 flex-col items-center justify-center px-6 text-center text-muted-foreground">
               <MailOpen className="mb-3 h-8 w-8 text-primary/40" />
               <p className="text-sm">{t("selectMessage")}</p>

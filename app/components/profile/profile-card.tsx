@@ -12,6 +12,7 @@ import { EmailServiceConfig, type EmailServiceConfigData } from "./email-service
 import { hasPermission, PERMISSIONS, Permission, Role, ROLES } from "@/lib/permissions"
 import { WebsiteConfigPanel, type WebsiteConfigData } from "./website-config-panel"
 import { ApiKeyPanel, type ApiKeyData } from "./api-key-panel"
+import { CustomEmailSitesConfig, type CustomEmailSitesConfigData } from "./custom-email-sites-config"
 import { EMAIL_CONFIG } from "@/config"
 import { useEffect, useState } from "react"
 
@@ -76,6 +77,10 @@ const defaultEmailServiceConfig: EmailServiceConfigData = {
   apiKey: "",
 }
 
+const defaultCustomEmailSitesConfig: CustomEmailSitesConfigData = {
+  sites: [],
+}
+
 const defaultWebhookConfig: WebhookConfigData = {
   enabled: false,
   url: "",
@@ -86,6 +91,7 @@ const defaultApiKeys: ApiKeyData[] = []
 type SettingsData = {
   webhookConfig: WebhookConfigData | null
   websiteConfig: WebsiteConfigData | null
+  customEmailSitesConfig: CustomEmailSitesConfigData | null
   emailServiceConfig: EmailServiceConfigData | null
   apiKeys: ApiKeyData[]
 }
@@ -133,13 +139,16 @@ export function ProfileCard({ user }: ProfileCardProps) {
           }
         }
 
-        const [webhookData, websiteData, emailServiceData, apiKeyData] = await Promise.all([
+        const [webhookData, websiteData, customEmailSitesData, emailServiceData, apiKeyData] = await Promise.all([
           canManageWebhook
             ? fetchConfig<WebhookConfigData>("/api/webhook", defaultWebhookConfig)
             : Promise.resolve<WebhookConfigData | null>(null),
           shouldLoadSiteConfig
             ? fetchConfig<WebsiteConfigData>("/api/config", defaultWebsiteConfig)
             : Promise.resolve<WebsiteConfigData | null>(null),
+          canManageConfig
+            ? fetchConfig<CustomEmailSitesConfigData>("/api/config/custom-email-sites", defaultCustomEmailSitesConfig)
+            : Promise.resolve<CustomEmailSitesConfigData | null>(null),
           canManageConfig
             ? fetchConfig<EmailServiceConfigData>("/api/config/email-service", defaultEmailServiceConfig)
             : Promise.resolve<EmailServiceConfigData | null>(null),
@@ -152,6 +161,7 @@ export function ProfileCard({ user }: ProfileCardProps) {
           setSettingsData({
             webhookConfig: webhookData,
             websiteConfig: websiteData,
+            customEmailSitesConfig: customEmailSitesData,
             emailServiceConfig: emailServiceData,
             apiKeys: apiKeyData.apiKeys,
           })
@@ -162,6 +172,7 @@ export function ProfileCard({ user }: ProfileCardProps) {
           setSettingsData({
             webhookConfig: canManageWebhook ? defaultWebhookConfig : null,
             websiteConfig: shouldLoadSiteConfig ? defaultWebsiteConfig : null,
+            customEmailSitesConfig: canManageConfig ? defaultCustomEmailSitesConfig : null,
             emailServiceConfig: canManageConfig ? defaultEmailServiceConfig : null,
             apiKeys: defaultApiKeys,
           })
@@ -182,6 +193,7 @@ export function ProfileCard({ user }: ProfileCardProps) {
 
   const webhookConfig = settingsData?.webhookConfig ?? null
   const websiteConfig = settingsData?.websiteConfig ?? null
+  const customEmailSitesConfig = settingsData?.customEmailSitesConfig ?? null
   const emailServiceConfig = settingsData?.emailServiceConfig ?? null
   const apiKeys = settingsData?.apiKeys ?? defaultApiKeys
 
@@ -270,9 +282,10 @@ export function ProfileCard({ user }: ProfileCardProps) {
         </div>
       )}
 
-      {canManageConfig && websiteConfig && emailServiceConfig && (
+      {canManageConfig && websiteConfig && customEmailSitesConfig && emailServiceConfig && (
         <>
           <WebsiteConfigPanel initialConfig={websiteConfig} />
+          <CustomEmailSitesConfig initialConfig={customEmailSitesConfig} />
           <EmailServiceConfig initialConfig={emailServiceConfig} />
         </>
       )}

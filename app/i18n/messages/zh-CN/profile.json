@@ -126,6 +126,19 @@
     "saveFailed": "保存配置失败",
     "maxEmailsInvalid": "每个用户最大邮箱数必须留空或填写 0 到 9999 之间的整数，留空表示不能创建，9999 表示无限制"
   },
+  "customEmailSites": {
+    "title": "自定义邮箱网页嵌入",
+    "domainPlaceholder": "如 icloud.com / @icloud.com",
+    "urlPlaceholder": "嵌入网页URL",
+    "add": "添加域名",
+    "remove": "删除域名",
+    "save": "保存配置",
+    "saving": "保存中...",
+    "saveSuccess": "自定义邮箱配置已保存",
+    "saveFailed": "保存自定义邮箱配置失败",
+    "missingFields": "请完整填写域名后缀和网页 URL",
+    "invalidUrl": "网页 URL 必须以 http:// 或 https:// 开头"
+  },
   "promote": {
     "title": "用户管理",
     "description": "管理用户角色（仅皇帝可用）",

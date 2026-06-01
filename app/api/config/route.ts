@@ -6,6 +6,7 @@ import { createDb } from "@/lib/db"
 import { getUserId } from "@/lib/apiKey"
 import { users } from "@/lib/schema"
 import { eq } from "drizzle-orm"
+import { CUSTOM_EMAIL_SITES_CONFIG_KEY, parseCustomEmailSites } from "@/lib/custom-email-sites"
 
 export const runtime = "edge"
 
@@ -21,7 +22,8 @@ export async function GET() {
     registrationEnabled,
     turnstileEnabled,
     turnstileSiteKey,
-    turnstileSecretKey
+    turnstileSecretKey,
+    customEmailSites
   ] = await Promise.all([
     env.SITE_CONFIG.get("DEFAULT_ROLE"),
     env.SITE_CONFIG.get("EMAIL_DOMAINS"),
@@ -30,7 +32,8 @@ export async function GET() {
     env.SITE_CONFIG.get("REGISTRATION_ENABLED"),
     env.SITE_CONFIG.get("TURNSTILE_ENABLED"),
     env.SITE_CONFIG.get("TURNSTILE_SITE_KEY"),
-    env.SITE_CONFIG.get("TURNSTILE_SECRET_KEY")
+    env.SITE_CONFIG.get("TURNSTILE_SECRET_KEY"),
+    env.SITE_CONFIG.get(CUSTOM_EMAIL_SITES_CONFIG_KEY)
   ])
 
   const parsedMaxEmails = maxEmails && maxEmails.trim() !== "" ? Number(maxEmails) : NaN
@@ -58,6 +61,7 @@ export async function GET() {
     maxEmails: globalMaxEmails.toString(),
     effectiveMaxEmails,
     registrationEnabled: registrationEnabled !== "false",
+    customEmailSites: parseCustomEmailSites(customEmailSites),
     turnstile: canManageConfig ? {
       enabled: turnstileEnabled === "true",
       siteKey: turnstileSiteKey || "",

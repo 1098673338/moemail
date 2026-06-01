@@ -4,6 +4,7 @@ import { create } from "zustand"
 import { Role, ROLES } from "@/lib/permissions"
 import { EMAIL_CONFIG } from "@/config"
 import { useEffect } from "react"
+import { CustomEmailSite } from "@/lib/custom-email-sites"
 
 interface Config {
   defaultRole: Exclude<Role, typeof ROLES.EMPEROR>
@@ -11,6 +12,7 @@ interface Config {
   emailDomainsArray: string[]
   adminContact: string
   maxEmails: number
+  customEmailSites: CustomEmailSite[]
 }
 
 interface ConfigResponse extends Omit<Config, "maxEmails" | "emailDomainsArray"> {
@@ -44,7 +46,8 @@ const useConfigStore = create<ConfigStore>((set) => ({
           adminContact: data.adminContact || "",
           maxEmails: Number.isInteger(parsedMaxEmails) && parsedMaxEmails >= 0
             ? parsedMaxEmails
-            : EMAIL_CONFIG.MAX_ACTIVE_EMAILS
+            : EMAIL_CONFIG.MAX_ACTIVE_EMAILS,
+          customEmailSites: Array.isArray(data.customEmailSites) ? data.customEmailSites : []
         },
         loading: false
       })
