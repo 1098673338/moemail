@@ -1,6 +1,6 @@
 "use client"
 
-import { useCallback, useState } from "react"
+import { useCallback, useEffect, useState } from "react"
 import { useTranslations } from "next-intl"
 import { EmailList } from "./email-list"
 import { MessageListContainer } from "./message-list-container"
@@ -9,7 +9,8 @@ import { CreateDialog } from "./create-dialog"
 import { SendDialog } from "./send-dialog"
 import { useCopy } from "@/hooks/use-copy"
 import { useSendPermission } from "@/hooks/use-send-permission"
-import { Copy, Inbox, MailOpen } from "lucide-react"
+import { Button } from "@/components/ui/button"
+import { Copy, Inbox, MailOpen, RefreshCw } from "lucide-react"
 
 interface Email {
   id: string
@@ -18,6 +19,13 @@ interface Email {
 }
 
 type MessageType = 'received' | 'sent'
+
+interface ExternalMailAccount {
+  id: string
+  emailId: string
+  emailAddress: string
+  lastSyncAt: number | null
+}
 
 interface MessageSummary {
   id: string
@@ -40,6 +48,8 @@ export function ThreeColumnLayout() {
   const [selectedGroupName, setSelectedGroupName] = useState<string | undefined>()
   const [refreshTrigger, setRefreshTrigger] = useState(0)
   const [emailRefreshTrigger, setEmailRefreshTrigger] = useState(0)
+  const [externalMailAccount, setExternalMailAccount] = useState<ExternalMailAccount | null>(null)
+  const [externalMailSyncing, setExternalMailSyncing] = useState(false)
   const { copyToClipboard } = useCopy()
   const { canSend: canSendEmails, loading: sendPermissionLoading } = useSendPermission()
 
@@ -51,6 +61,38 @@ export function ThreeColumnLayout() {
   const messageListColumnStyle = { gridColumn: "span 6 / span 6" }
   const contentColumnStyle = { gridColumn: "span 14 / span 14" }
   const showMessageList = Boolean(selectedEmail && !selectedEmail.isCustom)
+
+  useEffect(() => {
+    let cancelled = false
+
+    const loadExternalMailAccount = async () => {
+      if (!selectedEmail?.id) {
+        setExternalMailAccount(null)
+        return
+      }
+
+      try {
+        const response = await fetch(`/api/external-mail/accounts?emailId=${encodeURIComponent(selectedEmail.id)}`)
+        const data = await response.json().catch(() => ({})) as {
+          accounts?: ExternalMailAccount[]
+        }
+
+        if (!cancelled) {
+          setExternalMailAccount(response.ok ? data.accounts?.[0] ?? null : null)
+        }
+      } catch {
+        if (!cancelled) {
+          setExternalMailAccount(null)
+        }
+      }
+    }
+
+    loadExternalMailAccount()
+
+    return () => {
+      cancelled = true
+    }
+  }, [selectedEmail?.id])
 
   const copyEmailAddress = () => {
     copyToClipboard(selectedEmail?.address || "")
@@ -80,6 +122,32 @@ export function ThreeColumnLayout() {
   const handleEmailListRefresh = () => {
     if (selectedEmail) {
       setRefreshTrigger(prev => prev + 1)
+    }
+  }
+
+  const syncExternalMail = async () => {
+    if (!externalMailAccount) return
+
+    setExternalMailSyncing(true)
+
+    try {
+      const response = await fetch(`/api/external-mail/accounts/${externalMailAccount.id}/sync`, {
+        method: "POST",
+      })
+      const data = await response.json().catch(() => ({})) as {
+        error?: string
+      }
+
+      if (!response.ok) {
+        throw new Error(data.error || "同步外部邮箱失败")
+      }
+
+      setRefreshTrigger(prev => prev + 1)
+      setExternalMailAccount(prev => prev ? { ...prev, lastSyncAt: Date.now() } : prev)
+    } catch (error) {
+      console.error("Failed to sync external mail:", error)
+    } finally {
+      setExternalMailSyncing(false)
     }
   }
 
@@ -139,6 +207,19 @@ export function ThreeColumnLayout() {
                       fromAddress={selectedEmail.address}
                       onSendSuccess={handleSendSuccess}
                     />
+                  )}
+                  {externalMailAccount && (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="icon"
+                      className="h-8 w-8 shrink-0"
+                      onClick={syncExternalMail}
+                      disabled={externalMailSyncing}
+                      aria-label="同步外部邮箱"
+                    >
+                      <RefreshCw className={externalMailSyncing ? "h-4 w-4 animate-spin" : "h-4 w-4"} />
+                    </Button>
                   )}
                 </div>
               ) : (

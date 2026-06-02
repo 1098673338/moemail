@@ -12,6 +12,7 @@ import { EmailServiceConfig, type EmailServiceConfigData } from "./email-service
 import { hasPermission, PERMISSIONS, Permission, Role, ROLES } from "@/lib/permissions"
 import { WebsiteConfigPanel, type WebsiteConfigData } from "./website-config-panel"
 import { ApiKeyPanel, type ApiKeyData } from "./api-key-panel"
+import { ExternalMailPanel } from "./external-mail-panel"
 import { EMAIL_CONFIG } from "@/config"
 import { useEffect, useState } from "react"
 
@@ -104,6 +105,7 @@ export function ProfileCard({ user }: ProfileCardProps) {
   const canPromote = checkPermission(PERMISSIONS.PROMOTE_USER)
   const canManageConfig = checkPermission(PERMISSIONS.MANAGE_CONFIG)
   const canManageApiKey = checkPermission(PERMISSIONS.MANAGE_API_KEY)
+  const canManageEmail = checkPermission(PERMISSIONS.MANAGE_EMAIL)
   const shouldShowApiKeyPanel = canManageWebhook || canManageApiKey
   const shouldLoadSiteConfig = canManageConfig || shouldShowApiKeyPanel
   const shouldLoadSettings = canManageWebhook || canManageConfig || shouldShowApiKeyPanel
@@ -276,6 +278,7 @@ export function ProfileCard({ user }: ProfileCardProps) {
           <EmailServiceConfig initialConfig={emailServiceConfig} />
         </>
       )}
+      {canManageEmail && <ExternalMailPanel />}
       {canPromote && <PromotePanel />}
       {shouldShowApiKeyPanel && websiteConfig && (
         <ApiKeyPanel

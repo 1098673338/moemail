@@ -5,6 +5,7 @@ import { emails, messages } from "@/lib/schema"
 import { eq } from "drizzle-orm"
 import { getRequestContext } from "@cloudflare/next-on-pages"
 import { checkSendPermission } from "@/lib/send-permissions"
+import { sendExternalMail } from "@/lib/external-mail"
 
 export const runtime = "edge"
 
@@ -95,6 +96,16 @@ export async function POST(
         { error: "无权访问此邮箱" },
         { status: 403 }
       )
+    }
+
+    const externalSendResult = await sendExternalMail(userId, email.id, { to, subject, content })
+
+    if (externalSendResult) {
+      return NextResponse.json({
+        success: true,
+        message: "邮件发送成功",
+        remainingEmails
+      })
     }
 
     if (email.isCustom) {

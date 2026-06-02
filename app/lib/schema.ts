@@ -77,6 +77,38 @@ export const emails = sqliteTable("email", {
   addressLowerIdx: index("email_address_lower_idx").on(sql`LOWER(${table.address})`),
 }))
 
+export const externalMailAccounts = sqliteTable("external_mail_account", {
+  id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+  userId: text("user_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  emailId: text("email_id")
+    .notNull()
+    .references(() => emails.id, { onDelete: "cascade" }),
+  provider: text("provider").notNull().default("icloud"),
+  emailAddress: text("email_address").notNull(),
+  username: text("username").notNull(),
+  passwordEncrypted: text("password_encrypted").notNull(),
+  imapHost: text("imap_host").notNull().default("imap.mail.me.com"),
+  imapPort: integer("imap_port").notNull().default(993),
+  smtpHost: text("smtp_host").notNull().default("smtp.mail.me.com"),
+  smtpPort: integer("smtp_port").notNull().default(587),
+  enabled: integer("enabled", { mode: "boolean" }).notNull().default(true),
+  lastUid: integer("last_uid").notNull().default(0),
+  lastSyncAt: integer("last_sync_at", { mode: "timestamp_ms" }),
+  createdAt: integer("created_at", { mode: "timestamp_ms" })
+    .notNull()
+    .$defaultFn(() => new Date()),
+  updatedAt: integer("updated_at", { mode: "timestamp_ms" })
+    .notNull()
+    .$defaultFn(() => new Date()),
+}, (table) => ({
+  userIdIdx: index("external_mail_account_user_id_idx").on(table.userId),
+  emailIdIdx: index("external_mail_account_email_id_idx").on(table.emailId),
+  userEmailAddressUnique: uniqueIndex("external_mail_account_user_email_address_unique").on(table.userId, table.emailAddress),
+  emailIdUnique: uniqueIndex("external_mail_account_email_id_unique").on(table.emailId),
+}))
+
 export const messages = sqliteTable("message", {
   id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
   emailId: text("emailId")
@@ -199,6 +231,26 @@ export const userRolesRelations = relations(userRoles, ({ one }) => ({
 export const usersRelations = relations(users, ({ many }) => ({
   userRoles: many(userRoles),
   apiKeys: many(apiKeys),
+  externalMailAccounts: many(externalMailAccounts),
+}));
+
+export const emailsRelations = relations(emails, ({ one, many }) => ({
+  externalMailAccount: one(externalMailAccounts, {
+    fields: [emails.id],
+    references: [externalMailAccounts.emailId],
+  }),
+  messages: many(messages),
+}));
+
+export const externalMailAccountsRelations = relations(externalMailAccounts, ({ one }) => ({
+  user: one(users, {
+    fields: [externalMailAccounts.userId],
+    references: [users.id],
+  }),
+  email: one(emails, {
+    fields: [externalMailAccounts.emailId],
+    references: [emails.id],
+  }),
 }));
 
 export const rolesRelations = relations(roles, ({ many }) => ({
