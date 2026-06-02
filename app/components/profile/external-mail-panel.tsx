@@ -193,8 +193,6 @@ export function ExternalMailPanel() {
         imported?: number
         fetched?: number
         inboxExists?: number
-        searched?: number
-        selected?: number
         error?: string
       }
 
@@ -207,8 +205,6 @@ export function ExternalMailPanel() {
           imported: data.imported ?? 0,
           fetched: data.fetched ?? 0,
           inbox: data.inboxExists ?? 0,
-          searched: data.searched ?? 0,
-          selected: data.selected ?? 0,
         }),
       })
       await loadAccounts()
