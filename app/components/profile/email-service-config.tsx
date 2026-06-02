@@ -77,7 +77,7 @@ export function EmailServiceConfig({ initialConfig }: EmailServiceConfigProps) {
       </div>
 
       <div className="space-y-4">
-        <div className="flex items-center justify-between">
+        <div className="grid grid-cols-[180px_minmax(0,1fr)] items-center gap-4">
           <div className="space-y-0.5">
             <Label htmlFor="enabled" className="text-sm font-medium">
               {t("enable")}
@@ -86,21 +86,21 @@ export function EmailServiceConfig({ initialConfig }: EmailServiceConfigProps) {
               {t("enableDescription")}
             </p>
           </div>
-          <Switch
-            id="enabled"
-            checked={config.enabled}
-            onCheckedChange={(checked: boolean) =>
-              setConfig((prev: EmailServiceConfigData) => ({ ...prev, enabled: checked }))
-            }
-          />
+          <div className="flex min-w-0 justify-start">
+            <Switch
+              id="enabled"
+              checked={config.enabled}
+              onCheckedChange={(checked: boolean) =>
+                setConfig((prev: EmailServiceConfigData) => ({ ...prev, enabled: checked }))
+              }
+            />
+          </div>
         </div>
 
         {config.enabled && (
           <>
-            <div className="space-y-2">
-              <Label htmlFor="apiKey" className="text-sm font-medium">
-                {t("apiKey")}
-              </Label>
+            <div className="grid grid-cols-[180px_minmax(0,1fr)] items-center gap-4">
+              <span className="text-left text-sm">{t("apiKey")}:</span>
               <div className="relative">
                 <Input
                   id="apiKey"

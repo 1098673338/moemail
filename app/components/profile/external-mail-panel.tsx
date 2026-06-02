@@ -5,7 +5,6 @@ import { useTranslations } from "next-intl"
 import { Cloud, Eye, EyeOff, Loader2, MailCheck, PlugZap, RefreshCw, Trash2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
 import { useToast } from "@/components/ui/use-toast"
 
 interface ExternalMailAccount {
@@ -251,22 +250,34 @@ export function ExternalMailPanel() {
           <Cloud className="h-5 w-5 shrink-0 text-primary" />
           <h2 className="truncate text-lg font-semibold">{t("title")}</h2>
         </div>
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          className="h-8 gap-2"
-          onClick={loadAccounts}
-          disabled={loading}
-        >
-          <RefreshCw className={loading ? "h-4 w-4 animate-spin" : "h-4 w-4"} />
-          {t("refresh")}
-        </Button>
+        <div className="flex shrink-0 items-center gap-2">
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="h-8 gap-2"
+            onClick={testConnection}
+            disabled={saving || testing}
+          >
+            {testing ? <Loader2 className="h-4 w-4 animate-spin" /> : <PlugZap className="h-4 w-4" />}
+            {testing ? t("testing") : t("test")}
+          </Button>
+          <Button
+            type="button"
+            size="sm"
+            className="h-8 gap-2"
+            onClick={createAccount}
+            disabled={saving || testing}
+          >
+            {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <MailCheck className="h-4 w-4" />}
+            {saving ? t("creating") : t("create")}
+          </Button>
+        </div>
       </div>
 
-      <div className="grid gap-3 sm:grid-cols-2">
-        <div className="space-y-2">
-          <Label htmlFor="external-email-address">{t("emailAddress")}</Label>
+      <div className="space-y-4">
+        <div className="grid grid-cols-[180px_minmax(0,1fr)] items-center gap-4">
+          <span className="text-left text-sm">{t("emailAddress")}:</span>
           <Input
             id="external-email-address"
             value={form.emailAddress}
@@ -275,8 +286,8 @@ export function ExternalMailPanel() {
             disabled={saving || testing}
           />
         </div>
-        <div className="space-y-2">
-          <Label htmlFor="external-username">{t("username")}</Label>
+        <div className="grid grid-cols-[180px_minmax(0,1fr)] items-center gap-4">
+          <span className="text-left text-sm">{t("username")}:</span>
           <Input
             id="external-username"
             value={form.username}
@@ -285,8 +296,8 @@ export function ExternalMailPanel() {
             disabled={saving || testing}
           />
         </div>
-        <div className="space-y-2 sm:col-span-2">
-          <Label htmlFor="external-password">{t("password")}</Label>
+        <div className="grid grid-cols-[180px_minmax(0,1fr)] items-center gap-4">
+          <span className="text-left text-sm">{t("password")}:</span>
           <div className="relative">
             <Input
               id="external-password"
@@ -300,8 +311,8 @@ export function ExternalMailPanel() {
             <Button
               type="button"
               variant="ghost"
-              size="icon"
-              className="absolute right-0 top-0 h-9 w-9"
+              size="sm"
+              className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
               onClick={() => setShowPassword(prev => !prev)}
               aria-label={showPassword ? t("hidePassword") : t("showPassword")}
             >
@@ -313,28 +324,6 @@ export function ExternalMailPanel() {
             </Button>
           </div>
         </div>
-      </div>
-
-      <div className="mt-4 flex flex-wrap justify-end gap-2">
-        <Button
-          type="button"
-          variant="outline"
-          className="gap-2"
-          onClick={testConnection}
-          disabled={saving || testing}
-        >
-          {testing ? <Loader2 className="h-4 w-4 animate-spin" /> : <PlugZap className="h-4 w-4" />}
-          {testing ? t("testing") : t("test")}
-        </Button>
-        <Button
-          type="button"
-          className="gap-2"
-          onClick={createAccount}
-          disabled={saving || testing}
-        >
-          {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <MailCheck className="h-4 w-4" />}
-          {saving ? t("creating") : t("create")}
-        </Button>
       </div>
 
       <div className="mt-6 space-y-2">

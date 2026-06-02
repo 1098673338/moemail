@@ -1,7 +1,10 @@
 import { and, desc, eq, gt, sql } from "drizzle-orm"
+import { getRequestContext } from "@cloudflare/next-on-pages"
 import PostalMime, { type Address } from "postal-mime"
 import { EMAIL_CONFIG } from "@/config"
+import { getUserRole } from "@/lib/auth"
 import { createDb, type Db } from "@/lib/db"
+import { ROLES } from "@/lib/permissions"
 import { externalMailAccounts, emails, messages, users } from "@/lib/schema"
 
 export const EXTERNAL_MAIL_PROVIDER = {
@@ -737,6 +740,9 @@ export async function testIcloudConnection(credentials: ExternalMailCredentials)
 }
 
 async function assertEmailCapacity(db: Db, userId: string) {
+  const userRole = await getUserRole(userId)
+  if (userRole === ROLES.EMPEROR) return
+
   const activeEmailsCount = await db
     .select({ count: sql<number>`count(*)` })
     .from(emails)
@@ -752,9 +758,14 @@ async function assertEmailCapacity(db: Db, userId: string) {
       maxEmails: true,
     },
   })
+  const siteMaxEmailsValue = await getRequestContext().env.SITE_CONFIG.get("MAX_EMAILS")
+  const siteMaxEmails = siteMaxEmailsValue && siteMaxEmailsValue.trim() !== "" ? Number(siteMaxEmailsValue) : NaN
+  const defaultMaxEmails = Number.isInteger(siteMaxEmails) && siteMaxEmails >= 0
+    ? siteMaxEmails
+    : EMAIL_CONFIG.MAX_ACTIVE_EMAILS
   const maxEmails = user?.maxEmails != null && user.maxEmails >= 0
     ? user.maxEmails
-    : EMAIL_CONFIG.MAX_ACTIVE_EMAILS
+    : defaultMaxEmails
 
   if (maxEmails !== EMAIL_CONFIG.UNLIMITED_LIMIT && Number(activeEmailsCount[0]?.count ?? 0) >= maxEmails) {
     throw new Error(`已达到最大邮箱数量限制 (${maxEmails})`)
