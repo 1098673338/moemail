@@ -681,7 +681,7 @@ class ImapClient {
   private async fetchMessagesBatch(uids: number[]) {
     if (!uids.length) return []
     const tag = this.nextTag()
-    await this.writeLine(`${tag} UID FETCH ${uids.join(",")} (UID INTERNALDATE RFC822.PEEK)`)
+    await this.writeLine(`${tag} UID FETCH ${uids.join(",")} (UID INTERNALDATE BODY.PEEK[])`)
     const fallbackUid = uids.length === 1 ? uids[0] : null
 
     return this.readFetchMessages(tag, fallbackUid)
@@ -689,7 +689,7 @@ class ImapClient {
 
   private async fetchMessagesBySequence(sequenceSet: string) {
     const tag = this.nextTag()
-    await this.writeLine(`${tag} FETCH ${sequenceSet} (UID INTERNALDATE RFC822.PEEK)`)
+    await this.writeLine(`${tag} FETCH ${sequenceSet} (UID INTERNALDATE BODY.PEEK[])`)
 
     return this.readFetchMessages(tag, null)
   }
