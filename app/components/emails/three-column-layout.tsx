@@ -128,7 +128,7 @@ export function ThreeColumnLayout() {
   const syncExternalMail = async () => {
     if (!externalMailAccount) return
 
-    const response = await fetch(`/api/external-mail/accounts/${externalMailAccount.id}/sync`, {
+    const response = await fetch(`/api/external-mail/accounts/${externalMailAccount.id}/sync?rescan=1`, {
       method: "POST",
     })
     const data = await response.json().catch(() => ({})) as {

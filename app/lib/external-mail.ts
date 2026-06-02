@@ -94,6 +94,12 @@ interface ImapCommandResponse {
   lines: string[]
 }
 
+interface ImapMailboxStatus {
+  exists: number
+  uidNext: number | null
+  uidValidity: number | null
+}
+
 type SocketConnect = (address: SocketAddress | string, options?: SocketOptions) => Socket
 
 const PERMANENT_EXPIRES_AT = new Date("9999-01-01T00:00:00.000Z")
@@ -630,7 +636,8 @@ class ImapClient {
   }
 
   async openInbox() {
-    await this.command('SELECT "INBOX"')
+    const response = await this.command('SELECT "INBOX"')
+    return this.parseMailboxStatus(response.lines)
   }
 
   async searchNewUids(lastUid: number) {
@@ -652,8 +659,22 @@ class ImapClient {
   async fetchMessages(uids: number[]) {
     if (!uids.length) return []
 
+    const messages = await this.fetchMessagesBatch(uids)
+    if (messages.length > 0 || uids.length <= 1) return messages
+
+    const retryMessages: ImapFetchedMessage[] = []
+    for (const uid of uids) {
+      retryMessages.push(...await this.fetchMessagesBatch([uid]))
+    }
+
+    return retryMessages
+  }
+
+  private async fetchMessagesBatch(uids: number[]) {
+    if (!uids.length) return []
+
     const tag = this.nextTag()
-    await this.writeLine(`${tag} UID FETCH ${uids.join(",")} (UID INTERNALDATE RFC822)`)
+    await this.writeLine(`${tag} UID FETCH ${uids.join(",")} (UID INTERNALDATE BODY.PEEK[])`)
 
     const messages: ImapFetchedMessage[] = []
     const lines: string[] = []
@@ -669,13 +690,14 @@ class ImapClient {
         return messages
       }
 
-      const literalMatch = line.match(/\{(\d+)\}$/)
+      const literalMatch = line.match(/~?\{(\d+)\+?\}$/)
       if (!literalMatch) continue
 
       const source = await this.readBytes(Number(literalMatch[1]))
       const tail = await this.readLine()
-      const uid = this.parseUid(`${line} ${tail}`)
-      const internalDate = this.parseInternalDate(`${line} ${tail}`)
+      const metadata = `${line} ${tail}`
+      const uid = this.parseUid(metadata)
+      const internalDate = this.parseInternalDate(metadata)
 
       if (uid) {
         messages.push({ uid, source, internalDate })
@@ -750,6 +772,20 @@ class ImapClient {
     if (!match) return undefined
     const timestamp = new Date(match[1]).getTime()
     return Number.isFinite(timestamp) ? new Date(timestamp) : undefined
+  }
+
+  private parseMailboxStatus(lines: string[]): ImapMailboxStatus {
+    const joinedLines = lines.join(" ")
+    const existsLine = lines.find(line => /^\*\s+\d+\s+EXISTS$/i.test(line))
+    const existsMatch = existsLine?.match(/^\*\s+(\d+)\s+EXISTS$/i)
+    const uidNextMatch = joinedLines.match(/\[UIDNEXT\s+(\d+)\]/i)
+    const uidValidityMatch = joinedLines.match(/\[UIDVALIDITY\s+(\d+)\]/i)
+
+    return {
+      exists: existsMatch ? Number(existsMatch[1]) : 0,
+      uidNext: uidNextMatch ? Number(uidNextMatch[1]) : null,
+      uidValidity: uidValidityMatch ? Number(uidValidityMatch[1]) : null,
+    }
   }
 }
 
@@ -1001,17 +1037,25 @@ export async function syncExternalMailMessages(options: {
   let fetched = 0
   let imported = 0
   let maxUid = account.lastUid
+  let inboxExists = 0
+  let searched = 0
+  let selected = 0
+  let uidNext: number | null = null
   const syncedAt = new Date()
 
   try {
     await client.connect()
-    await client.openInbox()
+    const mailboxStatus = await client.openInbox()
+    inboxExists = mailboxStatus.exists
+    uidNext = mailboxStatus.uidNext
 
     const lastUid = options.rescan ? 0 : account.lastUid
     const uids = await client.searchNewUids(lastUid)
+    searched = uids.length
     const selectedUids = lastUid > 0
       ? uids.slice(0, EXTERNAL_MAIL_INCREMENTAL_SYNC_LIMIT)
       : uids.slice(-EXTERNAL_MAIL_INITIAL_SYNC_LIMIT)
+    selected = selectedUids.length
     const fetchedMessages = await client.fetchMessages(selectedUids)
 
     for (const message of fetchedMessages) {
@@ -1041,6 +1085,11 @@ export async function syncExternalMailMessages(options: {
   return {
     fetched,
     imported,
+    inboxExists,
+    searched,
+    selected,
+    uidNext,
+    rescan: Boolean(options.rescan),
     lastUid: maxUid,
     lastSyncAt: syncedAt.getTime(),
   }
