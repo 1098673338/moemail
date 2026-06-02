@@ -642,8 +642,8 @@ class ImapClient {
 
   async searchNewUids(lastUid: number) {
     const response = await this.command(lastUid > 0
-      ? `UID SEARCH UID ${lastUid + 1}:*`
-      : "UID SEARCH ALL"
+      ? `UID SEARCH UID ${lastUid + 1}:* NOT DELETED`
+      : "UID SEARCH NOT DELETED"
     )
     const searchLine = response.lines.find(line => line.startsWith("* SEARCH"))
     if (!searchLine) return []
@@ -670,12 +670,31 @@ class ImapClient {
     return retryMessages
   }
 
+  async fetchCurrentMessages(exists: number, limit: number) {
+    if (exists <= 0 || limit <= 0) return []
+
+    const end = exists
+    const start = Math.max(1, exists - limit + 1)
+    return this.fetchMessagesBySequence(`${start}:${end}`)
+  }
+
   private async fetchMessagesBatch(uids: number[]) {
     if (!uids.length) return []
-
     const tag = this.nextTag()
-    await this.writeLine(`${tag} UID FETCH ${uids.join(",")} (UID INTERNALDATE BODY.PEEK[])`)
+    await this.writeLine(`${tag} UID FETCH ${uids.join(",")} (UID INTERNALDATE RFC822.PEEK)`)
+    const fallbackUid = uids.length === 1 ? uids[0] : null
 
+    return this.readFetchMessages(tag, fallbackUid)
+  }
+
+  private async fetchMessagesBySequence(sequenceSet: string) {
+    const tag = this.nextTag()
+    await this.writeLine(`${tag} FETCH ${sequenceSet} (UID INTERNALDATE RFC822.PEEK)`)
+
+    return this.readFetchMessages(tag, null)
+  }
+
+  private async readFetchMessages(tag: string, fallbackUid: number | null) {
     const messages: ImapFetchedMessage[] = []
     const lines: string[] = []
 
@@ -696,7 +715,7 @@ class ImapClient {
       const source = await this.readBytes(Number(literalMatch[1]))
       const tail = await this.readLine()
       const metadata = `${line} ${tail}`
-      const uid = this.parseUid(metadata)
+      const uid = this.parseUid(metadata) ?? fallbackUid
       const internalDate = this.parseInternalDate(metadata)
 
       if (uid) {
@@ -1049,14 +1068,29 @@ export async function syncExternalMailMessages(options: {
     inboxExists = mailboxStatus.exists
     uidNext = mailboxStatus.uidNext
 
-    const lastUid = options.rescan ? 0 : account.lastUid
-    const uids = await client.searchNewUids(lastUid)
-    searched = uids.length
-    const selectedUids = lastUid > 0
-      ? uids.slice(0, EXTERNAL_MAIL_INCREMENTAL_SYNC_LIMIT)
-      : uids.slice(-EXTERNAL_MAIL_INITIAL_SYNC_LIMIT)
-    selected = selectedUids.length
-    const fetchedMessages = await client.fetchMessages(selectedUids)
+    const shouldFetchCurrentInbox = options.rescan || account.lastUid <= 0
+    let fetchedMessages = shouldFetchCurrentInbox
+      ? await client.fetchCurrentMessages(inboxExists, EXTERNAL_MAIL_INITIAL_SYNC_LIMIT)
+      : await (async () => {
+          const uids = await client.searchNewUids(account.lastUid)
+          searched = uids.length
+          const selectedUids = uids.slice(0, EXTERNAL_MAIL_INCREMENTAL_SYNC_LIMIT)
+          selected = selectedUids.length
+          return client.fetchMessages(selectedUids)
+        })()
+
+    if (shouldFetchCurrentInbox) {
+      searched = inboxExists
+      selected = fetchedMessages.length
+
+      if (inboxExists > 0 && fetchedMessages.length === 0) {
+        const uids = await client.searchNewUids(0)
+        const selectedUids = uids.slice(-Math.min(inboxExists, EXTERNAL_MAIL_INITIAL_SYNC_LIMIT))
+        searched = uids.length
+        selected = selectedUids.length
+        fetchedMessages = await client.fetchMessages(selectedUids)
+      }
+    }
 
     for (const message of fetchedMessages) {
       fetched += 1
