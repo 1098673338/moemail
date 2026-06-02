@@ -17,6 +17,7 @@ interface MessageListContainerProps {
   refreshTrigger?: number
   canSendEmails: boolean
   sendPermissionLoading?: boolean
+  onBeforeRefresh?: (messageType: MessageType) => Promise<void> | void
 }
 
 type MessageType = 'received' | 'sent'
@@ -40,6 +41,7 @@ export function MessageListContainer({
   refreshTrigger,
   canSendEmails,
   sendPermissionLoading = false,
+  onBeforeRefresh,
 }: MessageListContainerProps) {
   const t = useTranslations("emails.messages")
   const isCustomEmail = Boolean(email.isCustom)
@@ -140,6 +142,7 @@ export function MessageListContainer({
               emptyStateOffsetClass="-translate-y-12"
               onTotalChange={handleTotalChange}
               tabControls={tabControls}
+              onBeforeRefresh={onBeforeRefresh}
             />
           </TabsContent>
           
@@ -154,6 +157,7 @@ export function MessageListContainer({
               emptyStateOffsetClass="-translate-y-12"
               onTotalChange={handleTotalChange}
               tabControls={tabControls}
+              onBeforeRefresh={onBeforeRefresh}
             />
           </TabsContent>
         </Tabs>
@@ -167,6 +171,7 @@ export function MessageListContainer({
             selectedMessageId={selectedMessageId}
             refreshTrigger={refreshTrigger}
             emptyStateOffsetClass="-translate-y-12"
+            onBeforeRefresh={onBeforeRefresh}
           />
         </div>
       )}

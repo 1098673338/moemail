@@ -46,6 +46,7 @@ export function TagCombobox({
   const rootRef = useRef<HTMLDivElement>(null)
   const menuRef = useRef<HTMLDivElement>(null)
   const [menuPosition, setMenuPosition] = useState<MenuPosition | null>(null)
+  const [searchValue, setSearchValue] = useState<string | null>(null)
 
   const normalizedOptions = useMemo(() => (
     Array.from(new Set(options.map(option => option.trim()).filter(Boolean)))
@@ -55,21 +56,16 @@ export function TagCombobox({
     typeof maxLength === "number" ? nextValue.slice(0, maxLength) : nextValue
   )
 
-  const getVisibleOptions = (nextValue: string) => {
-    const keyword = nextValue.trim().toLowerCase()
+  const getVisibleOptions = useCallback((nextValue: string | null) => {
+    const keyword = nextValue?.trim().toLowerCase() ?? ""
     if (!keyword) return normalizedOptions
 
     return normalizedOptions.filter(option => option.toLowerCase().includes(keyword))
-  }
+  }, [normalizedOptions])
 
   const visibleOptions = useMemo(() => (
-    normalizedOptions.filter(option => {
-      const keyword = value.trim().toLowerCase()
-      if (!keyword) return true
-
-      return option.toLowerCase().includes(keyword)
-    })
-  ), [normalizedOptions, value])
+    getVisibleOptions(searchValue)
+  ), [getVisibleOptions, searchValue])
   const menuOpen = open && visibleOptions.length > 0
 
   const updateValue = (nextValue: string) => {
@@ -100,17 +96,26 @@ export function TagCombobox({
   }, [])
 
   const handleComboboxOpenChange = (nextOpen: boolean) => {
-    if (nextOpen && visibleOptions.length === 0) {
-      onOpenChange(false)
+    if (nextOpen) {
+      if (normalizedOptions.length === 0) {
+        onOpenChange(false)
+        return
+      }
+
+      setSearchValue(null)
+      onOpenChange(true)
       return
     }
-    onOpenChange(nextOpen)
+
+    setSearchValue(null)
+    onOpenChange(false)
   }
 
   const handleInputChange = (nextValue: string) => {
     const limitedValue = getLimitedValue(nextValue)
     const nextOptions = getVisibleOptions(limitedValue)
 
+    setSearchValue(limitedValue)
     onValueChange(limitedValue)
 
     if (nextOptions.length > 0) {

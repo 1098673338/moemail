@@ -14,7 +14,8 @@
     "copySuccess": "复制成功",
     "copyFailed": "复制失败",
     "deleteSuccess": "删除成功",
-    "deleteFailed": "删除失败"
+    "deleteFailed": "删除失败",
+    "refreshFailed": "刷新失败"
   },
   "nav": {
     "home": "首页",

@@ -5,18 +5,20 @@ import { getExternalMailErrorMessage, syncExternalMailAccount } from "@/lib/exte
 export const runtime = "edge"
 
 export async function POST(
-  _request: Request,
+  request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
   const userId = await getUserId()
   const { id } = await params
+  const { searchParams } = new URL(request.url)
+  const rescan = searchParams.get("rescan") === "1"
 
   if (!userId) {
     return NextResponse.json({ error: "未授权" }, { status: 401 })
   }
 
   try {
-    const result = await syncExternalMailAccount(userId, id)
+    const result = await syncExternalMailAccount(userId, id, { rescan })
 
     return NextResponse.json({
       success: true,

@@ -3,6 +3,7 @@ import { emailShares, messages } from "@/lib/schema"
 import { eq, and, lt, or, sql, ne, isNull } from "drizzle-orm"
 import { NextResponse } from "next/server"
 import { encodeCursor, decodeCursor } from "@/lib/cursor"
+import { syncExternalMailAccountByEmailId } from "@/lib/external-mail"
 
 export const runtime = "edge"
 
@@ -17,6 +18,7 @@ export async function GET(
   const db = createDb()
   const { searchParams } = new URL(request.url)
   const cursor = searchParams.get('cursor')
+  const shouldSync = searchParams.get('sync') === '1' && !cursor
 
   try {
     // 验证分享token
@@ -51,6 +53,12 @@ export async function GET(
     }
 
     const emailId = share.email.id
+
+    if (shouldSync) {
+      await syncExternalMailAccountByEmailId(emailId).catch((error) => {
+        console.error("Failed to sync shared external mail account:", error)
+      })
+    }
 
     // 只显示接收的邮件，不显示发送的邮件
     const baseConditions = and(

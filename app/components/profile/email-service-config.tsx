@@ -86,7 +86,7 @@ export function EmailServiceConfig({ initialConfig }: EmailServiceConfigProps) {
               {t("enableDescription")}
             </p>
           </div>
-          <div className="flex min-w-0 justify-start">
+          <div className="flex min-w-0 justify-end">
             <Switch
               id="enabled"
               checked={config.enabled}

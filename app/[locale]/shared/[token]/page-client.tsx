@@ -67,7 +67,7 @@ export function SharedEmailPageClient({
     messagesRef.current = messages
   }, [messages])
 
-  const fetchMessages = async (cursor?: string) => {
+  const fetchMessages = async (cursor?: string, options?: { sync?: boolean }) => {
     try {
       if (cursor) {
         setLoadingMore(true)
@@ -76,6 +76,9 @@ export function SharedEmailPageClient({
       const url = new URL(`/api/shared/${token}/messages`, window.location.origin)
       if (cursor) {
         url.searchParams.set('cursor', cursor)
+      }
+      if (options?.sync && !cursor) {
+        url.searchParams.set('sync', '1')
       }
 
       const messagesResponse = await fetch(url)
@@ -140,7 +143,7 @@ export function SharedEmailPageClient({
 
   const handleRefresh = async () => {
     setRefreshing(true)
-    await fetchMessages()
+    await fetchMessages(undefined, { sync: true })
   }
 
   // 启动轮询

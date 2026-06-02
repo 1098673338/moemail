@@ -21,7 +21,7 @@ export const ICLOUD_MAIL_SETTINGS = {
   smtpPort: 587,
 } as const
 
-export const EXTERNAL_MAIL_INITIAL_SYNC_LIMIT = 30
+export const EXTERNAL_MAIL_INITIAL_SYNC_LIMIT = 100
 export const EXTERNAL_MAIL_INCREMENTAL_SYNC_LIMIT = 50
 
 export type ExternalMailAccountRecord = typeof externalMailAccounts.$inferSelect
@@ -76,6 +76,10 @@ interface SendExternalMailInput {
   to: string
   subject: string
   content: string
+}
+
+interface SyncExternalMailOptions {
+  rescan?: boolean
 }
 
 interface ImapFetchedMessage {
@@ -218,6 +222,50 @@ function normalizeUsername(value: string) {
   return value.trim()
 }
 
+function getHostname(value?: string | null) {
+  const input = value?.trim()
+  if (!input) return null
+
+  try {
+    return new URL(input.includes("://") ? input : `https://${input}`).hostname
+  } catch {
+    return null
+  }
+}
+
+function getAddressDomain(value?: string | null) {
+  const input = value?.trim()
+  if (!input || !input.includes("@")) return null
+  return input.split("@").pop() || null
+}
+
+function normalizeMailDomain(value?: string | null) {
+  const hostname = getHostname(value) || getAddressDomain(value)
+  const domain = hostname?.trim().toLowerCase().replace(/\.$/, "")
+
+  if (
+    !domain
+    || domain === "localhost"
+    || domain.endsWith(".local")
+    || !domain.includes(".")
+    || !/^[a-z0-9.-]+$/.test(domain)
+  ) {
+    return null
+  }
+
+  return domain
+}
+
+function getOutboundMailDomain(fromAddress?: string) {
+  return normalizeMailDomain(process.env.EXTERNAL_MAIL_DOMAIN)
+    || normalizeMailDomain(process.env.NEXT_PUBLIC_BASE_URL)
+    || normalizeMailDomain(process.env.CUSTOM_DOMAIN)
+    || normalizeMailDomain(process.env.CF_PAGES_URL)
+    || normalizeMailDomain(process.env.VERCEL_URL)
+    || normalizeMailDomain(fromAddress)
+    || "moemail.app"
+}
+
 function getDisplayAddress(address?: Address | null) {
   if (!address) return ""
   if (address.address && address.name) return `${address.name} <${address.address}>`
@@ -267,7 +315,7 @@ function formatMessageDate(date: Date) {
   return date.toUTCString().replace("GMT", "+0000")
 }
 
-function createRawEmail(from: string, input: SendExternalMailInput) {
+function createRawEmail(from: string, input: SendExternalMailInput, messageIdDomain: string) {
   const boundary = `moemail-${crypto.randomUUID()}`
   const html = normalizeLineBreaks(input.content)
   const text = normalizeLineBreaks(stripHtml(input.content))
@@ -277,7 +325,7 @@ function createRawEmail(from: string, input: SendExternalMailInput) {
     `To: <${input.to}>`,
     `Subject: ${encodeMimeHeader(input.subject)}`,
     `Date: ${formatMessageDate(new Date())}`,
-    `Message-ID: <${crypto.randomUUID()}@moemail.local>`,
+    `Message-ID: <${crypto.randomUUID()}@${messageIdDomain}>`,
     "MIME-Version: 1.0",
     `Content-Type: multipart/alternative; boundary="${boundary}"`,
     "",
@@ -464,11 +512,14 @@ class SocketLineClient {
 
 class SmtpClient {
   private client: SocketLineClient | null = null
+  private readonly heloDomain: string
 
   constructor(
     private account: ExternalMailConnectionAccount,
     private password: string
-  ) {}
+  ) {
+    this.heloDomain = getOutboundMailDomain(account.emailAddress)
+  }
 
   async connect() {
     const connectSocket = await getSocketConnect()
@@ -500,7 +551,7 @@ class SmtpClient {
     await this.command(`MAIL FROM:<${fromAddress}>`, [250])
     await this.command(`RCPT TO:<${input.to}>`, [250, 251])
     await this.command("DATA", [354])
-    await this.write(`${createRawEmail(fromAddress, input)}\r\n.\r\n`)
+    await this.write(`${createRawEmail(fromAddress, input, this.heloDomain)}\r\n.\r\n`)
     await this.expect([250])
   }
 
@@ -512,7 +563,7 @@ class SmtpClient {
   }
 
   private async ehlo() {
-    await this.command("EHLO moemail.local", [250])
+    await this.command(`EHLO ${this.heloDomain}`, [250])
   }
 
   private async auth() {
@@ -938,6 +989,7 @@ export async function syncExternalMailMessages(options: {
   messageExists: (messageId: string) => Promise<boolean> | boolean
   insertMessage: (message: SyncedExternalMailMessage) => Promise<void> | void
   updateAccount: (cursor: { lastUid: number; lastSyncAt: Date }) => Promise<void> | void
+  rescan?: boolean
 }) {
   const { account, password } = options
 
@@ -955,8 +1007,9 @@ export async function syncExternalMailMessages(options: {
     await client.connect()
     await client.openInbox()
 
-    const uids = await client.searchNewUids(account.lastUid)
-    const selectedUids = account.lastUid > 0
+    const lastUid = options.rescan ? 0 : account.lastUid
+    const uids = await client.searchNewUids(lastUid)
+    const selectedUids = lastUid > 0
       ? uids.slice(0, EXTERNAL_MAIL_INCREMENTAL_SYNC_LIMIT)
       : uids.slice(-EXTERNAL_MAIL_INITIAL_SYNC_LIMIT)
     const fetchedMessages = await client.fetchMessages(selectedUids)
@@ -993,7 +1046,7 @@ export async function syncExternalMailMessages(options: {
   }
 }
 
-export async function syncExternalMailAccount(userId: string, accountId: string) {
+export async function syncExternalMailAccount(userId: string, accountId: string, options?: SyncExternalMailOptions) {
   const db = createDb()
   const account = await db.query.externalMailAccounts.findFirst({
     where: and(
@@ -1015,6 +1068,59 @@ export async function syncExternalMailAccount(userId: string, accountId: string)
   return syncExternalMailMessages({
     account,
     password,
+    rescan: options?.rescan,
+    messageExists: async (messageId) => {
+      const existing = await db.query.messages.findFirst({
+        where: eq(messages.id, messageId),
+        columns: {
+          id: true,
+        },
+      })
+      return Boolean(existing)
+    },
+    insertMessage: async (message) => {
+      await db.insert(messages).values({
+        id: message.id,
+        emailId: message.emailId,
+        fromAddress: message.fromAddress,
+        toAddress: message.toAddress,
+        subject: message.subject,
+        content: message.content,
+        html: message.html,
+        type: message.type,
+        receivedAt: message.receivedAt,
+        sentAt: message.sentAt,
+      })
+    },
+    updateAccount: async ({ lastUid, lastSyncAt }) => {
+      await db.update(externalMailAccounts)
+        .set({
+          lastUid,
+          lastSyncAt,
+          updatedAt: new Date(),
+        })
+        .where(eq(externalMailAccounts.id, account.id))
+    },
+  })
+}
+
+export async function syncExternalMailAccountByEmailId(emailId: string, options?: SyncExternalMailOptions) {
+  const db = createDb()
+  const account = await db.query.externalMailAccounts.findFirst({
+    where: and(
+      eq(externalMailAccounts.emailId, emailId),
+      eq(externalMailAccounts.enabled, true)
+    ),
+  })
+
+  if (!account) return null
+
+  const password = await decryptExternalMailPassword(account.passwordEncrypted)
+
+  return syncExternalMailMessages({
+    account,
+    password,
+    rescan: options?.rescan,
     messageExists: async (messageId) => {
       const existing = await db.query.messages.findFirst({
         where: eq(messages.id, messageId),

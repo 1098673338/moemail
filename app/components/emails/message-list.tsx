@@ -46,6 +46,7 @@ interface MessageListProps {
   emptyStateOffsetClass?: string
   onTotalChange?: (messageType: MessageType, total: number) => void
   tabControls?: ReactNode
+  onBeforeRefresh?: (messageType: MessageType) => Promise<void> | void
 }
 
 interface MessageResponse {
@@ -57,7 +58,7 @@ interface MessageResponse {
 type MessageType = 'received' | 'sent'
 const AUTO_PREFETCH_MESSAGE_COUNT = 5
 
-export function MessageList({ email, messageType, onMessageSelect, onMessagePrefetch, selectedMessageId, refreshTrigger, emptyStateOffsetClass, onTotalChange, tabControls }: MessageListProps) {
+export function MessageList({ email, messageType, onMessageSelect, onMessagePrefetch, selectedMessageId, refreshTrigger, emptyStateOffsetClass, onTotalChange, tabControls, onBeforeRefresh }: MessageListProps) {
   const t = useTranslations("emails.messages")
   const tCommon = useTranslations("common.actions")
   const tFeedback = useTranslations("common.feedback")
@@ -198,6 +199,15 @@ export function MessageList({ email, messageType, onMessageSelect, onMessagePref
     }
 
     setRefreshing(true)
+    try {
+      await onBeforeRefresh?.(messageType)
+    } catch (error) {
+      console.error("Failed to run refresh hook:", error)
+      toast({
+        title: error instanceof Error ? error.message : tFeedback("refreshFailed"),
+        variant: "destructive"
+      })
+    }
     await fetchMessages(undefined, true)
   }
 

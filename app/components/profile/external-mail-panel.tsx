@@ -186,7 +186,7 @@ export function ExternalMailPanel() {
     setSyncingId(accountId)
 
     try {
-      const response = await fetch(`/api/external-mail/accounts/${accountId}/sync`, {
+      const response = await fetch(`/api/external-mail/accounts/${accountId}/sync?rescan=1`, {
         method: "POST",
       })
       const data = await response.json().catch(() => ({})) as {
@@ -200,7 +200,10 @@ export function ExternalMailPanel() {
       }
 
       toast({
-        title: t("syncSuccess", { count: data.imported ?? 0 }),
+        title: t("syncSuccess", {
+          imported: data.imported ?? 0,
+          fetched: data.fetched ?? 0,
+        }),
       })
       await loadAccounts()
     } catch (error) {

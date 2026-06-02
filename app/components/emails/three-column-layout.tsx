@@ -9,8 +9,7 @@ import { CreateDialog } from "./create-dialog"
 import { SendDialog } from "./send-dialog"
 import { useCopy } from "@/hooks/use-copy"
 import { useSendPermission } from "@/hooks/use-send-permission"
-import { Button } from "@/components/ui/button"
-import { Copy, Inbox, MailOpen, RefreshCw } from "lucide-react"
+import { Copy, Inbox, MailOpen } from "lucide-react"
 
 interface Email {
   id: string
@@ -49,7 +48,6 @@ export function ThreeColumnLayout() {
   const [refreshTrigger, setRefreshTrigger] = useState(0)
   const [emailRefreshTrigger, setEmailRefreshTrigger] = useState(0)
   const [externalMailAccount, setExternalMailAccount] = useState<ExternalMailAccount | null>(null)
-  const [externalMailSyncing, setExternalMailSyncing] = useState(false)
   const { copyToClipboard } = useCopy()
   const { canSend: canSendEmails, loading: sendPermissionLoading } = useSendPermission()
 
@@ -70,6 +68,8 @@ export function ThreeColumnLayout() {
         setExternalMailAccount(null)
         return
       }
+
+      setExternalMailAccount(null)
 
       try {
         const response = await fetch(`/api/external-mail/accounts?emailId=${encodeURIComponent(selectedEmail.id)}`)
@@ -128,26 +128,23 @@ export function ThreeColumnLayout() {
   const syncExternalMail = async () => {
     if (!externalMailAccount) return
 
-    setExternalMailSyncing(true)
+    const response = await fetch(`/api/external-mail/accounts/${externalMailAccount.id}/sync`, {
+      method: "POST",
+    })
+    const data = await response.json().catch(() => ({})) as {
+      error?: string
+    }
 
-    try {
-      const response = await fetch(`/api/external-mail/accounts/${externalMailAccount.id}/sync`, {
-        method: "POST",
-      })
-      const data = await response.json().catch(() => ({})) as {
-        error?: string
-      }
+    if (!response.ok) {
+      throw new Error(data.error || "同步外部邮箱失败")
+    }
 
-      if (!response.ok) {
-        throw new Error(data.error || "同步外部邮箱失败")
-      }
+    setExternalMailAccount(prev => prev ? { ...prev, lastSyncAt: Date.now() } : prev)
+  }
 
-      setRefreshTrigger(prev => prev + 1)
-      setExternalMailAccount(prev => prev ? { ...prev, lastSyncAt: Date.now() } : prev)
-    } catch (error) {
-      console.error("Failed to sync external mail:", error)
-    } finally {
-      setExternalMailSyncing(false)
+  const handleMessageListRefresh = async (messageType: MessageType) => {
+    if (messageType === 'received' && externalMailAccount?.emailId === selectedEmail?.id) {
+      await syncExternalMail()
     }
   }
 
@@ -208,19 +205,6 @@ export function ThreeColumnLayout() {
                       onSendSuccess={handleSendSuccess}
                     />
                   )}
-                  {externalMailAccount && (
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="icon"
-                      className="h-8 w-8 shrink-0"
-                      onClick={syncExternalMail}
-                      disabled={externalMailSyncing}
-                      aria-label="同步外部邮箱"
-                    >
-                      <RefreshCw className={externalMailSyncing ? "h-4 w-4 animate-spin" : "h-4 w-4"} />
-                    </Button>
-                  )}
                 </div>
               ) : (
                 t("selectEmail")
@@ -237,6 +221,7 @@ export function ThreeColumnLayout() {
                 refreshTrigger={refreshTrigger}
                 canSendEmails={canSendEmails}
                 sendPermissionLoading={sendPermissionLoading}
+                onBeforeRefresh={handleMessageListRefresh}
               />
             </div>
           ) : (
