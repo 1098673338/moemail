@@ -17,6 +17,6 @@ export const EXPIRY_OPTIONS: ExpiryOption[] = [
 export const SHARE_EXPIRY_OPTIONS: ExpiryOption[] = [
   { label: '1小时', value: 1000 * 60 * 60 },
   { label: '24小时', value: DAY_MS },
-  { label: '3天', value: DAY_MS * 3 },
+  { label: '30天', value: DAY_MS * 30 },
   { label: '永久', value: 0 }
 ]

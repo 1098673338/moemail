@@ -1270,85 +1270,87 @@ export function EmailList({ onEmailSelect, onGroupChange, selectedEmailId, refre
                       )}
                       onClick={(e) => e.stopPropagation()}
                     >
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-8 w-8 hover:bg-black/10"
-                      aria-label={tCommon("copy")}
-                      onClick={() => copyToClipboard(email.address)}
-                    >
-                      <Copy className="h-4 w-4" />
-                    </Button>
-                    <DropdownMenu
-                      open={openMoreEmailId === email.id}
-                      onOpenChange={(open) => setOpenMoreEmailId(open ? email.id : null)}
-                    >
-                      <DropdownMenuTrigger asChild>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8 hover:bg-black/10"
-                          aria-label={tGroups("more")}
-                          disabled={movingEmailId === email.id}
-                        >
-                          <MoreHorizontal className="h-4 w-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent side="right" align="start" sideOffset={8} className="w-48">
-                        <DropdownMenuItem onSelect={() => openEditDialog(email)}>
-                          <Pencil className="mr-2 h-4 w-4" />
-                          {tEdit("menu")}
-                        </DropdownMenuItem>
-                        {!email.isCustom && (
-                          <DropdownMenuItem onSelect={() => openShareDialog(email)}>
-                            <Share2 className="mr-2 h-4 w-4" />
-                            {tShare("shareButton")}
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 hover:bg-black/10"
+                        aria-label={tCommon("copy")}
+                        onClick={() => copyToClipboard(email.address)}
+                      >
+                        <Copy className="h-4 w-4" />
+                      </Button>
+                      <DropdownMenu
+                        open={openMoreEmailId === email.id}
+                        onOpenChange={(open) => setOpenMoreEmailId(open ? email.id : null)}
+                      >
+                        <DropdownMenuTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 hover:bg-black/10"
+                            aria-label={tGroups("more")}
+                            disabled={movingEmailId === email.id}
+                          >
+                            <MoreHorizontal className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent side="right" align="start" sideOffset={8} className="w-48">
+                          {!email.isIcloudMail && (
+                            <DropdownMenuItem onSelect={() => openEditDialog(email)}>
+                              <Pencil className="mr-2 h-4 w-4" />
+                              {tEdit("menu")}
+                            </DropdownMenuItem>
+                          )}
+                          {!email.isCustom && (
+                            <DropdownMenuItem onSelect={() => openShareDialog(email)}>
+                              <Share2 className="mr-2 h-4 w-4" />
+                              {tShare("shareButton")}
+                            </DropdownMenuItem>
+                          )}
+                          <DropdownMenuItem
+                            onClick={() => {
+                              emailDeleteDialog.openWithTarget(email)
+                              setOpenMoreEmailId(null)
+                            }}
+                          >
+                            <Trash2 className="mr-2 h-4 w-4" />
+                            {tCommon("delete")}
                           </DropdownMenuItem>
-                        )}
-                        <DropdownMenuItem
-                          onClick={() => {
-                            emailDeleteDialog.openWithTarget(email)
-                            setOpenMoreEmailId(null)
-                          }}
-                        >
-                          <Trash2 className="mr-2 h-4 w-4" />
-                          {tCommon("delete")}
-                        </DropdownMenuItem>
-                        {!email.isIcloudMail && (
-                          <>
-                            <div className="my-1 h-px bg-border" />
-                            <div
-                              className="max-h-80 overflow-y-auto"
-                              onWheel={(event) => event.stopPropagation()}
-                              onTouchMove={(event) => event.stopPropagation()}
-                            >
-                              {email.groupId && (
-                                <DropdownMenuItem className="h-8" onClick={() => moveEmailToGroup(email, null)}>
-                                  <Check className="mr-2 h-4 w-4 opacity-0" />
-                                  {tGroups("removeFromGroup")}
-                                </DropdownMenuItem>
-                              )}
-                              {groups.map(group => (
-                                <DropdownMenuItem
-                                  key={group.id}
-                                  className="h-8"
-                                  disabled={email.groupId === group.id}
-                                  onClick={() => moveEmailToGroup(email, group.id)}
-                                >
-                                  <Check className={cn("mr-2 h-4 w-4", email.groupId === group.id ? "opacity-100" : "opacity-0")} />
-                                  <span className="truncate">{group.name}</span>
-                                </DropdownMenuItem>
-                              ))}
-                              {groups.length === 0 && (
-                                <div className="px-2 py-3 text-center text-xs text-gray-500">
-                                  {tGroups("noGroups")}
-                                </div>
-                              )}
-                            </div>
-                          </>
-                        )}
-                      </DropdownMenuContent>
-                    </DropdownMenu>
+                          {!email.isIcloudMail && (
+                            <>
+                              <div className="my-1 h-px bg-border" />
+                              <div
+                                className="max-h-80 overflow-y-auto"
+                                onWheel={(event) => event.stopPropagation()}
+                                onTouchMove={(event) => event.stopPropagation()}
+                              >
+                                {email.groupId && (
+                                  <DropdownMenuItem className="h-8" onClick={() => moveEmailToGroup(email, null)}>
+                                    <Check className="mr-2 h-4 w-4 opacity-0" />
+                                    {tGroups("removeFromGroup")}
+                                  </DropdownMenuItem>
+                                )}
+                                {groups.map(group => (
+                                  <DropdownMenuItem
+                                    key={group.id}
+                                    className="h-8"
+                                    disabled={email.groupId === group.id}
+                                    onClick={() => moveEmailToGroup(email, group.id)}
+                                  >
+                                    <Check className={cn("mr-2 h-4 w-4", email.groupId === group.id ? "opacity-100" : "opacity-0")} />
+                                    <span className="truncate">{group.name}</span>
+                                  </DropdownMenuItem>
+                                ))}
+                                {groups.length === 0 && (
+                                  <div className="px-2 py-3 text-center text-xs text-gray-500">
+                                    {tGroups("noGroups")}
+                                  </div>
+                                )}
+                              </div>
+                            </>
+                          )}
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     </div>
                   )}
                 </div>
