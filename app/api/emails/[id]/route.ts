@@ -1,15 +1,17 @@
 import { NextResponse } from "next/server"
 import { createDb } from "@/lib/db"
-import { emailGroups, emails, messages } from "@/lib/schema"
+import { emailGroups, emails, externalMailAccounts, messages } from "@/lib/schema"
 import { eq, and, lt, or, sql, ne, isNull, desc, gt } from "drizzle-orm"
 import { encodeCursor, decodeCursor } from "@/lib/cursor"
 import { getUserId } from "@/lib/apiKey"
 import { checkBasicSendPermission } from "@/lib/send-permissions"
 import { EXPIRY_OPTIONS } from "@/types/email"
+import { EXTERNAL_EMAIL_GROUP_ID } from "@/lib/email-group-constants"
 
 export const runtime = "edge"
 
 const MAX_TAG_LENGTH = 32
+const ICLOUD_MAIL_PROVIDER = "icloud"
 
 export async function DELETE(
   request: Request,
@@ -90,6 +92,30 @@ export async function PATCH(
     const selectedGroupId = hasGroupId && typeof body.groupId === "string" && body.groupId.trim()
       ? body.groupId.trim()
       : null
+    const externalMailAccount = await db.query.externalMailAccounts.findFirst({
+      where: and(
+        eq(externalMailAccounts.userId, userId),
+        eq(externalMailAccounts.emailId, id),
+        eq(externalMailAccounts.provider, ICLOUD_MAIL_PROVIDER)
+      ),
+      columns: {
+        id: true,
+      },
+    })
+
+    if (hasGroupId && externalMailAccount && selectedGroupId) {
+      return NextResponse.json(
+        { error: "iCloud 邮箱固定在第三方分组，不能移动到普通分组" },
+        { status: 400 }
+      )
+    }
+
+    if (selectedGroupId === EXTERNAL_EMAIL_GROUP_ID) {
+      return NextResponse.json(
+        { error: "第三方分组不可手动移动" },
+        { status: 400 }
+      )
+    }
 
     if (selectedGroupId) {
       const group = await db.query.emailGroups.findFirst({

@@ -1,8 +1,9 @@
 import { createDb } from "@/lib/db"
-import { and, asc, desc, eq, gt, inArray, isNull, sql } from "drizzle-orm"
+import { and, asc, desc, eq, gt, inArray, isNull, notInArray, sql } from "drizzle-orm"
 import { NextResponse } from "next/server"
 import { emails, externalMailAccounts } from "@/lib/schema"
 import { getUserId } from "@/lib/apiKey"
+import { EXTERNAL_EMAIL_GROUP_ID } from "@/lib/email-group-constants"
 
 export const runtime = "edge"
 
@@ -25,13 +26,33 @@ export async function GET(request: Request) {
       eq(emails.userId, userId!),
       gt(emails.expiresAt, new Date())
     )
+    const externalMailEmailIds = (await db
+      .select({ emailId: externalMailAccounts.emailId })
+      .from(externalMailAccounts)
+      .where(and(
+        eq(externalMailAccounts.userId, userId!),
+        eq(externalMailAccounts.provider, ICLOUD_MAIL_PROVIDER)
+      )))
+      .map(account => account.emailId)
+    const externalMailEmailIdSet = new Set(externalMailEmailIds)
 
     const conditions = [baseConditions]
 
     if (groupId === "none") {
       conditions.push(isNull(emails.groupId))
+      if (externalMailEmailIds.length > 0) {
+        conditions.push(notInArray(emails.id, externalMailEmailIds))
+      }
+    } else if (groupId === EXTERNAL_EMAIL_GROUP_ID) {
+      conditions.push(externalMailEmailIds.length > 0
+        ? inArray(emails.id, externalMailEmailIds)
+        : sql`0 = 1`
+      )
     } else if (groupId) {
       conditions.push(eq(emails.groupId, groupId))
+      if (externalMailEmailIds.length > 0) {
+        conditions.push(notInArray(emails.id, externalMailEmailIds))
+      }
     }
 
     const totalResult = await db.select({ count: sql<number>`count(*)` })
@@ -56,21 +77,10 @@ export async function GET(request: Request) {
     const hasMore = !loadAll && results.length > PAGE_SIZE
     const nextCursor = hasMore ? String(offset + PAGE_SIZE) : null
     const emailList = hasMore ? results.slice(0, PAGE_SIZE) : results
-    const icloudMailEmailIds = emailList.length > 0
-      ? new Set((await db
-          .select({ emailId: externalMailAccounts.emailId })
-          .from(externalMailAccounts)
-          .where(and(
-            eq(externalMailAccounts.provider, ICLOUD_MAIL_PROVIDER),
-            inArray(externalMailAccounts.emailId, emailList.map(email => email.id))
-          )))
-          .map(account => account.emailId))
-      : new Set<string>()
-
     return NextResponse.json({ 
       emails: emailList.map(email => ({
         ...email,
-        isIcloudMail: icloudMailEmailIds.has(email.id),
+        isIcloudMail: externalMailEmailIdSet.has(email.id),
       })),
       nextCursor,
       total: totalCount

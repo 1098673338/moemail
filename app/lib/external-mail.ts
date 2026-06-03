@@ -1092,6 +1092,7 @@ export async function createExternalMailAccount(userId: string, input: CreateExt
     ? (await db.update(emails)
         .set({
           isCustom: false,
+          groupId: null,
           expiresAt: PERMANENT_EXPIRES_AT,
           tag: existingEmail.tag || "iCloud",
         })

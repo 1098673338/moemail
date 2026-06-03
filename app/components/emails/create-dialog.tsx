@@ -16,6 +16,7 @@ import { useCopy } from "@/hooks/use-copy"
 import { useConfig } from "@/hooks/use-config"
 import { cn } from "@/lib/utils"
 import { generateEmailName, getEmailNamePrefix, isValidEmailNamePrefix } from "@/lib/email-name"
+import { EXTERNAL_EMAIL_GROUP_ID } from "@/lib/email-group-constants"
 
 interface CreateDialogProps {
   onEmailCreated: () => void
@@ -75,7 +76,9 @@ export function CreateDialog({ onEmailCreated, selectedGroupId, selectedGroupNam
     ))
   }
   const getDefaultGroupId = () => (
-    selectedGroupId && selectedGroupId !== "none" ? selectedGroupId : UNGROUPED_GROUP_VALUE
+    selectedGroupId && selectedGroupId !== "none" && selectedGroupId !== EXTERNAL_EMAIL_GROUP_ID
+      ? selectedGroupId
+      : UNGROUPED_GROUP_VALUE
   )
   const getDefaultDomain = () => config?.emailDomainsArray?.[0] ?? ""
 

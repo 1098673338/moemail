@@ -41,6 +41,7 @@ import { useUserRole } from "@/hooks/use-user-role"
 import { useConfig } from "@/hooks/use-config"
 import { useCopy } from "@/hooks/use-copy"
 import { EMAIL_CONFIG } from "@/config"
+import { EXTERNAL_EMAIL_GROUP_ID } from "@/lib/email-group-constants"
 import { formatUtcPlus8Date, formatUtcPlus8DateTime } from "@/lib/date-format"
 
 interface Email {
@@ -438,6 +439,7 @@ export function EmailList({ onEmailSelect, onGroupChange, selectedEmailId, refre
   const getSelectedGroupName = () => {
     if (selectedGroupId === null) return tGroups("all")
     if (selectedGroupId === "none") return tGroups("ungrouped")
+    if (selectedGroupId === EXTERNAL_EMAIL_GROUP_ID) return tGroups("thirdParty")
 
     return groups.find(group => group.id === selectedGroupId)?.name || tGroups("all")
   }
@@ -748,9 +750,11 @@ export function EmailList({ onEmailSelect, onGroupChange, selectedEmailId, refre
     const mergedEmail = previousEmail ? { ...previousEmail, ...updatedEmail } : updatedEmail
     const previousGroupId = previousEmail?.groupId ?? null
     const nextGroupId = mergedEmail.groupId ?? null
+    const isExternalEmail = Boolean(mergedEmail.isIcloudMail)
     const staysVisible = selectedGroupId === null
+      || (selectedGroupId === EXTERNAL_EMAIL_GROUP_ID && isExternalEmail)
       || selectedGroupId === nextGroupId
-      || (selectedGroupId === "none" && !nextGroupId)
+      || (selectedGroupId === "none" && !nextGroupId && !isExternalEmail)
 
     if (previousGroupId !== nextGroupId) {
       setGroups(prev => prev.map(group => {
@@ -788,6 +792,8 @@ export function EmailList({ onEmailSelect, onGroupChange, selectedEmailId, refre
   }
 
   const moveEmailToGroup = async (email: Email, groupId: string | null) => {
+    if (email.isIcloudMail) return
+
     setMovingEmailId(email.id)
 
     try {
@@ -907,7 +913,7 @@ export function EmailList({ onEmailSelect, onGroupChange, selectedEmailId, refre
       }
 
       setEmails(prev => prev.filter(e => e.id !== email.id))
-      if (email.groupId) {
+      if (email.groupId && !email.isIcloudMail) {
         setGroups(prev => prev.map(group => (
           group.id === email.groupId
             ? { ...group, emailCount: Math.max(group.emailCount - 1, 0) }
@@ -1042,7 +1048,7 @@ export function EmailList({ onEmailSelect, onGroupChange, selectedEmailId, refre
 
         <div className="shrink-0 border-b border-gray-200 p-2" data-sort-region="true">
           <div className="space-y-2">
-            <div className="grid grid-cols-2 gap-2">
+            <div className="grid grid-cols-3 gap-2">
               <button
                 type="button"
                 className={cn(
@@ -1065,97 +1071,108 @@ export function EmailList({ onEmailSelect, onGroupChange, selectedEmailId, refre
                 <FolderOpen className="h-4 w-4 shrink-0 text-primary/60" />
                 <span className="min-w-0 flex-1 truncate">{tGroups("ungrouped")}</span>
               </button>
+              <button
+                type="button"
+                className={cn(
+                  "flex h-8 min-w-0 items-center gap-2 rounded pl-3 pr-1 text-left text-sm transition-colors",
+                  selectedGroupId === EXTERNAL_EMAIL_GROUP_ID ? "bg-gray-200" : "hover:bg-gray-100"
+                )}
+                onClick={() => handleGroupSelect(EXTERNAL_EMAIL_GROUP_ID, tGroups("thirdParty"))}
+              >
+                <AtSign className="h-4 w-4 shrink-0 text-primary/60" />
+                <span className="min-w-0 flex-1 truncate">{tGroups("thirdParty")}</span>
+              </button>
             </div>
 
             {groups.length > 0 && (
               <div className="max-h-[104px] space-y-1 overflow-auto">
                 {groups.map(group => (
-                <div
-                  key={group.id}
-                  onDragOver={(event) => handleGroupDragOver(event, group.id)}
-                  onDragLeave={(event) => {
-                    const nextTarget = event.relatedTarget as Node | null
-                    if (nextTarget && event.currentTarget.contains(nextTarget)) {
-                      return
-                    }
+                  <div
+                    key={group.id}
+                    onDragOver={(event) => handleGroupDragOver(event, group.id)}
+                    onDragLeave={(event) => {
+                      const nextTarget = event.relatedTarget as Node | null
+                      if (nextTarget && event.currentTarget.contains(nextTarget)) {
+                        return
+                      }
 
-                    if (dragOverGroup?.groupId === group.id) {
-                      setDragOverGroup(null)
-                    }
-                  }}
-	                  onDrop={(event) => handleGroupDrop(event, group.id)}
-	                  onClick={() => handleGroupSelect(group.id, group.name)}
-	                  className={cn(
-	                    "group relative flex h-8 w-full cursor-pointer items-center gap-1 rounded pl-3 pr-1 text-sm transition-colors",
-	                    selectedGroupId === group.id ? "bg-gray-200" : "hover:bg-gray-100",
-	                    draggingGroupId === group.id && "opacity-50"
-	                  )}
-                >
-                  {dragOverGroup?.groupId === group.id && dragOverGroup.position === "before" && (
-                    <div className="pointer-events-none absolute left-2 right-2 top-0 h-0.5 rounded-full bg-gray-500" />
-                  )}
-                  {dragOverGroup?.groupId === group.id && dragOverGroup.position === "after" && (
-                    <div className="pointer-events-none absolute bottom-0 left-2 right-2 h-0.5 rounded-full bg-gray-500" />
-                  )}
-                  {groupSortMode && (
+                      if (dragOverGroup?.groupId === group.id) {
+                        setDragOverGroup(null)
+                      }
+                    }}
+                    onDrop={(event) => handleGroupDrop(event, group.id)}
+                    onClick={() => handleGroupSelect(group.id, group.name)}
+                    className={cn(
+                      "group relative flex h-8 w-full cursor-pointer items-center gap-1 rounded pl-3 pr-1 text-sm transition-colors",
+                      selectedGroupId === group.id ? "bg-gray-200" : "hover:bg-gray-100",
+                      draggingGroupId === group.id && "opacity-50"
+                    )}
+                  >
+                    {dragOverGroup?.groupId === group.id && dragOverGroup.position === "before" && (
+                      <div className="pointer-events-none absolute left-2 right-2 top-0 h-0.5 rounded-full bg-gray-500" />
+                    )}
+                    {dragOverGroup?.groupId === group.id && dragOverGroup.position === "after" && (
+                      <div className="pointer-events-none absolute bottom-0 left-2 right-2 h-0.5 rounded-full bg-gray-500" />
+                    )}
+                    {groupSortMode && (
+                      <button
+                        type="button"
+                        draggable={!savingGroupOrder}
+                        className={cn(
+                          "flex h-6 w-4 shrink-0 cursor-grab items-center justify-center rounded text-gray-400 hover:bg-black/10 hover:text-gray-600 active:cursor-grabbing",
+                          savingGroupOrder && "cursor-not-allowed opacity-50"
+                        )}
+                        aria-label={tGroups("sortHandle")}
+                        onDragStart={(event) => handleGroupDragStart(event, group.id)}
+                        onDragEnd={handleGroupDragEnd}
+                        onClick={(event) => event.stopPropagation()}
+                      >
+                        <GripVertical className="h-3.5 w-3.5" />
+                      </button>
+                    )}
                     <button
                       type="button"
-                      draggable={!savingGroupOrder}
-                      className={cn(
-                        "flex h-6 w-4 shrink-0 cursor-grab items-center justify-center rounded text-gray-400 hover:bg-black/10 hover:text-gray-600 active:cursor-grabbing",
-                        savingGroupOrder && "cursor-not-allowed opacity-50"
-                      )}
-                      aria-label={tGroups("sortHandle")}
-                      onDragStart={(event) => handleGroupDragStart(event, group.id)}
-                      onDragEnd={handleGroupDragEnd}
-                      onClick={(event) => event.stopPropagation()}
+                      className="flex min-w-0 flex-1 items-center gap-2 text-left"
                     >
-                      <GripVertical className="h-3.5 w-3.5" />
+                      <Folder className="h-4 w-4 shrink-0 text-primary/60" />
+                      <span className="min-w-0 flex-1 truncate">{group.name}</span>
                     </button>
-                  )}
-	                  <button
-	                    type="button"
-	                    className="flex min-w-0 flex-1 items-center gap-2 text-left"
-	                  >
-                    <Folder className="h-4 w-4 shrink-0 text-primary/60" />
-                    <span className="min-w-0 flex-1 truncate">{group.name}</span>
-                  </button>
-                  {!groupSortMode && (
-                    <div
-                      className={cn(
-                        "shrink-0 items-center justify-center self-center",
-                        openMoreGroupId === group.id ? "flex" : "hidden group-hover:flex"
-                      )}
-                      onClick={(event) => event.stopPropagation()}
-                    >
-                      <DropdownMenu
-                        open={openMoreGroupId === group.id}
-                        onOpenChange={(open) => setOpenMoreGroupId(open ? group.id : null)}
+                    {!groupSortMode && (
+                      <div
+                        className={cn(
+                          "shrink-0 items-center justify-center self-center",
+                          openMoreGroupId === group.id ? "flex" : "hidden group-hover:flex"
+                        )}
+                        onClick={(event) => event.stopPropagation()}
                       >
-                        <DropdownMenuTrigger asChild>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-6 w-6 rounded-sm hover:bg-black/10"
-                            aria-label={tGroups("more")}
-                          >
-                            <MoreHorizontal className="h-3.5 w-3.5" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent side="right" align="start" sideOffset={8} className="w-40">
-                          <DropdownMenuItem onClick={() => openEditGroupDialog(group)}>
-                            <Pencil className="mr-2 h-4 w-4" />
-                            {tGroups("rename")}
-                          </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => handleDeleteGroupClick(group)}>
-                            <Trash2 className="mr-2 h-4 w-4" />
-                            {tGroups("delete")}
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </div>
-                  )}
-                </div>
+                        <DropdownMenu
+                          open={openMoreGroupId === group.id}
+                          onOpenChange={(open) => setOpenMoreGroupId(open ? group.id : null)}
+                        >
+                          <DropdownMenuTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-6 w-6 rounded-sm hover:bg-black/10"
+                              aria-label={tGroups("more")}
+                            >
+                              <MoreHorizontal className="h-3.5 w-3.5" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent side="right" align="start" sideOffset={8} className="w-40">
+                            <DropdownMenuItem onClick={() => openEditGroupDialog(group)}>
+                              <Pencil className="mr-2 h-4 w-4" />
+                              {tGroups("rename")}
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => handleDeleteGroupClick(group)}>
+                              <Trash2 className="mr-2 h-4 w-4" />
+                              {tGroups("delete")}
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </div>
+                    )}
+                  </div>
                 ))}
               </div>
             )}
@@ -1297,35 +1314,39 @@ export function EmailList({ onEmailSelect, onGroupChange, selectedEmailId, refre
                           <Trash2 className="mr-2 h-4 w-4" />
                           {tCommon("delete")}
                         </DropdownMenuItem>
-                        <div className="my-1 h-px bg-border" />
-                        <div
-                          className="max-h-80 overflow-y-auto"
-                          onWheel={(event) => event.stopPropagation()}
-                          onTouchMove={(event) => event.stopPropagation()}
-                        >
-                          {email.groupId && (
-                            <DropdownMenuItem className="h-8" onClick={() => moveEmailToGroup(email, null)}>
-                              <Check className="mr-2 h-4 w-4 opacity-0" />
-                              {tGroups("removeFromGroup")}
-                            </DropdownMenuItem>
-                          )}
-                          {groups.map(group => (
-                            <DropdownMenuItem
-                              key={group.id}
-                              className="h-8"
-                              disabled={email.groupId === group.id}
-                              onClick={() => moveEmailToGroup(email, group.id)}
+                        {!email.isIcloudMail && (
+                          <>
+                            <div className="my-1 h-px bg-border" />
+                            <div
+                              className="max-h-80 overflow-y-auto"
+                              onWheel={(event) => event.stopPropagation()}
+                              onTouchMove={(event) => event.stopPropagation()}
                             >
-                              <Check className={cn("mr-2 h-4 w-4", email.groupId === group.id ? "opacity-100" : "opacity-0")} />
-                              <span className="truncate">{group.name}</span>
-                            </DropdownMenuItem>
-                          ))}
-                          {groups.length === 0 && (
-                            <div className="px-2 py-3 text-center text-xs text-gray-500">
-                              {tGroups("noGroups")}
+                              {email.groupId && (
+                                <DropdownMenuItem className="h-8" onClick={() => moveEmailToGroup(email, null)}>
+                                  <Check className="mr-2 h-4 w-4 opacity-0" />
+                                  {tGroups("removeFromGroup")}
+                                </DropdownMenuItem>
+                              )}
+                              {groups.map(group => (
+                                <DropdownMenuItem
+                                  key={group.id}
+                                  className="h-8"
+                                  disabled={email.groupId === group.id}
+                                  onClick={() => moveEmailToGroup(email, group.id)}
+                                >
+                                  <Check className={cn("mr-2 h-4 w-4", email.groupId === group.id ? "opacity-100" : "opacity-0")} />
+                                  <span className="truncate">{group.name}</span>
+                                </DropdownMenuItem>
+                              ))}
+                              {groups.length === 0 && (
+                                <div className="px-2 py-3 text-center text-xs text-gray-500">
+                                  {tGroups("noGroups")}
+                                </div>
+                              )}
                             </div>
-                          )}
-                        </div>
+                          </>
+                        )}
                       </DropdownMenuContent>
                     </DropdownMenu>
                     </div>

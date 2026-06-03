@@ -9,6 +9,7 @@ import { getUserId } from "@/lib/apiKey"
 import { getUserRole } from "@/lib/auth"
 import { ROLES } from "@/lib/permissions"
 import { generateEmailName, getEmailNamePrefix, isValidEmailNamePrefix } from "@/lib/email-name"
+import { EXTERNAL_EMAIL_GROUP_ID } from "@/lib/email-group-constants"
 
 export const runtime = "edge"
 
@@ -124,6 +125,13 @@ export async function POST(request: Request) {
     if (normalizedTag && normalizedTag.length > MAX_TAG_LENGTH) {
       return NextResponse.json(
         { error: `标签不能超过 ${MAX_TAG_LENGTH} 个字符` },
+        { status: 400 }
+      )
+    }
+
+    if (selectedGroupId === EXTERNAL_EMAIL_GROUP_ID) {
+      return NextResponse.json(
+        { error: "第三方分组不能创建普通邮箱" },
         { status: 400 }
       )
     }

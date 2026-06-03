@@ -1,10 +1,11 @@
 import { NextResponse } from "next/server"
 import { createDb } from "@/lib/db"
-import { emailGroups, emails } from "@/lib/schema"
+import { emailGroups, emails, externalMailAccounts } from "@/lib/schema"
 import { getUserId } from "@/lib/apiKey"
-import { and, asc, eq, gt, sql } from "drizzle-orm"
+import { and, asc, eq, gt, notInArray, sql } from "drizzle-orm"
 
 export const runtime = "edge"
+const ICLOUD_MAIL_PROVIDER = "icloud"
 
 export async function GET() {
   const userId = await getUserId()
@@ -16,6 +17,23 @@ export async function GET() {
   const db = createDb()
 
   try {
+    const externalMailEmailIds = (await db
+      .select({ emailId: externalMailAccounts.emailId })
+      .from(externalMailAccounts)
+      .where(and(
+        eq(externalMailAccounts.userId, userId),
+        eq(externalMailAccounts.provider, ICLOUD_MAIL_PROVIDER)
+      )))
+      .map(account => account.emailId)
+    const emailJoinConditions = [
+      eq(emails.groupId, emailGroups.id),
+      gt(emails.expiresAt, new Date()),
+    ]
+
+    if (externalMailEmailIds.length > 0) {
+      emailJoinConditions.push(notInArray(emails.id, externalMailEmailIds))
+    }
+
     const groups = await db.select({
       id: emailGroups.id,
       name: emailGroups.name,
@@ -25,10 +43,7 @@ export async function GET() {
       emailCount: sql<number>`count(${emails.id})`,
     })
       .from(emailGroups)
-      .leftJoin(emails, and(
-        eq(emails.groupId, emailGroups.id),
-        gt(emails.expiresAt, new Date())
-      ))
+      .leftJoin(emails, and(...emailJoinConditions))
       .where(eq(emailGroups.userId, userId))
       .groupBy(emailGroups.id)
       .orderBy(asc(emailGroups.sortOrder), asc(emailGroups.createdAt), asc(emailGroups.name))

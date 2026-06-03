@@ -95,7 +95,7 @@ export function EditDialog({ email, groups, open, onOpenChange, onEmailUpdated }
 
     setExpiryTime(getExpiryValue(email))
     setCustomAddress(email.address)
-    setEditGroupId(email.groupId ?? UNGROUPED_GROUP_VALUE)
+    setEditGroupId(email.isIcloudMail ? UNGROUPED_GROUP_VALUE : email.groupId ?? UNGROUPED_GROUP_VALUE)
     setTag(email.tag ?? "")
     setOpenDropdown(null)
   }
@@ -119,7 +119,7 @@ export function EditDialog({ email, groups, open, onOpenChange, onEmailUpdated }
         groupId: string | null
         tag: string | null
       } = {
-        groupId: editGroupId === UNGROUPED_GROUP_VALUE ? null : editGroupId,
+        groupId: email.isIcloudMail || editGroupId === UNGROUPED_GROUP_VALUE ? null : editGroupId,
         tag: tag.trim() || null,
       }
 
@@ -189,32 +189,34 @@ export function EditDialog({ email, groups, open, onOpenChange, onEmailUpdated }
             </div>
           )}
 
-          <div className={formRowClass}>
-            <Label className={formLabelClass}>{tCreate("group")}</Label>
-            <Select
-              open={openDropdown === "group"}
-              onOpenChange={(nextOpen) => handleDropdownOpenChange("group", nextOpen)}
-              value={editGroupId}
-              onValueChange={(value) => {
-                setEditGroupId(value)
-                setOpenDropdown(null)
-              }}
-            >
-              <SelectTrigger className="flex-1">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent className="max-h-[16.5rem]">
-                <SelectItem value={UNGROUPED_GROUP_VALUE} className={groupSelectItemClass}>
-                  {tGroups("ungrouped")}
-                </SelectItem>
-                {groups.map(group => (
-                  <SelectItem key={group.id} value={group.id} className={groupSelectItemClass}>
-                    {group.name}
+          {!email?.isIcloudMail && (
+            <div className={formRowClass}>
+              <Label className={formLabelClass}>{tCreate("group")}</Label>
+              <Select
+                open={openDropdown === "group"}
+                onOpenChange={(nextOpen) => handleDropdownOpenChange("group", nextOpen)}
+                value={editGroupId}
+                onValueChange={(value) => {
+                  setEditGroupId(value)
+                  setOpenDropdown(null)
+                }}
+              >
+                <SelectTrigger className="flex-1">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent className="max-h-[16.5rem]">
+                  <SelectItem value={UNGROUPED_GROUP_VALUE} className={groupSelectItemClass}>
+                    {tGroups("ungrouped")}
                   </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+                  {groups.map(group => (
+                    <SelectItem key={group.id} value={group.id} className={groupSelectItemClass}>
+                      {group.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
 
           {!email?.isCustom && (
             <div className={formRowClass}>

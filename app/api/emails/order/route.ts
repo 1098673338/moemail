@@ -1,10 +1,12 @@
 import { NextResponse } from "next/server"
 import { createDb } from "@/lib/db"
-import { emails } from "@/lib/schema"
+import { emails, externalMailAccounts } from "@/lib/schema"
 import { getUserId } from "@/lib/apiKey"
-import { and, asc, desc, eq, gt, isNull, sql } from "drizzle-orm"
+import { and, asc, desc, eq, gt, inArray, isNull, notInArray, sql } from "drizzle-orm"
+import { EXTERNAL_EMAIL_GROUP_ID } from "@/lib/email-group-constants"
 
 export const runtime = "edge"
+const ICLOUD_MAIL_PROVIDER = "icloud"
 
 export async function PATCH(request: Request) {
   const userId = await getUserId()
@@ -35,6 +37,14 @@ export async function PATCH(request: Request) {
   const db = createDb()
 
   try {
+    const externalMailEmailIds = (await db
+      .select({ emailId: externalMailAccounts.emailId })
+      .from(externalMailAccounts)
+      .where(and(
+        eq(externalMailAccounts.userId, userId),
+        eq(externalMailAccounts.provider, ICLOUD_MAIL_PROVIDER)
+      )))
+      .map(account => account.emailId)
     const conditions = [
       eq(emails.userId, userId),
       gt(emails.expiresAt, new Date()),
@@ -42,8 +52,19 @@ export async function PATCH(request: Request) {
 
     if (selectedGroupId === "none") {
       conditions.push(isNull(emails.groupId))
+      if (externalMailEmailIds.length > 0) {
+        conditions.push(notInArray(emails.id, externalMailEmailIds))
+      }
+    } else if (selectedGroupId === EXTERNAL_EMAIL_GROUP_ID) {
+      conditions.push(externalMailEmailIds.length > 0
+        ? inArray(emails.id, externalMailEmailIds)
+        : sql`0 = 1`
+      )
     } else if (selectedGroupId) {
       conditions.push(eq(emails.groupId, selectedGroupId))
+      if (externalMailEmailIds.length > 0) {
+        conditions.push(notInArray(emails.id, externalMailEmailIds))
+      }
     }
 
     const currentEmails = await db.select({ id: emails.id })
