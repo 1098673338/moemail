@@ -377,7 +377,6 @@ export function SharedEmailPageClient({
                 })()
               }))}
               selectedMessageId={selectedMessage?.id}
-              hideSenderAddress={Boolean(email.isIcloudMail)}
               onMessageSelect={fetchMessageDetail}
               onMessagePrefetch={prefetchMessageDetail}
               onLoadMore={handleLoadMore}
