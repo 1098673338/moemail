@@ -16,6 +16,7 @@ interface Email {
   address: string
   tag?: string | null
   isCustom?: boolean
+  isIcloudMail?: boolean
   createdAt: number | string | Date
   expiresAt: number | string | Date
   groupId?: string | null

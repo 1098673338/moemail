@@ -21,6 +21,7 @@ interface MessageDetail {
 interface SharedMessageDetailProps {
   message: MessageDetail | null
   loading?: boolean
+  hideSenderAddress?: boolean
   t: {
     messageContent: string
     selectMessage: string
@@ -43,6 +44,7 @@ const hasMessageBody = (message: MessageDetail | null) => {
 export function SharedMessageDetail({
   message,
   loading = false,
+  hideSenderAddress = false,
   t,
 }: SharedMessageDetailProps) {
   const [viewMode, setViewMode] = useState<ViewMode>("html")
@@ -162,7 +164,7 @@ export function SharedMessageDetail({
         fromLabel={t.from}
         toLabel={t.to}
         timeLabel={t.time}
-        fromAddress={!isSentMessage ? message.from_address : undefined}
+        fromAddress={!hideSenderAddress && !isSentMessage ? message.from_address : undefined}
         toAddress={message.to_address}
         timestamp={message.sent_at || message.received_at || 0}
       />

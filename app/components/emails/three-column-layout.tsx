@@ -15,6 +15,7 @@ interface Email {
   id: string
   address: string
   isCustom?: boolean
+  isIcloudMail?: boolean
 }
 
 type MessageType = 'received' | 'sent'
@@ -23,6 +24,8 @@ interface ExternalMailAccount {
   id: string
   emailId: string
   emailAddress: string
+  enabled: boolean
+  lastUid: number
   lastSyncAt: number | null
 }
 
@@ -48,6 +51,7 @@ export function ThreeColumnLayout() {
   const [refreshTrigger, setRefreshTrigger] = useState(0)
   const [emailRefreshTrigger, setEmailRefreshTrigger] = useState(0)
   const [externalMailAccount, setExternalMailAccount] = useState<ExternalMailAccount | null>(null)
+  const [externalMailAccountLoading, setExternalMailAccountLoading] = useState(false)
   const { copyToClipboard } = useCopy()
   const { canSend: canSendEmails, loading: sendPermissionLoading } = useSendPermission()
 
@@ -59,6 +63,20 @@ export function ThreeColumnLayout() {
   const messageListColumnStyle = { gridColumn: "span 6 / span 6" }
   const contentColumnStyle = { gridColumn: "span 14 / span 14" }
   const showMessageList = Boolean(selectedEmail && !selectedEmail.isCustom)
+  const selectedEmailIsIcloudMail = Boolean(
+    selectedEmail?.isIcloudMail
+    || (externalMailAccount && externalMailAccount.emailId === selectedEmail?.id)
+  )
+
+  const fetchExternalMailAccount = useCallback(async (emailId: string) => {
+    const response = await fetch(`/api/external-mail/accounts?emailId=${encodeURIComponent(emailId)}`)
+    const data = await response.json().catch(() => ({})) as {
+      accounts?: ExternalMailAccount[]
+    }
+
+    if (!response.ok) return null
+    return data.accounts?.[0] ?? null
+  }, [])
 
   useEffect(() => {
     let cancelled = false
@@ -66,23 +84,26 @@ export function ThreeColumnLayout() {
     const loadExternalMailAccount = async () => {
       if (!selectedEmail?.id) {
         setExternalMailAccount(null)
+        setExternalMailAccountLoading(false)
         return
       }
 
       setExternalMailAccount(null)
+      setExternalMailAccountLoading(Boolean(selectedEmail.isIcloudMail))
 
       try {
-        const response = await fetch(`/api/external-mail/accounts?emailId=${encodeURIComponent(selectedEmail.id)}`)
-        const data = await response.json().catch(() => ({})) as {
-          accounts?: ExternalMailAccount[]
-        }
+        const account = await fetchExternalMailAccount(selectedEmail.id)
 
         if (!cancelled) {
-          setExternalMailAccount(response.ok ? data.accounts?.[0] ?? null : null)
+          setExternalMailAccount(account)
         }
       } catch {
         if (!cancelled) {
           setExternalMailAccount(null)
+        }
+      } finally {
+        if (!cancelled) {
+          setExternalMailAccountLoading(false)
         }
       }
     }
@@ -92,7 +113,7 @@ export function ThreeColumnLayout() {
     return () => {
       cancelled = true
     }
-  }, [selectedEmail?.id])
+  }, [fetchExternalMailAccount, selectedEmail?.id, selectedEmail?.isIcloudMail])
 
   const copyEmailAddress = () => {
     copyToClipboard(selectedEmail?.address || "")
@@ -125,27 +146,70 @@ export function ThreeColumnLayout() {
     }
   }
 
-  const syncExternalMail = async () => {
-    if (!externalMailAccount) return
+  const syncExternalMail = async (account: ExternalMailAccount, options: { rescan?: boolean } = {}) => {
+    const syncUrl = new URL(`/api/external-mail/accounts/${account.id}/sync`, window.location.origin)
+    if (options.rescan) {
+      syncUrl.searchParams.set("rescan", "1")
+    }
 
-    const response = await fetch(`/api/external-mail/accounts/${externalMailAccount.id}/sync?rescan=1`, {
+    const response = await fetch(syncUrl, {
       method: "POST",
     })
     const data = await response.json().catch(() => ({})) as {
       error?: string
+      lastUid?: number
+      lastSyncAt?: number
     }
 
     if (!response.ok) {
-      throw new Error(data.error || "同步外部邮箱失败")
+      throw new Error(data.error || "同步 iCloud 邮箱失败")
     }
 
-    setExternalMailAccount(prev => prev ? { ...prev, lastSyncAt: Date.now() } : prev)
+    const nextLastUid = Number.isFinite(data.lastUid) ? data.lastUid! : account.lastUid
+    const nextLastSyncAt = Number.isFinite(data.lastSyncAt) ? data.lastSyncAt! : Date.now()
+
+    setExternalMailAccount(prev => {
+      if (prev?.id === account.id) {
+        return { ...prev, lastUid: nextLastUid, lastSyncAt: nextLastSyncAt }
+      }
+      if (selectedEmail?.id === account.emailId) {
+        return { ...account, lastUid: nextLastUid, lastSyncAt: nextLastSyncAt }
+      }
+      return prev
+    })
   }
 
   const handleMessageListRefresh = async (messageType: MessageType) => {
-    if (messageType === 'received' && externalMailAccount?.emailId === selectedEmail?.id) {
-      await syncExternalMail()
+    if (messageType !== 'received' || !selectedEmail || !selectedEmailIsIcloudMail) {
+      return
     }
+
+    const account = externalMailAccount?.emailId === selectedEmail.id
+      ? externalMailAccount
+      : await fetchExternalMailAccount(selectedEmail.id)
+
+    if (!account) {
+      throw new Error(externalMailAccountLoading
+        ? "iCloud 邮箱账号正在加载，请稍后再试"
+        : "没有找到这个 iCloud 邮箱账号，请刷新邮箱列表后重试")
+    }
+
+    await syncExternalMail(account, { rescan: true })
+  }
+
+  const handleMessageListAutoRefresh = async (messageType: MessageType, emailId: string) => {
+    if (messageType !== 'received') {
+      return
+    }
+
+    const account = externalMailAccount?.emailId === emailId
+      ? externalMailAccount
+      : await fetchExternalMailAccount(emailId)
+
+    if (!account) return
+    if (!account.enabled) return
+
+    await syncExternalMail(account)
   }
 
   const handleGroupChange = (groupId: string | null, groupName?: string) => {
@@ -222,6 +286,8 @@ export function ThreeColumnLayout() {
                 canSendEmails={canSendEmails}
                 sendPermissionLoading={sendPermissionLoading}
                 onBeforeRefresh={handleMessageListRefresh}
+                onBeforeAutoRefresh={handleMessageListAutoRefresh}
+                isIcloudMail={selectedEmailIsIcloudMail}
               />
             </div>
           ) : (
@@ -239,6 +305,7 @@ export function ThreeColumnLayout() {
                 emailId={selectedEmail.id}
                 messageId={selectedMessageId}
                 messageType={selectedMessageType}
+                hideSenderAddress={selectedEmailIsIcloudMail}
                 initialMessage={selectedMessagePreview ? {
                   ...selectedMessagePreview,
                   type: selectedMessageType,

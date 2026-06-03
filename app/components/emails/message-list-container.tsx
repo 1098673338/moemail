@@ -4,6 +4,7 @@ import { useEffect, useState } from "react"
 import { useTranslations } from "next-intl"
 import { Tabs, SlidingTabsList, SlidingTabsTrigger, TabsContent } from "@/components/ui/tabs"
 import { MessageList } from "./message-list"
+import { EMAIL_CONFIG } from "@/config"
 
 interface MessageListContainerProps {
   email: {
@@ -18,6 +19,8 @@ interface MessageListContainerProps {
   canSendEmails: boolean
   sendPermissionLoading?: boolean
   onBeforeRefresh?: (messageType: MessageType) => Promise<void> | void
+  onBeforeAutoRefresh?: (messageType: MessageType, emailId: string) => Promise<void> | void
+  isIcloudMail?: boolean
 }
 
 type MessageType = 'received' | 'sent'
@@ -42,6 +45,8 @@ export function MessageListContainer({
   canSendEmails,
   sendPermissionLoading = false,
   onBeforeRefresh,
+  onBeforeAutoRefresh,
+  isIcloudMail = false,
 }: MessageListContainerProps) {
   const t = useTranslations("emails.messages")
   const isCustomEmail = Boolean(email.isCustom)
@@ -143,6 +148,9 @@ export function MessageListContainer({
               onTotalChange={handleTotalChange}
               tabControls={tabControls}
               onBeforeRefresh={onBeforeRefresh}
+              onBeforeAutoRefresh={isIcloudMail ? onBeforeAutoRefresh : undefined}
+              autoRefreshInterval={isIcloudMail ? EMAIL_CONFIG.ICLOUD_SYNC_INTERVAL : EMAIL_CONFIG.POLL_INTERVAL}
+              autoRefreshEnabled={activeTab === "received"}
             />
           </TabsContent>
           
@@ -158,6 +166,7 @@ export function MessageListContainer({
               onTotalChange={handleTotalChange}
               tabControls={tabControls}
               onBeforeRefresh={onBeforeRefresh}
+              autoRefreshEnabled={activeTab === "sent"}
             />
           </TabsContent>
         </Tabs>
@@ -172,6 +181,8 @@ export function MessageListContainer({
             refreshTrigger={refreshTrigger}
             emptyStateOffsetClass="-translate-y-12"
             onBeforeRefresh={onBeforeRefresh}
+            onBeforeAutoRefresh={isIcloudMail ? onBeforeAutoRefresh : undefined}
+            autoRefreshInterval={isIcloudMail ? EMAIL_CONFIG.ICLOUD_SYNC_INTERVAL : EMAIL_CONFIG.POLL_INTERVAL}
           />
         </div>
       )}

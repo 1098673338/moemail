@@ -10,7 +10,6 @@ import { useToast } from "@/components/ui/use-toast"
 interface ExternalMailAccount {
   id: string
   emailId: string
-  provider: string
   emailAddress: string
   username: string
   enabled: boolean
@@ -154,10 +153,7 @@ export function ExternalMailPanel() {
       const response = await fetch("/api/external-mail/accounts", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          ...payload,
-          provider: "icloud",
-        }),
+        body: JSON.stringify(payload),
       })
       const data = await response.json().catch(() => ({})) as {
         account?: ExternalMailAccount

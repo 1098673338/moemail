@@ -17,6 +17,7 @@ interface Message {
 interface SharedMessageListProps {
   messages: Message[]
   selectedMessageId?: string | null
+  hideSenderAddress?: boolean
   onMessageSelect: (message: Message) => void
   onMessagePrefetch?: (message: Message) => void
   onLoadMore?: () => void
@@ -39,6 +40,7 @@ interface SharedMessageListProps {
 export function SharedMessageList({
   messages,
   selectedMessageId,
+  hideSenderAddress = false,
   onMessageSelect,
   onMessagePrefetch,
   onLoadMore,
@@ -119,7 +121,7 @@ export function SharedMessageList({
                       {message.subject}
                     </p>
                     <p className="mt-1 truncate text-left text-xs text-gray-500">
-                      {message.from_address || message.to_address || ""}
+                      {hideSenderAddress ? (message.to_address || "") : (message.from_address || message.to_address || "")}
                     </p>
                     <p className="mt-1 text-left text-xs text-gray-500">
                       {new Date(

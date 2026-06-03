@@ -20,11 +20,11 @@ export async function DELETE(
 
     return deleted
       ? NextResponse.json({ success: true })
-      : NextResponse.json({ error: "外部邮箱账号不存在" }, { status: 404 })
+      : NextResponse.json({ error: "iCloud 邮箱账号不存在" }, { status: 404 })
   } catch (error) {
     console.error("Failed to delete external mail account:", error)
     return NextResponse.json(
-      { error: "删除外部邮箱账号失败" },
+      { error: "删除 iCloud 邮箱账号失败" },
       { status: 500 }
     )
   }

@@ -13,13 +13,15 @@ export async function POST(request: Request) {
 
   try {
     const body = await request.json() as {
+      emailAddress?: string
       username?: string
       password?: string
     }
+    const emailAddress = body.emailAddress?.trim() || ""
     const username = body.username?.trim() || ""
     const password = body.password || ""
 
-    await testIcloudConnection({ username, password })
+    await testIcloudConnection({ emailAddress, username, password })
     return NextResponse.json({ success: true })
   } catch (error) {
     console.error("Failed to test external mail account:", error)

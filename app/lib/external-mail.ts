@@ -7,14 +7,10 @@ import { createDb, type Db } from "@/lib/db"
 import { ROLES } from "@/lib/permissions"
 import { externalMailAccounts, emails, messages, users } from "@/lib/schema"
 
-export const EXTERNAL_MAIL_PROVIDER = {
-  ICLOUD: "icloud",
-} as const
-
-export type ExternalMailProvider = typeof EXTERNAL_MAIL_PROVIDER[keyof typeof EXTERNAL_MAIL_PROVIDER]
+const ICLOUD_MAIL_PROVIDER = "icloud"
+const ICLOUD_MAIL_DOMAINS = new Set(["icloud.com", "me.com", "mac.com"])
 
 export const ICLOUD_MAIL_SETTINGS = {
-  provider: EXTERNAL_MAIL_PROVIDER.ICLOUD,
   imapHost: "imap.mail.me.com",
   imapPort: 993,
   smtpHost: "smtp.mail.me.com",
@@ -31,10 +27,6 @@ export interface ExternalMailConnectionAccount {
   emailId: string
   emailAddress: string
   username: string
-  imapHost: string
-  imapPort: number
-  smtpHost: string
-  smtpPort: number
   enabled: boolean
   lastUid: number
 }
@@ -57,6 +49,10 @@ interface ExternalMailCredentials {
   password: string
 }
 
+interface TestIcloudConnectionCredentials extends ExternalMailCredentials {
+  emailAddress?: string
+}
+
 type ExternalMailRuntimeError = Error & {
   authenticationFailed?: boolean
   serverResponseCode?: string
@@ -68,7 +64,6 @@ type ExternalMailRuntimeError = Error & {
 
 interface CreateExternalMailAccountInput extends ExternalMailCredentials {
   emailAddress: string
-  provider?: ExternalMailProvider
   enabled?: boolean
 }
 
@@ -114,7 +109,7 @@ function getExternalMailSecret() {
   const secret = process.env.EXTERNAL_MAIL_SECRET || process.env.AUTH_SECRET || localDevSecret
 
   if (!secret) {
-    throw new Error("外部邮箱密钥未配置，请设置 EXTERNAL_MAIL_SECRET 或 AUTH_SECRET")
+    throw new Error("iCloud 邮箱密钥未配置，请设置 EXTERNAL_MAIL_SECRET 或 AUTH_SECRET")
   }
 
   return secret
@@ -208,7 +203,7 @@ export async function decryptExternalMailPassword(encryptedPassword: string) {
   const [version, iv, encrypted] = encryptedPassword.split(":")
 
   if (version !== "v2" || !iv || !encrypted) {
-    throw new Error("外部邮箱凭据格式无效")
+    throw new Error("iCloud 邮箱凭据格式无效")
   }
 
   const decrypted = await crypto.subtle.decrypt(
@@ -226,6 +221,17 @@ function normalizeEmailAddress(value: string) {
 
 function normalizeUsername(value: string) {
   return value.trim()
+}
+
+function isIcloudMailAddress(value: string) {
+  const domain = getAddressDomain(normalizeEmailAddress(value))
+  return Boolean(domain && ICLOUD_MAIL_DOMAINS.has(domain))
+}
+
+function assertIcloudMailAddress(value: string) {
+  if (!isIcloudMailAddress(value)) {
+    throw new Error("目前仅支持 iCloud 邮箱地址（@icloud.com、@me.com 或 @mac.com）")
+  }
 }
 
 function getHostname(value?: string | null) {
@@ -530,21 +536,19 @@ class SmtpClient {
   async connect() {
     const connectSocket = await getSocketConnect()
     this.client = new SocketLineClient(connectSocket(
-      { hostname: this.account.smtpHost, port: this.account.smtpPort },
-      { secureTransport: this.account.smtpPort === 465 ? "on" : "starttls", allowHalfOpen: false }
+      { hostname: ICLOUD_MAIL_SETTINGS.smtpHost, port: ICLOUD_MAIL_SETTINGS.smtpPort },
+      { secureTransport: "starttls", allowHalfOpen: false }
     ))
     await this.expect([220])
     await this.ehlo()
 
-    if (this.account.smtpPort !== 465) {
-      await this.command("STARTTLS", [220])
-      this.client.release()
-      const tlsSocket = this.client.startTls({
-        expectedServerHostname: this.account.smtpHost,
-      })
-      this.client = new SocketLineClient(tlsSocket)
-      await this.ehlo()
-    }
+    await this.command("STARTTLS", [220])
+    this.client.release()
+    const tlsSocket = this.client.startTls({
+      expectedServerHostname: ICLOUD_MAIL_SETTINGS.smtpHost,
+    })
+    this.client = new SocketLineClient(tlsSocket)
+    await this.ehlo()
 
     await this.auth()
   }
@@ -624,7 +628,7 @@ class ImapClient {
   async connect() {
     const connectSocket = await getSocketConnect()
     this.client = new SocketLineClient(connectSocket(
-      { hostname: this.account.imapHost, port: this.account.imapPort },
+      { hostname: ICLOUD_MAIL_SETTINGS.imapHost, port: ICLOUD_MAIL_SETTINGS.imapPort },
       { secureTransport: "on", allowHalfOpen: false }
     ))
     const greeting = await this.readLine()
@@ -808,25 +812,24 @@ class ImapClient {
   }
 }
 
-export async function testIcloudConnection(credentials: ExternalMailCredentials) {
-  const account = {
+export async function testIcloudConnection(credentials: TestIcloudConnectionCredentials) {
+  const emailAddress = normalizeEmailAddress(credentials.emailAddress || credentials.username)
+  const username = normalizeUsername(credentials.username || emailAddress)
+
+  if (!username || !credentials.password) {
+    throw new Error("请输入 Apple ID 邮箱和 App 专用密码")
+  }
+
+  assertIcloudMailAddress(emailAddress)
+
+  const account: ExternalMailConnectionAccount = {
     id: "connection-test",
-    userId: "",
     emailId: "",
-    provider: EXTERNAL_MAIL_PROVIDER.ICLOUD,
-    emailAddress: credentials.username,
-    username: normalizeUsername(credentials.username),
-    passwordEncrypted: "",
-    imapHost: ICLOUD_MAIL_SETTINGS.imapHost,
-    imapPort: ICLOUD_MAIL_SETTINGS.imapPort,
-    smtpHost: ICLOUD_MAIL_SETTINGS.smtpHost,
-    smtpPort: ICLOUD_MAIL_SETTINGS.smtpPort,
+    emailAddress,
+    username,
     enabled: true,
     lastUid: 0,
-    lastSyncAt: null,
-    createdAt: new Date(),
-    updatedAt: new Date(),
-  } satisfies ExternalMailAccountRecord
+  }
 
   const imapClient = new ImapClient(account, credentials.password)
   try {
@@ -885,7 +888,6 @@ export function serializeExternalMailAccount(
   return {
     id: account.id,
     emailId: account.emailId,
-    provider: account.provider,
     emailAddress: account.emailAddress,
     username: account.username,
     enabled: account.enabled,
@@ -906,7 +908,10 @@ export function serializeExternalMailAccount(
 export async function listExternalMailAccounts(userId: string) {
   const db = createDb()
   const accounts = await db.query.externalMailAccounts.findMany({
-    where: eq(externalMailAccounts.userId, userId),
+    where: and(
+      eq(externalMailAccounts.userId, userId),
+      eq(externalMailAccounts.provider, ICLOUD_MAIL_PROVIDER)
+    ),
     orderBy: desc(externalMailAccounts.createdAt),
     with: {
       email: {
@@ -924,17 +929,14 @@ export async function listExternalMailAccounts(userId: string) {
 
 export async function createExternalMailAccount(userId: string, input: CreateExternalMailAccountInput) {
   const db = createDb()
-  const provider = input.provider || EXTERNAL_MAIL_PROVIDER.ICLOUD
   const emailAddress = normalizeEmailAddress(input.emailAddress)
   const username = normalizeUsername(input.username || emailAddress)
 
-  if (provider !== EXTERNAL_MAIL_PROVIDER.ICLOUD) {
-    throw new Error("目前第一版仅支持 iCloud")
+  if (!emailAddress || !emailAddress.includes("@")) {
+    throw new Error("请输入有效的 iCloud 邮箱地址")
   }
 
-  if (!emailAddress || !emailAddress.includes("@")) {
-    throw new Error("请输入有效的邮箱地址")
-  }
+  assertIcloudMailAddress(emailAddress)
 
   if (!username || !input.password) {
     throw new Error("请输入 Apple ID 邮箱和 App 专用密码")
@@ -948,7 +950,7 @@ export async function createExternalMailAccount(userId: string, input: CreateExt
   })
 
   if (existingAccount) {
-    throw new Error("这个外部邮箱已经接入过了")
+    throw new Error("这个 iCloud 邮箱已经接入过了")
   }
 
   const existingEmail = await db.query.emails.findFirst({
@@ -994,7 +996,7 @@ export async function createExternalMailAccount(userId: string, input: CreateExt
     .values({
       userId,
       emailId: emailRecord.id,
-      provider,
+      provider: ICLOUD_MAIL_PROVIDER,
       emailAddress,
       username,
       passwordEncrypted: await encryptExternalMailPassword(input.password),
@@ -1049,7 +1051,7 @@ export async function syncExternalMailMessages(options: {
   const { account, password } = options
 
   if (!account.enabled) {
-    throw new Error("外部邮箱账号已停用")
+    throw new Error("iCloud 邮箱账号已停用")
   }
 
   const client = new ImapClient(account, password)
@@ -1134,16 +1136,17 @@ export async function syncExternalMailAccount(userId: string, accountId: string,
   const account = await db.query.externalMailAccounts.findFirst({
     where: and(
       eq(externalMailAccounts.id, accountId),
-      eq(externalMailAccounts.userId, userId)
+      eq(externalMailAccounts.userId, userId),
+      eq(externalMailAccounts.provider, ICLOUD_MAIL_PROVIDER)
     ),
   })
 
   if (!account) {
-    throw new Error("外部邮箱账号不存在")
+    throw new Error("iCloud 邮箱账号不存在")
   }
 
   if (!account.enabled) {
-    throw new Error("外部邮箱账号已停用")
+    throw new Error("iCloud 邮箱账号已停用")
   }
 
   const password = await decryptExternalMailPassword(account.passwordEncrypted)
@@ -1192,6 +1195,7 @@ export async function syncExternalMailAccountByEmailId(emailId: string, options?
   const account = await db.query.externalMailAccounts.findFirst({
     where: and(
       eq(externalMailAccounts.emailId, emailId),
+      eq(externalMailAccounts.provider, ICLOUD_MAIL_PROVIDER),
       eq(externalMailAccounts.enabled, true)
     ),
   })
@@ -1244,7 +1248,8 @@ export async function deleteExternalMailAccount(userId: string, accountId: strin
   const account = await db.query.externalMailAccounts.findFirst({
     where: and(
       eq(externalMailAccounts.id, accountId),
-      eq(externalMailAccounts.userId, userId)
+      eq(externalMailAccounts.userId, userId),
+      eq(externalMailAccounts.provider, ICLOUD_MAIL_PROVIDER)
     ),
   })
 
@@ -1261,7 +1266,8 @@ export async function findExternalMailAccountByEmailId(userId: string, emailId: 
   return db.query.externalMailAccounts.findFirst({
     where: and(
       eq(externalMailAccounts.userId, userId),
-      eq(externalMailAccounts.emailId, emailId)
+      eq(externalMailAccounts.emailId, emailId),
+      eq(externalMailAccounts.provider, ICLOUD_MAIL_PROVIDER)
     ),
   })
 }
@@ -1275,7 +1281,8 @@ export async function sendExternalMail(
   const account = await db.query.externalMailAccounts.findFirst({
     where: and(
       eq(externalMailAccounts.userId, userId),
-      eq(externalMailAccounts.emailId, emailId)
+      eq(externalMailAccounts.emailId, emailId),
+      eq(externalMailAccounts.provider, ICLOUD_MAIL_PROVIDER)
     ),
     with: {
       email: true,
@@ -1284,7 +1291,7 @@ export async function sendExternalMail(
 
   if (!account) return null
   if (!account.enabled) {
-    throw new Error("外部邮箱账号已停用")
+    throw new Error("iCloud 邮箱账号已停用")
   }
 
   const password = await decryptExternalMailPassword(account.passwordEncrypted)
@@ -1314,7 +1321,7 @@ export async function sendExternalMailWithAccount(
   input: SendExternalMailInput
 ) {
   if (!account.enabled) {
-    throw new Error("外部邮箱账号已停用")
+    throw new Error("iCloud 邮箱账号已停用")
   }
 
   const client = new SmtpClient(account, password)

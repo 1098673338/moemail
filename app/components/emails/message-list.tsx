@@ -47,6 +47,9 @@ interface MessageListProps {
   onTotalChange?: (messageType: MessageType, total: number) => void
   tabControls?: ReactNode
   onBeforeRefresh?: (messageType: MessageType) => Promise<void> | void
+  onBeforeAutoRefresh?: (messageType: MessageType, emailId: string) => Promise<void> | void
+  autoRefreshInterval?: number
+  autoRefreshEnabled?: boolean
 }
 
 interface MessageResponse {
@@ -58,7 +61,7 @@ interface MessageResponse {
 type MessageType = 'received' | 'sent'
 const AUTO_PREFETCH_MESSAGE_COUNT = 5
 
-export function MessageList({ email, messageType, onMessageSelect, onMessagePrefetch, selectedMessageId, refreshTrigger, emptyStateOffsetClass, onTotalChange, tabControls, onBeforeRefresh }: MessageListProps) {
+export function MessageList({ email, messageType, onMessageSelect, onMessagePrefetch, selectedMessageId, refreshTrigger, emptyStateOffsetClass, onTotalChange, tabControls, onBeforeRefresh, onBeforeAutoRefresh, autoRefreshInterval = EMAIL_CONFIG.POLL_INTERVAL, autoRefreshEnabled = true }: MessageListProps) {
   const t = useTranslations("emails.messages")
   const tCommon = useTranslations("common.actions")
   const tFeedback = useTranslations("common.feedback")
@@ -70,10 +73,27 @@ export function MessageList({ email, messageType, onMessageSelect, onMessagePref
   const [loadingMore, setLoadingMore] = useState(false)
   const pollTimeoutRef = useRef<Timer>(null)
   const messagesRef = useRef<Message[]>([]) // 添加 ref 来追踪最新的消息列表
+  const loadingRef = useRef(loading)
+  const refreshingRef = useRef(refreshing)
+  const loadingMoreRef = useRef(loadingMore)
+  const refreshInFlightRef = useRef(false)
+  const autoRefreshInFlightRef = useRef(false)
+  const onBeforeAutoRefreshRef = useRef(onBeforeAutoRefresh)
+  const mountedRef = useRef(true)
+  const requestContextRef = useRef({ emailId: email.id, messageType })
   const [total, setTotal] = useState(0)
   const messageDeleteDialog = useDeferredDialogTarget<Message>()
   const messageToDelete = messageDeleteDialog.target
   const { toast } = useToast()
+
+  requestContextRef.current = { emailId: email.id, messageType }
+
+  const isCurrentRequest = (emailId: string, requestMessageType: MessageType) => (
+    mountedRef.current
+    &&
+    requestContextRef.current.emailId === emailId
+    && requestContextRef.current.messageType === requestMessageType
+  )
 
   const updateTotal = (nextTotal: number) => {
     setTotal(nextTotal)
@@ -84,6 +104,30 @@ export function MessageList({ email, messageType, onMessageSelect, onMessagePref
   useEffect(() => {
     messagesRef.current = messages
   }, [messages])
+
+  useEffect(() => {
+    loadingRef.current = loading
+  }, [loading])
+
+  useEffect(() => {
+    refreshingRef.current = refreshing
+  }, [refreshing])
+
+  useEffect(() => {
+    loadingMoreRef.current = loadingMore
+  }, [loadingMore])
+
+  useEffect(() => {
+    onBeforeAutoRefreshRef.current = onBeforeAutoRefresh
+  }, [onBeforeAutoRefresh])
+
+  useEffect(() => {
+    mountedRef.current = true
+
+    return () => {
+      mountedRef.current = false
+    }
+  }, [])
 
   useEffect(() => {
     if (isCustomEmail || loading || refreshing || loadingMore || !onMessagePrefetch || messages.length === 0) return
@@ -118,9 +162,12 @@ export function MessageList({ email, messageType, onMessageSelect, onMessagePref
       return
     }
 
+    const requestEmailId = email.id
+    const requestMessageType = messageType
+
     try {
-      const url = new URL(`/api/emails/${email.id}`, window.location.origin)
-      if (messageType === 'sent') {
+      const url = new URL(`/api/emails/${requestEmailId}`, window.location.origin)
+      if (requestMessageType === 'sent') {
         url.searchParams.set('type', 'sent')
       }
       url.searchParams.set('summary', '1')
@@ -129,6 +176,10 @@ export function MessageList({ email, messageType, onMessageSelect, onMessagePref
       }
       const response = await fetch(url)
       const data = await response.json() as MessageResponse
+
+      if (!isCurrentRequest(requestEmailId, requestMessageType)) {
+        return
+      }
       
       if (!cursor) {
         const newMessages = data.messages
@@ -167,19 +218,12 @@ export function MessageList({ email, messageType, onMessageSelect, onMessagePref
     } catch (error) {
       console.error("Failed to fetch messages:", error)
     } finally {
-      setLoading(false)
-      setRefreshing(false)
-      setLoadingMore(false)
-    }
-  }
-
-  const startPolling = () => {
-    stopPolling()
-    pollTimeoutRef.current = setInterval(() => {
-      if (!refreshing && !loadingMore) {
-        fetchMessages()
+      if (isCurrentRequest(requestEmailId, requestMessageType)) {
+        setLoading(false)
+        setRefreshing(false)
+        setLoadingMore(false)
       }
-    }, EMAIL_CONFIG.POLL_INTERVAL)
+    }
   }
 
   const stopPolling = () => {
@@ -187,6 +231,43 @@ export function MessageList({ email, messageType, onMessageSelect, onMessagePref
       clearInterval(pollTimeoutRef.current)
       pollTimeoutRef.current = null
     }
+  }
+
+  const runAutoRefresh = async () => {
+    if (!autoRefreshEnabled || autoRefreshInFlightRef.current) return
+
+    autoRefreshInFlightRef.current = true
+    const requestEmailId = email.id
+    const requestMessageType = messageType
+
+    try {
+      await onBeforeAutoRefreshRef.current?.(requestMessageType, requestEmailId)
+
+      if (isCurrentRequest(requestEmailId, requestMessageType)) {
+        await fetchMessages()
+      }
+    } catch (error) {
+      console.error("Failed to auto refresh messages:", error)
+    } finally {
+      autoRefreshInFlightRef.current = false
+    }
+  }
+
+  const startPolling = () => {
+    stopPolling()
+    if (!autoRefreshEnabled) return
+
+    pollTimeoutRef.current = setInterval(() => {
+      if (
+        !loadingRef.current
+        && !refreshingRef.current
+        && !loadingMoreRef.current
+        && !refreshInFlightRef.current
+        && !autoRefreshInFlightRef.current
+      ) {
+        void runAutoRefresh()
+      }
+    }, autoRefreshInterval)
   }
 
   const handleRefresh = async () => {
@@ -198,17 +279,38 @@ export function MessageList({ email, messageType, onMessageSelect, onMessagePref
       return
     }
 
+    if (refreshInFlightRef.current || loadingRef.current || refreshingRef.current || loadingMoreRef.current) {
+      return
+    }
+
+    refreshInFlightRef.current = true
+    stopPolling()
     setRefreshing(true)
+    let shouldFetchMessages = true
+
     try {
       await onBeforeRefresh?.(messageType)
     } catch (error) {
       console.error("Failed to run refresh hook:", error)
+      shouldFetchMessages = false
       toast({
         title: error instanceof Error ? error.message : tFeedback("refreshFailed"),
         variant: "destructive"
       })
     }
-    await fetchMessages(undefined, true)
+
+    try {
+      if (shouldFetchMessages) {
+        await fetchMessages(undefined, true)
+      } else {
+        setRefreshing(false)
+      }
+    } finally {
+      refreshInFlightRef.current = false
+      if (!isCustomEmail && email.id) {
+        startPolling()
+      }
+    }
   }
 
   const handleScroll = useThrottle((e: React.UIEvent<HTMLDivElement>) => {
@@ -277,16 +379,28 @@ export function MessageList({ email, messageType, onMessageSelect, onMessagePref
       updateTotal(0)
       return
     }
+    loadingRef.current = true
     setLoading(true)
+    setRefreshing(false)
+    setLoadingMore(false)
     setNextCursor(null)
-    fetchMessages(undefined, true)
-    startPolling() 
+
+    const loadMessages = async () => {
+      await fetchMessages(undefined, true)
+
+      if (autoRefreshEnabled && onBeforeAutoRefreshRef.current) {
+        await runAutoRefresh()
+      }
+    }
+
+    void loadMessages()
+    startPolling()
 
     return () => {
       stopPolling() 
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [email.id, isCustomEmail])
+  }, [email.id, isCustomEmail, autoRefreshEnabled, autoRefreshInterval, messageType])
 
   useEffect(() => {
     if (isCustomEmail) {
@@ -313,7 +427,7 @@ export function MessageList({ email, messageType, onMessageSelect, onMessagePref
             variant="ghost"
             size="icon"
             onClick={handleRefresh}
-            disabled={refreshing}
+            disabled={loading || refreshing || loadingMore}
             className={cn("h-8 w-8 shrink-0", refreshing && "animate-spin")}
           >
             <RefreshCw className="h-4 w-4" />

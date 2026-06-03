@@ -19,6 +19,7 @@ interface MessageDetail {
   expiresAt?: Date
   emailAddress?: string
   emailExpiresAt?: Date
+  isIcloudMail?: boolean
 }
 
 interface SharedMessagePageClientProps {
@@ -68,6 +69,7 @@ export function SharedMessagePageClient({ message }: SharedMessagePageClientProp
                 sent_at: message.sent_at ? new Date(message.sent_at).getTime() : undefined
               }}
               loading={false}
+              hideSenderAddress={Boolean(message.isIcloudMail)}
               t={{
                 messageContent: t("layout.messageContent"),
                 selectMessage: t("layout.selectMessage"),

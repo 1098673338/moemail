@@ -48,6 +48,7 @@ interface Email {
   address: string
   tag?: string | null
   isCustom?: boolean
+  isIcloudMail?: boolean
   sortOrder?: number | null
   createdAt: number | string | Date
   expiresAt: number | string | Date
@@ -744,8 +745,9 @@ export function EmailList({ onEmailSelect, onGroupChange, selectedEmailId, refre
 
   const handleEmailUpdated = (updatedEmail: Email) => {
     const previousEmail = emailToEdit
+    const mergedEmail = previousEmail ? { ...previousEmail, ...updatedEmail } : updatedEmail
     const previousGroupId = previousEmail?.groupId ?? null
-    const nextGroupId = updatedEmail.groupId ?? null
+    const nextGroupId = mergedEmail.groupId ?? null
     const staysVisible = selectedGroupId === null
       || selectedGroupId === nextGroupId
       || (selectedGroupId === "none" && !nextGroupId)
@@ -766,22 +768,22 @@ export function EmailList({ onEmailSelect, onGroupChange, selectedEmailId, refre
 
     setEmails(prev => {
       const updated = prev.map(item => (
-        item.id === updatedEmail.id ? updatedEmail : item
+        item.id === mergedEmail.id ? { ...item, ...mergedEmail } : item
       ))
 
-      return staysVisible ? updated : updated.filter(item => item.id !== updatedEmail.id)
+      return staysVisible ? updated : updated.filter(item => item.id !== mergedEmail.id)
     })
 
     if (!staysVisible) {
       setTotal(prev => Math.max(prev - 1, 0))
-      if (selectedEmailId === updatedEmail.id) {
+      if (selectedEmailId === mergedEmail.id) {
         onEmailSelect(null)
       }
       return
     }
 
-    if (selectedEmailId === updatedEmail.id) {
-      onEmailSelect(updatedEmail)
+    if (selectedEmailId === mergedEmail.id) {
+      onEmailSelect(mergedEmail)
     }
   }
 
@@ -822,11 +824,11 @@ export function EmailList({ onEmailSelect, onGroupChange, selectedEmailId, refre
         return group
       }))
 
-      const updatedEmail = data.email ?? { ...email, groupId }
+      const updatedEmail = { ...email, ...(data.email ?? {}), groupId }
 
       setEmails(prev => {
         const updated = prev.map(item => (
-          item.id === email.id ? updatedEmail : item
+          item.id === email.id ? { ...item, ...updatedEmail } : item
         ))
 
         return staysVisible ? updated : updated.filter(item => item.id !== email.id)

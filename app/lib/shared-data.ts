@@ -1,6 +1,8 @@
-import { createDb } from "@/lib/db"
-import { emailShares, messageShares, messages, emails } from "@/lib/schema"
+import { createDb, type Db } from "@/lib/db"
+import { emailShares, externalMailAccounts, messageShares, messages, emails } from "@/lib/schema"
 import { eq, desc, and, or, ne, isNull } from "drizzle-orm"
+
+const ICLOUD_MAIL_PROVIDER = "icloud"
 
 export interface SharedEmail {
   id: string
@@ -8,6 +10,7 @@ export interface SharedEmail {
   createdAt: Date
   expiresAt: Date
   shareExpiresAt?: Date
+  isIcloudMail?: boolean
 }
 
 export interface SharedMessage {
@@ -23,6 +26,21 @@ export interface SharedMessage {
   expiresAt?: Date
   emailAddress?: string
   emailExpiresAt?: Date
+  isIcloudMail?: boolean
+}
+
+async function hasIcloudMailAccount(db: Db, emailId: string) {
+  const account = await db.query.externalMailAccounts.findFirst({
+    where: and(
+      eq(externalMailAccounts.emailId, emailId),
+      eq(externalMailAccounts.provider, ICLOUD_MAIL_PROVIDER)
+    ),
+    columns: {
+      id: true,
+    },
+  })
+
+  return Boolean(account)
 }
 
 export async function getSharedEmail(token: string): Promise<SharedEmail | null> {
@@ -55,7 +73,8 @@ export async function getSharedEmail(token: string): Promise<SharedEmail | null>
       address: share.email.address,
       createdAt: share.email.createdAt,
       expiresAt: share.email.expiresAt,
-      shareExpiresAt: share.expiresAt ?? undefined
+      shareExpiresAt: share.expiresAt ?? undefined,
+      isIcloudMail: await hasIcloudMailAccount(db, share.email.id),
     }
   } catch (error) {
     console.error("Failed to fetch shared email:", error)
@@ -188,7 +207,8 @@ export async function getSharedMessage(token: string): Promise<SharedMessage | n
       type: message.type as "received" | "sent" | undefined,
       expiresAt: share.expiresAt ?? undefined,
       emailAddress: email?.address,
-      emailExpiresAt: email?.expiresAt
+      emailExpiresAt: email?.expiresAt,
+      isIcloudMail: await hasIcloudMailAccount(db, message.emailId),
     }
   } catch (error) {
     console.error("Failed to fetch shared message:", error)

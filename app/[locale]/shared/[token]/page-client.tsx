@@ -15,6 +15,7 @@ interface Email {
   createdAt: Date
   expiresAt: Date
   shareExpiresAt?: Date
+  isIcloudMail?: boolean
 }
 
 interface Message {
@@ -263,6 +264,7 @@ export function SharedEmailPageClient({
                 })()
               }))}
               selectedMessageId={selectedMessage?.id}
+              hideSenderAddress={Boolean(email.isIcloudMail)}
               onMessageSelect={fetchMessageDetail}
               onMessagePrefetch={prefetchMessageDetail}
               onLoadMore={handleLoadMore}
@@ -306,6 +308,7 @@ export function SharedEmailPageClient({
                 })()
               } : null}
               loading={messageLoading}
+              hideSenderAddress={Boolean(email.isIcloudMail)}
               t={{
                 messageContent: t("layout.messageContent"),
                 selectMessage: t("layout.selectMessage"),

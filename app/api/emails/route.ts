@@ -1,12 +1,13 @@
 import { createDb } from "@/lib/db"
-import { and, asc, desc, eq, gt, isNull, sql } from "drizzle-orm"
+import { and, asc, desc, eq, gt, inArray, isNull, sql } from "drizzle-orm"
 import { NextResponse } from "next/server"
-import { emails } from "@/lib/schema"
+import { emails, externalMailAccounts } from "@/lib/schema"
 import { getUserId } from "@/lib/apiKey"
 
 export const runtime = "edge"
 
 const PAGE_SIZE = 20
+const ICLOUD_MAIL_PROVIDER = "icloud"
 
 export async function GET(request: Request) {
   const userId = await getUserId()
@@ -55,9 +56,22 @@ export async function GET(request: Request) {
     const hasMore = !loadAll && results.length > PAGE_SIZE
     const nextCursor = hasMore ? String(offset + PAGE_SIZE) : null
     const emailList = hasMore ? results.slice(0, PAGE_SIZE) : results
+    const icloudMailEmailIds = emailList.length > 0
+      ? new Set((await db
+          .select({ emailId: externalMailAccounts.emailId })
+          .from(externalMailAccounts)
+          .where(and(
+            eq(externalMailAccounts.provider, ICLOUD_MAIL_PROVIDER),
+            inArray(externalMailAccounts.emailId, emailList.map(email => email.id))
+          )))
+          .map(account => account.emailId))
+      : new Set<string>()
 
     return NextResponse.json({ 
-      emails: emailList,
+      emails: emailList.map(email => ({
+        ...email,
+        isIcloudMail: icloudMailEmailIds.has(email.id),
+      })),
       nextCursor,
       total: totalCount
     })

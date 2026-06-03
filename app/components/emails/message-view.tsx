@@ -26,6 +26,7 @@ interface MessageViewProps {
   messageId: string
   messageType?: 'received' | 'sent'
   initialMessage?: Message
+  hideSenderAddress?: boolean
   onClose: () => void
 }
 
@@ -330,7 +331,7 @@ export async function prefetchMessage(
   return request
 }
 
-export function MessageView({ emailId, messageId, messageType = 'received', initialMessage }: MessageViewProps) {
+export function MessageView({ emailId, messageId, messageType = 'received', initialMessage, hideSenderAddress = false }: MessageViewProps) {
   const t = useTranslations("emails.messageView")
   const cacheKey = getMessageCacheKey(emailId, messageId, messageType)
   const cachedInitialMessage = messageCache.get(cacheKey)
@@ -469,7 +470,7 @@ export function MessageView({ emailId, messageId, messageType = 'received', init
         fromLabel={t("from")}
         toLabel={t("to")}
         timeLabel={t("time")}
-        fromAddress={!isSentMessage ? message.from_address : undefined}
+        fromAddress={!hideSenderAddress && !isSentMessage ? message.from_address : undefined}
         toAddress={message.to_address}
         timestamp={message.sent_at || message.received_at || 0}
         action={
