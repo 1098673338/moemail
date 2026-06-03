@@ -3,7 +3,7 @@ import { emailShares, messages } from "@/lib/schema"
 import { eq, and, lt, or, sql, ne, isNull } from "drizzle-orm"
 import { NextResponse } from "next/server"
 import { encodeCursor, decodeCursor } from "@/lib/cursor"
-import { syncExternalMailAccountByEmailId } from "@/lib/external-mail"
+import { EXTERNAL_MAIL_AUTO_SYNC_LIMIT, syncExternalMailAccountByEmailId } from "@/lib/external-mail"
 
 export const runtime = "edge"
 
@@ -19,6 +19,11 @@ export async function GET(
   const { searchParams } = new URL(request.url)
   const cursor = searchParams.get('cursor')
   const shouldSync = searchParams.get('sync') === '1' && !cursor
+  const rescan = searchParams.get('rescan') === '1'
+  const recentLimitValue = Number(searchParams.get('recentLimit') || "")
+  const recentLimit = Number.isInteger(recentLimitValue) && recentLimitValue > 0
+    ? Math.min(recentLimitValue, EXTERNAL_MAIL_AUTO_SYNC_LIMIT)
+    : undefined
 
   try {
     // 验证分享token
@@ -55,7 +60,7 @@ export async function GET(
     const emailId = share.email.id
 
     if (shouldSync) {
-      await syncExternalMailAccountByEmailId(emailId).catch((error) => {
+      await syncExternalMailAccountByEmailId(emailId, { rescan, recentLimit }).catch((error) => {
         console.error("Failed to sync shared external mail account:", error)
       })
     }

@@ -57,20 +57,45 @@ export function SharedEmailPageClient({
   const [loadingMore, setLoadingMore] = useState(false)
   const [total, setTotal] = useState(initialTotal)
   const [refreshing, setRefreshing] = useState(false)
-  const pollTimeoutRef = useRef<Timer | null>(null)
+  const pollTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const messagesRef = useRef<Message[]>(initialMessages)
+  const refreshingRef = useRef(false)
+  const loadingMoreRef = useRef(false)
+  const autoRefreshInFlightRef = useRef(false)
+  const autoRefreshStartedAtRef = useRef(Date.now())
   const messageDetailCacheRef = useRef<Map<string, MessageDetail>>(new Map())
   const messageDetailRequestRef = useRef<Map<string, Promise<MessageDetail>>>(new Map())
   const columnClass = "border border-gray-200 bg-background rounded-lg overflow-hidden"
+  const isIcloudMail = Boolean(email.isIcloudMail)
+  const autoRefreshInterval = isIcloudMail
+    ? EMAIL_CONFIG.ICLOUD_SYNC_INTERVAL
+    : EMAIL_CONFIG.POLL_INTERVAL
+  const autoRefreshDuration = isIcloudMail
+    ? EMAIL_CONFIG.ICLOUD_AUTO_REFRESH_DURATION
+    : undefined
 
   // 当 messages 改变时更新 ref
   useEffect(() => {
     messagesRef.current = messages
   }, [messages])
 
-  const fetchMessages = async (cursor?: string, options?: { sync?: boolean }) => {
+  useEffect(() => {
+    refreshingRef.current = refreshing
+  }, [refreshing])
+
+  useEffect(() => {
+    loadingMoreRef.current = loadingMore
+  }, [loadingMore])
+
+  const fetchMessages = async (cursor?: string, options?: {
+    sync?: boolean
+    rescan?: boolean
+    recentLimit?: number
+    replace?: boolean
+  }) => {
     try {
       if (cursor) {
+        loadingMoreRef.current = true
         setLoadingMore(true)
       }
 
@@ -81,8 +106,17 @@ export function SharedEmailPageClient({
       if (options?.sync && !cursor) {
         url.searchParams.set('sync', '1')
       }
+      if (options?.rescan && !cursor) {
+        url.searchParams.set('rescan', '1')
+      }
+      if (options?.recentLimit && !cursor) {
+        url.searchParams.set('recentLimit', String(options.recentLimit))
+      }
+      url.searchParams.set('_', String(Date.now()))
 
-      const messagesResponse = await fetch(url)
+      const messagesResponse = await fetch(url, {
+        cache: 'no-store',
+      })
       if (messagesResponse.ok) {
         const messagesData = await messagesResponse.json() as {
           messages: Message[]
@@ -93,6 +127,14 @@ export function SharedEmailPageClient({
         if (!cursor) {
           // 刷新时：合并新消息和旧消息，避免重复
           const newMessages = messagesData.messages
+
+          if (options?.replace) {
+            setMessages(newMessages)
+            setNextCursor(messagesData.nextCursor)
+            setTotal(messagesData.total)
+            return
+          }
+
           const oldMessages = messagesRef.current
 
           // 找到第一个重复的消息
@@ -110,6 +152,7 @@ export function SharedEmailPageClient({
           // 有重复，只添加新的消息
           const uniqueNewMessages = newMessages.slice(0, lastDuplicateIndex)
           setMessages([...uniqueNewMessages, ...oldMessages])
+          setNextCursor(messagesData.nextCursor)
           setTotal(messagesData.total)
           return
         }
@@ -121,40 +164,110 @@ export function SharedEmailPageClient({
     } catch (err) {
       console.error("Failed to fetch messages:", err)
     } finally {
+      loadingMoreRef.current = false
+      refreshingRef.current = false
       setLoadingMore(false)
       setRefreshing(false)
     }
   }
 
-  const startPolling = () => {
-    stopPolling()
-    pollTimeoutRef.current = setInterval(() => {
-      if (!refreshing && !loadingMore) {
-        fetchMessages()
-      }
-    }, EMAIL_CONFIG.POLL_INTERVAL)
-  }
-
   const stopPolling = () => {
     if (pollTimeoutRef.current) {
-      clearInterval(pollTimeoutRef.current)
+      clearTimeout(pollTimeoutRef.current)
       pollTimeoutRef.current = null
     }
   }
 
+  const resetAutoRefreshWindow = () => {
+    autoRefreshStartedAtRef.current = Date.now()
+  }
+
+  const getAutoRefreshRemainingTime = () => {
+    if (!autoRefreshDuration) return Infinity
+    return autoRefreshDuration - (Date.now() - autoRefreshStartedAtRef.current)
+  }
+
+  const isAutoRefreshWindowActive = () => getAutoRefreshRemainingTime() > 0
+
+  const runAutoRefresh = async () => {
+    if (autoRefreshInFlightRef.current || !isAutoRefreshWindowActive()) return
+
+    autoRefreshInFlightRef.current = true
+
+    try {
+      await fetchMessages(undefined, {
+        sync: isIcloudMail,
+        recentLimit: isIcloudMail ? EMAIL_CONFIG.ICLOUD_AUTO_SYNC_LIMIT : undefined,
+      })
+    } finally {
+      autoRefreshInFlightRef.current = false
+    }
+  }
+
+  const scheduleNextAutoRefresh = (tick: () => void) => {
+    if (!isAutoRefreshWindowActive()) return
+
+    pollTimeoutRef.current = setTimeout(
+      tick,
+      Math.min(autoRefreshInterval, Math.max(getAutoRefreshRemainingTime(), 0))
+    )
+  }
+
+  const startPolling = () => {
+    stopPolling()
+    if (!isAutoRefreshWindowActive()) return
+
+    const tick = () => {
+      pollTimeoutRef.current = null
+
+      if (!isAutoRefreshWindowActive()) return
+
+      if (!refreshingRef.current && !loadingMoreRef.current && !autoRefreshInFlightRef.current) {
+        void runAutoRefresh().finally(() => {
+          scheduleNextAutoRefresh(tick)
+        })
+        return
+      }
+
+      pollTimeoutRef.current = setTimeout(
+        tick,
+        Math.min(autoRefreshInterval, 1_000, Math.max(getAutoRefreshRemainingTime(), 0))
+      )
+    }
+
+    scheduleNextAutoRefresh(tick)
+  }
+
   const handleRefresh = async () => {
+    if (refreshingRef.current || loadingMoreRef.current) return
+
+    refreshingRef.current = true
+    stopPolling()
+    resetAutoRefreshWindow()
     setRefreshing(true)
-    await fetchMessages(undefined, { sync: true })
+    try {
+      await fetchMessages(undefined, {
+        sync: isIcloudMail,
+        rescan: isIcloudMail,
+        replace: true,
+      })
+    } finally {
+      startPolling()
+    }
   }
 
   // 启动轮询
   useEffect(() => {
+    resetAutoRefreshWindow()
+    if (isIcloudMail) {
+      void runAutoRefresh()
+    }
     startPolling()
     return () => {
       stopPolling()
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [token])
+  }, [token, isIcloudMail, autoRefreshInterval, autoRefreshDuration])
 
   const handleLoadMore = () => {
     if (nextCursor && !loadingMore) {
