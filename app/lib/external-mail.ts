@@ -99,6 +99,8 @@ type SocketConnect = (address: SocketAddress | string, options?: SocketOptions) 
 
 const PERMANENT_EXPIRES_AT = new Date("9999-01-01T00:00:00.000Z")
 const MESSAGE_ID_HEADER_REGEX = /<([^>]+)>/
+const TEXT_URL_REGEX = /(?:https?:\/\/|www\.)[^\s<>"']+/gi
+const TRAILING_URL_PUNCTUATION = ".,!?;:]}"
 const textEncoder = new TextEncoder()
 const textDecoder = new TextDecoder()
 
@@ -311,6 +313,92 @@ async function getExternalMessageId(accountId: string, uid: number, parsedMessag
 
 function stripHtml(value: string) {
   return value.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim() || value
+}
+
+function escapeHtml(value: string) {
+  return value.replace(/[&<>"']/g, (char) => {
+    switch (char) {
+      case "&":
+        return "&amp;"
+      case "<":
+        return "&lt;"
+      case ">":
+        return "&gt;"
+      case '"':
+        return "&quot;"
+      default:
+        return "&#39;"
+    }
+  })
+}
+
+function trimTrailingUrlPunctuation(value: string) {
+  let url = value
+  let trailing = ""
+
+  while (url.length > 0) {
+    const lastChar = url[url.length - 1]
+    const shouldTrimClosingParen = lastChar === ")"
+      && (url.match(/\(/g)?.length ?? 0) < (url.match(/\)/g)?.length ?? 0)
+
+    if (!TRAILING_URL_PUNCTUATION.includes(lastChar) && !shouldTrimClosingParen) {
+      break
+    }
+
+    trailing = lastChar + trailing
+    url = url.slice(0, -1)
+  }
+
+  return { url, trailing }
+}
+
+function getSafeTextUrlHref(value: string) {
+  const href = value.toLowerCase().startsWith("www.")
+    ? `https://${value}`
+    : value
+
+  try {
+    const url = new URL(href)
+    return url.protocol === "http:" || url.protocol === "https:"
+      ? url.href
+      : null
+  } catch {
+    return null
+  }
+}
+
+function textToLinkedHtml(value: string) {
+  let lastIndex = 0
+  let hasLink = false
+  const htmlParts: string[] = []
+
+  for (const match of value.matchAll(TEXT_URL_REGEX)) {
+    const matchedText = match[0]
+    const matchIndex = match.index ?? 0
+    const { url, trailing } = trimTrailingUrlPunctuation(matchedText)
+    const href = getSafeTextUrlHref(url)
+
+    htmlParts.push(escapeHtml(value.slice(lastIndex, matchIndex)))
+
+    if (href) {
+      hasLink = true
+      htmlParts.push(`<a href="${escapeHtml(href)}">${escapeHtml(url)}</a>`)
+    } else {
+      htmlParts.push(escapeHtml(matchedText))
+    }
+
+    if (trailing) {
+      htmlParts.push(escapeHtml(trailing))
+    }
+
+    lastIndex = matchIndex + matchedText.length
+  }
+
+  if (!hasLink) return null
+
+  htmlParts.push(escapeHtml(value.slice(lastIndex)))
+
+  return `<div>${htmlParts.join("").replace(/\r?\n/g, "<br />")}</div>`
 }
 
 function normalizeLineBreaks(value: string) {
@@ -1025,6 +1113,8 @@ async function parseExternalMessage(
   const parsed = await PostalMime.parse(input.source)
   const timestamp = getParsedMessageTimestamp(parsed.date, input.internalDate)
   const id = await getExternalMessageId(account.id, input.uid, parsed.messageId)
+  const content = parsed.text || ""
+  const html = parsed.html || textToLinkedHtml(content)
 
   return {
     id,
@@ -1032,8 +1122,8 @@ async function parseExternalMessage(
     fromAddress: getDisplayAddress(parsed.from),
     toAddress: getDisplayAddresses(parsed.to),
     subject: parsed.subject || "(无主题)",
-    content: parsed.text || "",
-    html: parsed.html || null,
+    content,
+    html,
     type: "received",
     receivedAt: timestamp,
     sentAt: timestamp,

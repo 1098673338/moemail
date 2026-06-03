@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label"
 import { useToast } from "@/components/ui/use-toast"
 import { ShareMessageDialog } from "./share-message-dialog"
 import { MessageDetailHeader } from "./message-detail-header"
+import { LinkifiedText } from "./linkified-text"
 
 interface Message {
   id: string
@@ -542,7 +543,7 @@ export function MessageView({ emailId, messageId, messageType = 'received', init
           />
           ) : message.content ? (
             <div className="p-4 text-sm whitespace-pre-wrap">
-              {message.content}
+              <LinkifiedText text={message.content} />
             </div>
           ) : (
             <div className="flex h-full flex-col items-center justify-center px-6 text-center text-sm text-gray-500">
@@ -552,7 +553,7 @@ export function MessageView({ emailId, messageId, messageType = 'received', init
           )
         ) : (
           <div className="p-4 text-sm whitespace-pre-wrap">
-            {message.content}
+            <LinkifiedText text={message.content || ""} />
           </div>
         )}
       </div>

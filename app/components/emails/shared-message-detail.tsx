@@ -5,6 +5,7 @@ import { Loader2, MailOpen } from "lucide-react"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Label } from "@/components/ui/label"
 import { MessageDetailHeader } from "./message-detail-header"
+import { LinkifiedText } from "./linkified-text"
 
 interface MessageDetail {
   id: string
@@ -206,7 +207,7 @@ export function SharedMessageDetail({
           />
         ) : message.content ? (
           <div className="p-4 text-sm whitespace-pre-wrap">
-            {message.content}
+            <LinkifiedText text={message.content} />
           </div>
         ) : (
           <div className="flex h-full flex-col items-center justify-center px-6 text-center text-muted-foreground">
