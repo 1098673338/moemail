@@ -4,6 +4,7 @@ export const EMAIL_CONFIG = {
   UNLIMITED_LIMIT: 9999,
   POLL_INTERVAL: 1_000, // Polling interval in milliseconds
   ICLOUD_SYNC_INTERVAL: 1_000,
+  ICLOUD_AUTO_REFRESH_DURATION: 2 * 60_000,
   ICLOUD_AUTO_SYNC_LIMIT: 10,
   DEFAULT_DAILY_SEND_LIMITS: {
     emperor: 0,   // 皇帝无限制

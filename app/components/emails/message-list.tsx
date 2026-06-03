@@ -49,6 +49,7 @@ interface MessageListProps {
   onBeforeRefresh?: (messageType: MessageType) => Promise<void> | void
   onBeforeAutoRefresh?: (messageType: MessageType, emailId: string) => Promise<void> | void
   autoRefreshInterval?: number
+  autoRefreshDuration?: number
   autoRefreshEnabled?: boolean
   isIcloudMail?: boolean
 }
@@ -62,7 +63,7 @@ interface MessageResponse {
 type MessageType = 'received' | 'sent'
 const AUTO_PREFETCH_MESSAGE_COUNT = 5
 
-export function MessageList({ email, messageType, onMessageSelect, onMessagePrefetch, selectedMessageId, refreshTrigger, emptyStateOffsetClass, onTotalChange, tabControls, onBeforeRefresh, onBeforeAutoRefresh, autoRefreshInterval = EMAIL_CONFIG.POLL_INTERVAL, autoRefreshEnabled = true, isIcloudMail = false }: MessageListProps) {
+export function MessageList({ email, messageType, onMessageSelect, onMessagePrefetch, selectedMessageId, refreshTrigger, emptyStateOffsetClass, onTotalChange, tabControls, onBeforeRefresh, onBeforeAutoRefresh, autoRefreshInterval = EMAIL_CONFIG.POLL_INTERVAL, autoRefreshDuration, autoRefreshEnabled = true, isIcloudMail = false }: MessageListProps) {
   const t = useTranslations("emails.messages")
   const tCommon = useTranslations("common.actions")
   const tFeedback = useTranslations("common.feedback")
@@ -80,6 +81,7 @@ export function MessageList({ email, messageType, onMessageSelect, onMessagePref
   const refreshInFlightRef = useRef(false)
   const autoRefreshInFlightRef = useRef(false)
   const onBeforeAutoRefreshRef = useRef(onBeforeAutoRefresh)
+  const autoRefreshStartedAtRef = useRef(Date.now())
   const listFetchVersionRef = useRef(0)
   const pendingDeletedMessageIdsRef = useRef<Set<string>>(new Set())
   const mountedRef = useRef(true)
@@ -290,8 +292,32 @@ export function MessageList({ email, messageType, onMessageSelect, onMessagePref
     }
   }
 
+  const resetAutoRefreshWindow = () => {
+    autoRefreshStartedAtRef.current = Date.now()
+  }
+
+  useEffect(() => {
+    resetAutoRefreshWindow()
+  }, [email.id, messageType, autoRefreshDuration])
+
+  const getAutoRefreshRemainingTime = () => {
+    if (!autoRefreshDuration) return Infinity
+    return autoRefreshDuration - (Date.now() - autoRefreshStartedAtRef.current)
+  }
+
+  const isAutoRefreshWindowActive = () => getAutoRefreshRemainingTime() > 0
+
+  const scheduleNextAutoRefresh = (tick: () => void) => {
+    if (!autoRefreshEnabled || !isAutoRefreshWindowActive()) return
+
+    pollTimeoutRef.current = setTimeout(
+      tick,
+      Math.min(autoRefreshInterval, Math.max(getAutoRefreshRemainingTime(), 0))
+    )
+  }
+
   const runAutoRefresh = async () => {
-    if (!autoRefreshEnabled || autoRefreshInFlightRef.current) return
+    if (!autoRefreshEnabled || autoRefreshInFlightRef.current || !isAutoRefreshWindowActive()) return
 
     autoRefreshInFlightRef.current = true
     const requestEmailId = email.id
@@ -312,10 +338,12 @@ export function MessageList({ email, messageType, onMessageSelect, onMessagePref
 
   const startPolling = () => {
     stopPolling()
-    if (!autoRefreshEnabled) return
+    if (!autoRefreshEnabled || !isAutoRefreshWindowActive()) return
 
     const tick = () => {
       pollTimeoutRef.current = null
+
+      if (!isAutoRefreshWindowActive()) return
 
       if (
         !loadingRef.current
@@ -325,19 +353,22 @@ export function MessageList({ email, messageType, onMessageSelect, onMessagePref
         && !autoRefreshInFlightRef.current
       ) {
         void runAutoRefresh().finally(() => {
-          if (isCurrentRequest(email.id, messageType) && autoRefreshEnabled) {
-            pollTimeoutRef.current = setTimeout(tick, autoRefreshInterval)
+          if (isCurrentRequest(email.id, messageType)) {
+            scheduleNextAutoRefresh(tick)
           }
         })
         return
       }
 
-      if (isCurrentRequest(email.id, messageType) && autoRefreshEnabled) {
-        pollTimeoutRef.current = setTimeout(tick, Math.min(autoRefreshInterval, 1_000))
+      if (isCurrentRequest(email.id, messageType)) {
+        pollTimeoutRef.current = setTimeout(
+          tick,
+          Math.min(autoRefreshInterval, 1_000, Math.max(getAutoRefreshRemainingTime(), 0))
+        )
       }
     }
 
-    pollTimeoutRef.current = setTimeout(tick, autoRefreshInterval)
+    scheduleNextAutoRefresh(tick)
   }
 
   const handleRefresh = async () => {
@@ -355,6 +386,7 @@ export function MessageList({ email, messageType, onMessageSelect, onMessagePref
 
     refreshInFlightRef.current = true
     stopPolling()
+    resetAutoRefreshWindow()
     setRefreshing(true)
     let shouldFetchMessages = true
 

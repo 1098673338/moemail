@@ -150,6 +150,7 @@ export function MessageListContainer({
               onBeforeRefresh={onBeforeRefresh}
               onBeforeAutoRefresh={isIcloudMail ? onBeforeAutoRefresh : undefined}
               autoRefreshInterval={isIcloudMail ? EMAIL_CONFIG.ICLOUD_SYNC_INTERVAL : EMAIL_CONFIG.POLL_INTERVAL}
+              autoRefreshDuration={isIcloudMail ? EMAIL_CONFIG.ICLOUD_AUTO_REFRESH_DURATION : undefined}
               autoRefreshEnabled={activeTab === "received"}
               isIcloudMail={isIcloudMail}
             />
@@ -167,6 +168,7 @@ export function MessageListContainer({
               onTotalChange={handleTotalChange}
               tabControls={tabControls}
               onBeforeRefresh={onBeforeRefresh}
+              autoRefreshDuration={isIcloudMail ? EMAIL_CONFIG.ICLOUD_AUTO_REFRESH_DURATION : undefined}
               autoRefreshEnabled={activeTab === "sent"}
               isIcloudMail={isIcloudMail}
             />
@@ -185,6 +187,7 @@ export function MessageListContainer({
             onBeforeRefresh={onBeforeRefresh}
             onBeforeAutoRefresh={isIcloudMail ? onBeforeAutoRefresh : undefined}
             autoRefreshInterval={isIcloudMail ? EMAIL_CONFIG.ICLOUD_SYNC_INTERVAL : EMAIL_CONFIG.POLL_INTERVAL}
+            autoRefreshDuration={isIcloudMail ? EMAIL_CONFIG.ICLOUD_AUTO_REFRESH_DURATION : undefined}
             isIcloudMail={isIcloudMail}
           />
         </div>
