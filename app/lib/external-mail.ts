@@ -1,4 +1,4 @@
-import { and, desc, eq, gt, sql } from "drizzle-orm"
+import { and, desc, eq, gt, inArray, like, sql } from "drizzle-orm"
 import { getRequestContext } from "@cloudflare/next-on-pages"
 import PostalMime, { type Address } from "postal-mime"
 import { EMAIL_CONFIG } from "@/config"
@@ -77,6 +77,13 @@ interface SendExternalMailInput {
 interface SyncExternalMailOptions {
   rescan?: boolean
   recentLimit?: number
+}
+
+interface DeleteMissingExternalMailMessagesInput {
+  remoteUids: number[]
+  fullUidSet: boolean
+  minUid: number | null
+  inboxExists: number
 }
 
 interface ImapFetchedMessage {
@@ -1157,6 +1164,7 @@ export async function syncExternalMailMessages(options: {
   password: string
   messageExists: (messageId: string) => Promise<boolean> | boolean
   insertMessage: (message: SyncedExternalMailMessage) => Promise<void> | void
+  deleteMissingMessages?: (input: DeleteMissingExternalMailMessagesInput) => Promise<number> | number
   updateAccount: (cursor: { lastUid: number; lastSyncAt: Date }) => Promise<void> | void
   rescan?: boolean
   recentLimit?: number
@@ -1175,6 +1183,9 @@ export async function syncExternalMailMessages(options: {
   let searched = 0
   let selected = 0
   let uidNext: number | null = null
+  let deleted = 0
+  let remoteUidsForReconcile: number[] | null = null
+  let hasFullRemoteUidSet = false
   const syncedAt = new Date()
 
   try {
@@ -1183,21 +1194,24 @@ export async function syncExternalMailMessages(options: {
     inboxExists = mailboxStatus.exists
     uidNext = mailboxStatus.uidNext
 
-    const shouldFetchCurrentInbox = options.rescan || Boolean(options.recentLimit) || account.lastUid <= 0
-    let fetchedMessages = shouldFetchCurrentInbox
-      ? await client.fetchCurrentMessages(
-          inboxExists,
-          options.recentLimit || EXTERNAL_MAIL_INITIAL_SYNC_LIMIT
-        )
-      : await (async () => {
-          const uids = await client.searchNewUids(account.lastUid)
-          searched = uids.length
-          const selectedUids = uids.slice(0, EXTERNAL_MAIL_INCREMENTAL_SYNC_LIMIT)
-          selected = selectedUids.length
-          return client.fetchMessages(selectedUids)
-        })()
+    const shouldFetchCurrentInbox = Boolean(options.recentLimit) || account.lastUid <= 0
+    let fetchedMessages: ImapFetchedMessage[]
 
-    if (shouldFetchCurrentInbox) {
+    if (options.rescan) {
+      remoteUidsForReconcile = await client.searchNewUids(0)
+      hasFullRemoteUidSet = true
+      searched = remoteUidsForReconcile.length
+      const selectedUids = remoteUidsForReconcile.slice(-Math.min(
+        remoteUidsForReconcile.length,
+        options.recentLimit || EXTERNAL_MAIL_INITIAL_SYNC_LIMIT
+      ))
+      selected = selectedUids.length
+      fetchedMessages = await client.fetchMessages(selectedUids)
+    } else if (shouldFetchCurrentInbox) {
+      fetchedMessages = await client.fetchCurrentMessages(
+        inboxExists,
+        options.recentLimit || EXTERNAL_MAIL_INITIAL_SYNC_LIMIT
+      )
       searched = inboxExists
       selected = fetchedMessages.length
 
@@ -1211,6 +1225,14 @@ export async function syncExternalMailMessages(options: {
         selected = selectedUids.length
         fetchedMessages = await client.fetchMessages(selectedUids)
       }
+
+      remoteUidsForReconcile = fetchedMessages.map(message => message.uid)
+    } else {
+      const uids = await client.searchNewUids(account.lastUid)
+      searched = uids.length
+      const selectedUids = uids.slice(0, EXTERNAL_MAIL_INCREMENTAL_SYNC_LIMIT)
+      selected = selectedUids.length
+      fetchedMessages = await client.fetchMessages(selectedUids)
     }
 
     for (const message of fetchedMessages) {
@@ -1229,6 +1251,15 @@ export async function syncExternalMailMessages(options: {
       imported += 1
     }
 
+    if (options.deleteMissingMessages && remoteUidsForReconcile) {
+      deleted = await options.deleteMissingMessages({
+        remoteUids: remoteUidsForReconcile,
+        fullUidSet: hasFullRemoteUidSet || inboxExists === 0,
+        minUid: remoteUidsForReconcile.length > 0 ? Math.min(...remoteUidsForReconcile) : null,
+        inboxExists,
+      })
+    }
+
     await options.updateAccount({
       lastUid: maxUid,
       lastSyncAt: syncedAt,
@@ -1240,6 +1271,7 @@ export async function syncExternalMailMessages(options: {
   return {
     fetched,
     imported,
+    deleted,
     inboxExists,
     searched,
     selected,
@@ -1300,6 +1332,40 @@ function externalMessageIdentityMatches(localMessageId: string, remoteMessageId:
   )
 }
 
+async function deleteMissingLocalExternalMessages(
+  db: Db,
+  account: ExternalMailConnectionAccount,
+  input: DeleteMissingExternalMailMessagesInput
+) {
+  const localMessages = await db
+    .select({
+      id: messages.id,
+    })
+    .from(messages)
+    .where(and(
+      eq(messages.emailId, account.emailId),
+      eq(messages.type, "received"),
+      like(messages.id, `external:${account.id}:%`)
+    ))
+
+  const remoteUids = new Set(input.remoteUids)
+  const missingMessageIds = localMessages
+    .filter((message) => {
+      const identity = parseExternalMessageIdentity(message.id)
+      if (!identity || identity.accountId !== account.id) return false
+      if (!input.fullUidSet && input.minUid !== null && identity.uid < input.minUid) return false
+      return !remoteUids.has(identity.uid)
+    })
+    .map(message => message.id)
+
+  if (missingMessageIds.length === 0) return 0
+
+  await db.delete(messages)
+    .where(inArray(messages.id, missingMessageIds))
+
+  return missingMessageIds.length
+}
+
 export async function syncExternalMailAccount(userId: string, accountId: string, options?: SyncExternalMailOptions) {
   const db = createDb()
   const account = await db.query.externalMailAccounts.findFirst({
@@ -1341,6 +1407,9 @@ export async function syncExternalMailAccount(userId: string, accountId: string,
         receivedAt: message.receivedAt,
         sentAt: message.sentAt,
       })
+    },
+    deleteMissingMessages: async (input) => {
+      return deleteMissingLocalExternalMessages(db, account, input)
     },
     updateAccount: async ({ lastUid, lastSyncAt }) => {
       await db.update(externalMailAccounts)
@@ -1389,6 +1458,9 @@ export async function syncExternalMailAccountByEmailId(emailId: string, options?
         receivedAt: message.receivedAt,
         sentAt: message.sentAt,
       })
+    },
+    deleteMissingMessages: async (input) => {
+      return deleteMissingLocalExternalMessages(db, account, input)
     },
     updateAccount: async ({ lastUid, lastSyncAt }) => {
       await db.update(externalMailAccounts)
