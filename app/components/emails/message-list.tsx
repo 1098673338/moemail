@@ -80,6 +80,7 @@ export function MessageList({ email, messageType, onMessageSelect, onMessagePref
   const refreshInFlightRef = useRef(false)
   const autoRefreshInFlightRef = useRef(false)
   const onBeforeAutoRefreshRef = useRef(onBeforeAutoRefresh)
+  const listFetchVersionRef = useRef(0)
   const pendingDeletedMessageIdsRef = useRef<Set<string>>(new Set())
   const mountedRef = useRef(true)
   const requestContextRef = useRef({ emailId: email.id, messageType })
@@ -205,6 +206,13 @@ export function MessageList({ email, messageType, onMessageSelect, onMessagePref
 
     const requestEmailId = email.id
     const requestMessageType = messageType
+    const requestListVersion = cursor
+      ? listFetchVersionRef.current
+      : listFetchVersionRef.current + 1
+
+    if (!cursor) {
+      listFetchVersionRef.current = requestListVersion
+    }
 
     try {
       const url = new URL(`/api/emails/${requestEmailId}`, window.location.origin)
@@ -222,7 +230,10 @@ export function MessageList({ email, messageType, onMessageSelect, onMessagePref
       })
       const data = await response.json() as MessageResponse
 
-      if (!isCurrentRequest(requestEmailId, requestMessageType)) {
+      if (
+        !isCurrentRequest(requestEmailId, requestMessageType)
+        || requestListVersion !== listFetchVersionRef.current
+      ) {
         return
       }
       
@@ -289,7 +300,7 @@ export function MessageList({ email, messageType, onMessageSelect, onMessagePref
     try {
       await onBeforeAutoRefreshRef.current?.(requestMessageType, requestEmailId)
 
-      if (isCurrentRequest(requestEmailId, requestMessageType)) {
+      if (isCurrentRequest(requestEmailId, requestMessageType) && !refreshInFlightRef.current) {
         await fetchMessages()
       }
     } catch (error) {

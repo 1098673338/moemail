@@ -52,7 +52,6 @@ export function ThreeColumnLayout() {
   const [refreshTrigger, setRefreshTrigger] = useState(0)
   const [emailRefreshTrigger, setEmailRefreshTrigger] = useState(0)
   const [externalMailAccount, setExternalMailAccount] = useState<ExternalMailAccount | null>(null)
-  const [externalMailAccountLoading, setExternalMailAccountLoading] = useState(false)
   const { copyToClipboard } = useCopy()
   const { canSend: canSendEmails, loading: sendPermissionLoading } = useSendPermission()
 
@@ -70,7 +69,13 @@ export function ThreeColumnLayout() {
   )
 
   const fetchExternalMailAccount = useCallback(async (emailId: string) => {
-    const response = await fetch(`/api/external-mail/accounts?emailId=${encodeURIComponent(emailId)}`)
+    const url = new URL("/api/external-mail/accounts", window.location.origin)
+    url.searchParams.set("emailId", emailId)
+    url.searchParams.set("_", String(Date.now()))
+
+    const response = await fetch(url, {
+      cache: "no-store",
+    })
     const data = await response.json().catch(() => ({})) as {
       accounts?: ExternalMailAccount[]
     }
@@ -85,12 +90,10 @@ export function ThreeColumnLayout() {
     const loadExternalMailAccount = async () => {
       if (!selectedEmail?.id) {
         setExternalMailAccount(null)
-        setExternalMailAccountLoading(false)
         return
       }
 
       setExternalMailAccount(null)
-      setExternalMailAccountLoading(Boolean(selectedEmail.isIcloudMail))
 
       try {
         const account = await fetchExternalMailAccount(selectedEmail.id)
@@ -101,10 +104,6 @@ export function ThreeColumnLayout() {
       } catch {
         if (!cancelled) {
           setExternalMailAccount(null)
-        }
-      } finally {
-        if (!cancelled) {
-          setExternalMailAccountLoading(false)
         }
       }
     }
@@ -195,9 +194,7 @@ export function ThreeColumnLayout() {
       : await fetchExternalMailAccount(selectedEmail.id)
 
     if (!account) {
-      throw new Error(externalMailAccountLoading
-        ? "iCloud 邮箱账号正在加载，请稍后再试"
-        : "没有找到这个 iCloud 邮箱账号，请刷新邮箱列表后重试")
+      throw new Error("没有找到这个 iCloud 邮箱账号，请刷新邮箱列表后重试")
     }
 
     await syncExternalMail(account, { rescan: true })
