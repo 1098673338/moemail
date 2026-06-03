@@ -118,7 +118,7 @@ export function SharedMessageList({
                     <p className="font-medium text-sm truncate">
                       {message.subject}
                     </p>
-                    <p className="mt-1 text-left text-xs text-gray-500">
+                    <p className="text-left text-xs text-gray-500">
                       {new Date(
                         message.received_at || message.sent_at || 0
                       ).toLocaleString()}

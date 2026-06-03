@@ -623,7 +623,7 @@ export function MessageList({ email, messageType, onMessageSelect, onMessagePref
                   <Mail className="w-4 h-4 text-primary/60 mt-0.5" />
                   <div className="min-w-0 flex-1">
                     <p className="font-medium text-sm truncate">{message.subject}</p>
-                    <p className="mt-1 truncate text-left text-xs text-gray-500">
+                    <p className="truncate text-left text-xs text-gray-500">
                       {new Date(message.received_at || message.sent_at || 0).toLocaleString()}
                     </p>
                   </div>
