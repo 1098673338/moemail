@@ -550,7 +550,7 @@ export function MessageList({ email, messageType, onMessageSelect, onMessagePref
       stopPolling() 
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [email.id, isCustomEmail, autoRefreshEnabled, autoRefreshInterval, messageType])
+  }, [email.id, isCustomEmail, autoRefreshEnabled, autoRefreshInterval, autoRefreshDuration, isIcloudMail, messageType])
 
   useEffect(() => {
     if (isCustomEmail) {
