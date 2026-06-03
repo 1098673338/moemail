@@ -5,7 +5,7 @@ import { EMAIL_CONFIG } from "@/config"
 import { getUserRole } from "@/lib/auth"
 import { createDb, type Db } from "@/lib/db"
 import { ROLES } from "@/lib/permissions"
-import { externalMailAccounts, emails, messages, users } from "@/lib/schema"
+import { deletedMessages, externalMailAccounts, emails, messages, users } from "@/lib/schema"
 
 const ICLOUD_MAIL_PROVIDER = "icloud"
 const ICLOUD_MAIL_DOMAINS = new Set(["icloud.com", "me.com", "mac.com"])
@@ -19,6 +19,7 @@ export const ICLOUD_MAIL_SETTINGS = {
 
 export const EXTERNAL_MAIL_INITIAL_SYNC_LIMIT = 100
 export const EXTERNAL_MAIL_INCREMENTAL_SYNC_LIMIT = 50
+export const EXTERNAL_MAIL_AUTO_SYNC_LIMIT = 10
 
 export type ExternalMailAccountRecord = typeof externalMailAccounts.$inferSelect
 
@@ -75,6 +76,7 @@ interface SendExternalMailInput {
 
 interface SyncExternalMailOptions {
   rescan?: boolean
+  recentLimit?: number
 }
 
 interface ImapFetchedMessage {
@@ -99,7 +101,7 @@ type SocketConnect = (address: SocketAddress | string, options?: SocketOptions) 
 
 const PERMANENT_EXPIRES_AT = new Date("9999-01-01T00:00:00.000Z")
 const MESSAGE_ID_HEADER_REGEX = /<([^>]+)>/
-const TEXT_URL_REGEX = /(?:https?:\/\/|www\.)[^\s<>"']+/gi
+const TEXT_LINK_REGEX = /(?:https?:\/\/|www\.)[^\s<>"']+|[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/gi
 const TRAILING_URL_PUNCTUATION = ".,!?;:]}"
 const textEncoder = new TextEncoder()
 const textDecoder = new TextDecoder()
@@ -353,6 +355,10 @@ function trimTrailingUrlPunctuation(value: string) {
 }
 
 function getSafeTextUrlHref(value: string) {
+  if (/^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i.test(value)) {
+    return `mailto:${value}`
+  }
+
   const href = value.toLowerCase().startsWith("www.")
     ? `https://${value}`
     : value
@@ -372,7 +378,7 @@ function textToLinkedHtml(value: string) {
   let hasLink = false
   const htmlParts: string[] = []
 
-  for (const match of value.matchAll(TEXT_URL_REGEX)) {
+  for (const match of value.matchAll(TEXT_LINK_REGEX)) {
     const matchedText = match[0]
     const matchIndex = match.index ?? 0
     const { url, trailing } = trimTrailingUrlPunctuation(matchedText)
@@ -770,6 +776,22 @@ class ImapClient {
     return this.fetchMessagesBySequence(`${start}:${end}`)
   }
 
+  async deleteInboxMessage(uid: number) {
+    if (!Number.isInteger(uid) || uid <= 0) {
+      throw new Error("iCloud 邮件远端 UID 无效，无法删除")
+    }
+
+    await this.openInbox()
+    await this.command(`UID STORE ${uid} +FLAGS.SILENT (\\Deleted)`)
+
+    try {
+      await this.command(`UID EXPUNGE ${uid}`)
+    } catch (error) {
+      await this.command(`UID STORE ${uid} -FLAGS.SILENT (\\Deleted)`).catch(() => undefined)
+      throw error
+    }
+  }
+
   private async fetchMessagesBatch(uids: number[]) {
     if (!uids.length) return []
     const tag = this.nextTag()
@@ -1137,6 +1159,7 @@ export async function syncExternalMailMessages(options: {
   insertMessage: (message: SyncedExternalMailMessage) => Promise<void> | void
   updateAccount: (cursor: { lastUid: number; lastSyncAt: Date }) => Promise<void> | void
   rescan?: boolean
+  recentLimit?: number
 }) {
   const { account, password } = options
 
@@ -1160,9 +1183,12 @@ export async function syncExternalMailMessages(options: {
     inboxExists = mailboxStatus.exists
     uidNext = mailboxStatus.uidNext
 
-    const shouldFetchCurrentInbox = options.rescan || account.lastUid <= 0
+    const shouldFetchCurrentInbox = options.rescan || Boolean(options.recentLimit) || account.lastUid <= 0
     let fetchedMessages = shouldFetchCurrentInbox
-      ? await client.fetchCurrentMessages(inboxExists, EXTERNAL_MAIL_INITIAL_SYNC_LIMIT)
+      ? await client.fetchCurrentMessages(
+          inboxExists,
+          options.recentLimit || EXTERNAL_MAIL_INITIAL_SYNC_LIMIT
+        )
       : await (async () => {
           const uids = await client.searchNewUids(account.lastUid)
           searched = uids.length
@@ -1177,7 +1203,10 @@ export async function syncExternalMailMessages(options: {
 
       if (inboxExists > 0 && fetchedMessages.length === 0) {
         const uids = await client.searchNewUids(0)
-        const selectedUids = uids.slice(-Math.min(inboxExists, EXTERNAL_MAIL_INITIAL_SYNC_LIMIT))
+        const selectedUids = uids.slice(-Math.min(
+          inboxExists,
+          options.recentLimit || EXTERNAL_MAIL_INITIAL_SYNC_LIMIT
+        ))
         searched = uids.length
         selected = selectedUids.length
         fetchedMessages = await client.fetchMessages(selectedUids)
@@ -1216,9 +1245,59 @@ export async function syncExternalMailMessages(options: {
     selected,
     uidNext,
     rescan: Boolean(options.rescan),
+    recentLimit: options.recentLimit ?? null,
     lastUid: maxUid,
     lastSyncAt: syncedAt.getTime(),
   }
+}
+
+async function hasLocalExternalMessageRecord(db: Db, emailId: string, messageId: string) {
+  const existing = await db.query.messages.findFirst({
+    where: eq(messages.id, messageId),
+    columns: {
+      id: true,
+    },
+  })
+
+  if (existing) return true
+
+  const deleted = await db.query.deletedMessages.findFirst({
+    where: and(
+      eq(deletedMessages.emailId, emailId),
+      eq(deletedMessages.messageId, messageId)
+    ),
+    columns: {
+      id: true,
+    },
+  })
+
+  return Boolean(deleted)
+}
+
+function parseExternalMessageIdentity(messageId: string) {
+  const match = messageId.match(/^external:([^:]+):(\d+):([^:]+)$/)
+  if (!match) return null
+
+  const uid = Number(match[2])
+  if (!Number.isInteger(uid) || uid <= 0) return null
+
+  return {
+    accountId: match[1],
+    uid,
+    suffix: match[3],
+  }
+}
+
+function externalMessageIdentityMatches(localMessageId: string, remoteMessageId: string) {
+  const localIdentity = parseExternalMessageIdentity(localMessageId)
+  const remoteIdentity = parseExternalMessageIdentity(remoteMessageId)
+
+  return Boolean(
+    localIdentity
+    && remoteIdentity
+    && localIdentity.uid === remoteIdentity.uid
+    && localIdentity.suffix === remoteIdentity.suffix
+  )
 }
 
 export async function syncExternalMailAccount(userId: string, accountId: string, options?: SyncExternalMailOptions) {
@@ -1245,14 +1324,9 @@ export async function syncExternalMailAccount(userId: string, accountId: string,
     account,
     password,
     rescan: options?.rescan,
+    recentLimit: options?.recentLimit,
     messageExists: async (messageId) => {
-      const existing = await db.query.messages.findFirst({
-        where: eq(messages.id, messageId),
-        columns: {
-          id: true,
-        },
-      })
-      return Boolean(existing)
+      return hasLocalExternalMessageRecord(db, account.emailId, messageId)
     },
     insertMessage: async (message) => {
       await db.insert(messages).values({
@@ -1298,14 +1372,9 @@ export async function syncExternalMailAccountByEmailId(emailId: string, options?
     account,
     password,
     rescan: options?.rescan,
+    recentLimit: options?.recentLimit,
     messageExists: async (messageId) => {
-      const existing = await db.query.messages.findFirst({
-        where: eq(messages.id, messageId),
-        columns: {
-          id: true,
-        },
-      })
-      return Boolean(existing)
+      return hasLocalExternalMessageRecord(db, account.emailId, messageId)
     },
     insertMessage: async (message) => {
       await db.insert(messages).values({
@@ -1347,6 +1416,59 @@ export async function deleteExternalMailAccount(userId: string, accountId: strin
 
   await db.delete(externalMailAccounts)
     .where(eq(externalMailAccounts.id, accountId))
+
+  return true
+}
+
+export async function deleteExternalMailMessage(
+  userId: string,
+  emailId: string,
+  messageId: string,
+  messageType?: string | null
+) {
+  if (messageType === "sent") return false
+
+  const db = createDb()
+  const account = await db.query.externalMailAccounts.findFirst({
+    where: and(
+      eq(externalMailAccounts.userId, userId),
+      eq(externalMailAccounts.emailId, emailId),
+      eq(externalMailAccounts.provider, ICLOUD_MAIL_PROVIDER)
+    ),
+  })
+
+  if (!account) return false
+
+  if (!account.enabled) {
+    throw new Error("iCloud 邮箱账号已停用，无法从 iCloud 远端删除邮件")
+  }
+
+  const messageIdentity = parseExternalMessageIdentity(messageId)
+  if (!messageIdentity) {
+    throw new Error("这封 iCloud 邮件缺少远端 UID，无法从 iCloud 删除")
+  }
+
+  const password = await decryptExternalMailPassword(account.passwordEncrypted)
+  const client = new ImapClient(account, password)
+
+  try {
+    await client.connect()
+    await client.openInbox()
+
+    const [remoteMessage] = await client.fetchMessages([messageIdentity.uid])
+
+    if (remoteMessage) {
+      const parsedRemoteMessage = await parseExternalMessage(account, remoteMessage)
+
+      if (!externalMessageIdentityMatches(messageId, parsedRemoteMessage.id)) {
+        throw new Error("iCloud 远端邮件身份校验失败，已取消删除")
+      }
+
+      await client.deleteInboxMessage(messageIdentity.uid)
+    }
+  } finally {
+    await client.logout().catch(() => undefined)
+  }
 
   return true
 }

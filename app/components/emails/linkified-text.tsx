@@ -6,7 +6,7 @@ interface LinkifiedTextProps {
   text: string
 }
 
-const URL_REGEX = /(?:https?:\/\/|www\.)[^\s<>"']+/gi
+const LINK_REGEX = /(?:https?:\/\/|www\.)[^\s<>"']+|[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/gi
 const TRAILING_PUNCTUATION = ".,!?;:]}"
 
 function trimTrailingPunctuation(value: string) {
@@ -30,6 +30,10 @@ function trimTrailingPunctuation(value: string) {
 }
 
 function getSafeHref(value: string) {
+  if (/^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i.test(value)) {
+    return `mailto:${value}`
+  }
+
   const href = value.toLowerCase().startsWith("www.")
     ? `https://${value}`
     : value
@@ -48,7 +52,7 @@ export function LinkifiedText({ text }: LinkifiedTextProps) {
   const nodes: ReactNode[] = []
   let lastIndex = 0
 
-  for (const match of text.matchAll(URL_REGEX)) {
+  for (const match of text.matchAll(LINK_REGEX)) {
     const matchedText = match[0]
     const matchIndex = match.index ?? 0
 

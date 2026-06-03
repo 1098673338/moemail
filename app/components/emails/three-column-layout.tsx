@@ -9,6 +9,7 @@ import { CreateDialog } from "./create-dialog"
 import { SendDialog } from "./send-dialog"
 import { useCopy } from "@/hooks/use-copy"
 import { useSendPermission } from "@/hooks/use-send-permission"
+import { EMAIL_CONFIG } from "@/config"
 import { Copy, Inbox, MailOpen } from "lucide-react"
 
 interface Email {
@@ -146,14 +147,19 @@ export function ThreeColumnLayout() {
     }
   }
 
-  const syncExternalMail = async (account: ExternalMailAccount, options: { rescan?: boolean } = {}) => {
+  const syncExternalMail = async (account: ExternalMailAccount, options: { rescan?: boolean; recentLimit?: number } = {}) => {
     const syncUrl = new URL(`/api/external-mail/accounts/${account.id}/sync`, window.location.origin)
     if (options.rescan) {
       syncUrl.searchParams.set("rescan", "1")
     }
+    if (options.recentLimit) {
+      syncUrl.searchParams.set("recentLimit", String(options.recentLimit))
+    }
+    syncUrl.searchParams.set("_", String(Date.now()))
 
     const response = await fetch(syncUrl, {
       method: "POST",
+      cache: "no-store",
     })
     const data = await response.json().catch(() => ({})) as {
       error?: string
@@ -209,7 +215,7 @@ export function ThreeColumnLayout() {
     if (!account) return
     if (!account.enabled) return
 
-    await syncExternalMail(account)
+    await syncExternalMail(account, { recentLimit: EMAIL_CONFIG.ICLOUD_AUTO_SYNC_LIMIT })
   }
 
   const handleGroupChange = (groupId: string | null, groupName?: string) => {

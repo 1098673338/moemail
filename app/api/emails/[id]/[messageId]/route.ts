@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
 import { createDb } from "@/lib/db"
-import { messages, emails } from "@/lib/schema"
+import { deletedMessages, messages, emails } from "@/lib/schema"
+import { deleteExternalMailMessage, getExternalMailErrorMessage } from "@/lib/external-mail"
 import { and, eq } from "drizzle-orm"
 import { getUserId } from "@/lib/apiKey"
 export const runtime = "edge"
@@ -42,14 +43,27 @@ export async function DELETE(
       )
     }
 
+    const messageType = new URL(request.url).searchParams.get("type") || message.type
+    const externalDeleted = await deleteExternalMailMessage(userId!, id, messageId, messageType)
+
+    if (externalDeleted) {
+      await db.insert(deletedMessages)
+        .values({
+          emailId: id,
+          messageId,
+          deletedAt: new Date(),
+        })
+        .onConflictDoNothing()
+    }
+
     await db.delete(messages)
-        .where(eq(messages.id, messageId))
+      .where(eq(messages.id, messageId))
 
     return NextResponse.json({ success: true })
   } catch (error) {
     console.error('Failed to delete email:', error)
     return NextResponse.json(
-        { error: "Failed to delete message" },
+        { error: getExternalMailErrorMessage(error, "删除邮件失败") },
         { status: 500 }
     )
   }

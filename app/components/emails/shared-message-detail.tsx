@@ -6,6 +6,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Label } from "@/components/ui/label"
 import { MessageDetailHeader } from "./message-detail-header"
 import { LinkifiedText } from "./linkified-text"
+import { buildHtmlDocument } from "./html-message-document"
 
 interface MessageDetail {
   id: string
@@ -69,44 +70,7 @@ export function SharedMessageDetail({
 
       if (doc) {
         doc.open()
-        doc.write(`
-          <!DOCTYPE html>
-          <html>
-            <head>
-              <base target="_blank">
-              <style>
-                html, body {
-                  margin: 0;
-                  padding: 0;
-                  min-height: 100%;
-                  font-family: system-ui, -apple-system, sans-serif;
-                  color: #000;
-                  background: #fff;
-                }
-                body {
-                  padding: 20px;
-                }
-                img {
-                  max-width: 100%;
-                  height: auto;
-                }
-                a {
-                  color: #2563eb;
-                }
-                * {
-                  -ms-overflow-style: none;
-                  scrollbar-width: none;
-                }
-                *::-webkit-scrollbar {
-                  display: none;
-                  width: 0;
-                  height: 0;
-                }
-              </style>
-            </head>
-            <body>${message.html}</body>
-          </html>
-        `)
+        doc.write(buildHtmlDocument(message.html))
         doc.close()
 
         const updateHeight = () => {

@@ -71,7 +71,7 @@ export function MessageList({ email, messageType, onMessageSelect, onMessagePref
   const [refreshing, setRefreshing] = useState(false)
   const [nextCursor, setNextCursor] = useState<string | null>(null)
   const [loadingMore, setLoadingMore] = useState(false)
-  const pollTimeoutRef = useRef<Timer>(null)
+  const pollTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const messagesRef = useRef<Message[]>([]) // 添加 ref 来追踪最新的消息列表
   const loadingRef = useRef(loading)
   const refreshingRef = useRef(refreshing)
@@ -174,7 +174,11 @@ export function MessageList({ email, messageType, onMessageSelect, onMessagePref
       if (cursor) {
         url.searchParams.set('cursor', cursor)
       }
-      const response = await fetch(url)
+      url.searchParams.set('_', String(Date.now()))
+
+      const response = await fetch(url, {
+        cache: 'no-store',
+      })
       const data = await response.json() as MessageResponse
 
       if (!isCurrentRequest(requestEmailId, requestMessageType)) {
@@ -228,7 +232,7 @@ export function MessageList({ email, messageType, onMessageSelect, onMessagePref
 
   const stopPolling = () => {
     if (pollTimeoutRef.current) {
-      clearInterval(pollTimeoutRef.current)
+      clearTimeout(pollTimeoutRef.current)
       pollTimeoutRef.current = null
     }
   }
@@ -257,7 +261,9 @@ export function MessageList({ email, messageType, onMessageSelect, onMessagePref
     stopPolling()
     if (!autoRefreshEnabled) return
 
-    pollTimeoutRef.current = setInterval(() => {
+    const tick = () => {
+      pollTimeoutRef.current = null
+
       if (
         !loadingRef.current
         && !refreshingRef.current
@@ -265,9 +271,20 @@ export function MessageList({ email, messageType, onMessageSelect, onMessagePref
         && !refreshInFlightRef.current
         && !autoRefreshInFlightRef.current
       ) {
-        void runAutoRefresh()
+        void runAutoRefresh().finally(() => {
+          if (isCurrentRequest(email.id, messageType) && autoRefreshEnabled) {
+            pollTimeoutRef.current = setTimeout(tick, autoRefreshInterval)
+          }
+        })
+        return
       }
-    }, autoRefreshInterval)
+
+      if (isCurrentRequest(email.id, messageType) && autoRefreshEnabled) {
+        pollTimeoutRef.current = setTimeout(tick, Math.min(autoRefreshInterval, 1_000))
+      }
+    }
+
+    pollTimeoutRef.current = setTimeout(tick, autoRefreshInterval)
   }
 
   const handleRefresh = async () => {
@@ -396,7 +413,29 @@ export function MessageList({ email, messageType, onMessageSelect, onMessagePref
     void loadMessages()
     startPolling()
 
+    const handleVisibilityChange = () => {
+      if (
+        document.visibilityState === "visible"
+        && autoRefreshEnabled
+        && !loadingRef.current
+        && !refreshingRef.current
+        && !loadingMoreRef.current
+        && !refreshInFlightRef.current
+        && !autoRefreshInFlightRef.current
+      ) {
+        stopPolling()
+        void runAutoRefresh().finally(() => {
+          if (isCurrentRequest(email.id, messageType) && autoRefreshEnabled) {
+            startPolling()
+          }
+        })
+      }
+    }
+
+    document.addEventListener("visibilitychange", handleVisibilityChange)
+
     return () => {
+      document.removeEventListener("visibilitychange", handleVisibilityChange)
       stopPolling() 
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps

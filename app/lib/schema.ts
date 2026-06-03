@@ -131,6 +131,21 @@ export const messages = sqliteTable("message", {
   emailIdReceivedAtTypeIdx: index("message_email_id_received_at_type_idx").on(table.emailId, table.receivedAt, table.type),
 }))
 
+export const deletedMessages = sqliteTable("deleted_message", {
+  id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+  emailId: text("email_id")
+    .notNull()
+    .references(() => emails.id, { onDelete: "cascade" }),
+  messageId: text("message_id").notNull(),
+  deletedAt: integer("deleted_at", { mode: "timestamp_ms" })
+    .notNull()
+    .$defaultFn(() => new Date()),
+}, (table) => ({
+  emailMessageUnique: uniqueIndex("deleted_message_email_message_unique").on(table.emailId, table.messageId),
+  emailIdIdx: index("deleted_message_email_id_idx").on(table.emailId),
+  messageIdIdx: index("deleted_message_message_id_idx").on(table.messageId),
+}))
+
 export const webhooks = sqliteTable('webhook', {
   id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
   userId: text('user_id')
@@ -240,6 +255,7 @@ export const emailsRelations = relations(emails, ({ one, many }) => ({
     references: [externalMailAccounts.emailId],
   }),
   messages: many(messages),
+  deletedMessages: many(deletedMessages),
 }));
 
 export const externalMailAccountsRelations = relations(externalMailAccounts, ({ one }) => ({
@@ -268,5 +284,12 @@ export const messageSharesRelations = relations(messageShares, ({ one }) => ({
   message: one(messages, {
     fields: [messageShares.messageId],
     references: [messages.id],
+  }),
+}));
+
+export const deletedMessagesRelations = relations(deletedMessages, ({ one }) => ({
+  email: one(emails, {
+    fields: [deletedMessages.emailId],
+    references: [emails.id],
   }),
 }));

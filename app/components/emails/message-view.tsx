@@ -9,6 +9,7 @@ import { useToast } from "@/components/ui/use-toast"
 import { ShareMessageDialog } from "./share-message-dialog"
 import { MessageDetailHeader } from "./message-detail-header"
 import { LinkifiedText } from "./linkified-text"
+import { buildHtmlDocument } from "./html-message-document"
 
 interface Message {
   id: string
@@ -59,65 +60,6 @@ const getMessageCacheKey = (
 const hasMessageBody = (message: Message | null) => {
   return typeof message?.content === "string" || typeof message?.html === "string"
 }
-
-const addLazyLoadingToImages = (html: string) => {
-  return html.replace(/<img\b[^>]*>/gi, (tag) => {
-    let nextTag = tag
-
-    if (!/\sloading\s*=/i.test(nextTag)) {
-      nextTag = nextTag.replace(/^<img/i, '<img loading="lazy"')
-    }
-
-    if (!/\sdecoding\s*=/i.test(nextTag)) {
-      nextTag = nextTag.replace(/^<img/i, '<img decoding="async"')
-    }
-
-    if (!/\sreferrerpolicy\s*=/i.test(nextTag)) {
-      nextTag = nextTag.replace(/^<img/i, '<img referrerpolicy="no-referrer"')
-    }
-
-    return nextTag
-  })
-}
-
-const buildHtmlDocument = (html: string) => `
-  <!DOCTYPE html>
-  <html>
-    <head>
-      <base target="_blank">
-      <style>
-        html, body {
-          margin: 0;
-          padding: 0;
-          min-height: 100%;
-          font-family: system-ui, -apple-system, sans-serif;
-          color: #000;
-          background: #fff;
-        }
-        body {
-          padding: 20px;
-        }
-        img {
-          max-width: 100%;
-          height: auto;
-        }
-        a {
-          color: #2563eb;
-        }
-        * {
-          -ms-overflow-style: none;
-          scrollbar-width: none;
-        }
-        *::-webkit-scrollbar {
-          display: none;
-          width: 0;
-          height: 0;
-        }
-      </style>
-    </head>
-    <body>${addLazyLoadingToImages(html)}</body>
-  </html>
-`
 
 const pruneMemoryCache = () => {
   while (messageCache.size > MESSAGE_CACHE_MAX_ENTRIES) {

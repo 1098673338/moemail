@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server"
 import { getUserId } from "@/lib/apiKey"
-import { getExternalMailErrorMessage, syncExternalMailAccount } from "@/lib/external-mail"
+import { EXTERNAL_MAIL_AUTO_SYNC_LIMIT, getExternalMailErrorMessage, syncExternalMailAccount } from "@/lib/external-mail"
 
 export const runtime = "edge"
 
@@ -12,13 +12,17 @@ export async function POST(
   const { id } = await params
   const { searchParams } = new URL(request.url)
   const rescan = searchParams.get("rescan") === "1"
+  const recentLimitValue = Number(searchParams.get("recentLimit") || "")
+  const recentLimit = Number.isInteger(recentLimitValue) && recentLimitValue > 0
+    ? Math.min(recentLimitValue, EXTERNAL_MAIL_AUTO_SYNC_LIMIT)
+    : undefined
 
   if (!userId) {
     return NextResponse.json({ error: "未授权" }, { status: 401 })
   }
 
   try {
-    const result = await syncExternalMailAccount(userId, id, { rescan })
+    const result = await syncExternalMailAccount(userId, id, { rescan, recentLimit })
 
     return NextResponse.json({
       success: true,
