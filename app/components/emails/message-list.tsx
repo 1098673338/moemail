@@ -50,6 +50,7 @@ interface MessageListProps {
   onBeforeAutoRefresh?: (messageType: MessageType, emailId: string) => Promise<void> | void
   autoRefreshInterval?: number
   autoRefreshEnabled?: boolean
+  isIcloudMail?: boolean
 }
 
 interface MessageResponse {
@@ -61,7 +62,7 @@ interface MessageResponse {
 type MessageType = 'received' | 'sent'
 const AUTO_PREFETCH_MESSAGE_COUNT = 5
 
-export function MessageList({ email, messageType, onMessageSelect, onMessagePrefetch, selectedMessageId, refreshTrigger, emptyStateOffsetClass, onTotalChange, tabControls, onBeforeRefresh, onBeforeAutoRefresh, autoRefreshInterval = EMAIL_CONFIG.POLL_INTERVAL, autoRefreshEnabled = true }: MessageListProps) {
+export function MessageList({ email, messageType, onMessageSelect, onMessagePrefetch, selectedMessageId, refreshTrigger, emptyStateOffsetClass, onTotalChange, tabControls, onBeforeRefresh, onBeforeAutoRefresh, autoRefreshInterval = EMAIL_CONFIG.POLL_INTERVAL, autoRefreshEnabled = true, isIcloudMail = false }: MessageListProps) {
   const t = useTranslations("emails.messages")
   const tCommon = useTranslations("common.actions")
   const tFeedback = useTranslations("common.feedback")
@@ -79,6 +80,7 @@ export function MessageList({ email, messageType, onMessageSelect, onMessagePref
   const refreshInFlightRef = useRef(false)
   const autoRefreshInFlightRef = useRef(false)
   const onBeforeAutoRefreshRef = useRef(onBeforeAutoRefresh)
+  const pendingDeletedMessageIdsRef = useRef<Set<string>>(new Set())
   const mountedRef = useRef(true)
   const requestContextRef = useRef({ emailId: email.id, messageType })
   const [total, setTotal] = useState(0)
@@ -96,8 +98,43 @@ export function MessageList({ email, messageType, onMessageSelect, onMessagePref
   )
 
   const updateTotal = (nextTotal: number) => {
-    setTotal(nextTotal)
-    onTotalChange?.(messageType, nextTotal)
+    const normalizedTotal = Math.max(nextTotal, 0)
+    setTotal(normalizedTotal)
+    onTotalChange?.(messageType, normalizedTotal)
+  }
+
+  const adjustTotal = (delta: number) => {
+    setTotal(prev => {
+      const nextTotal = Math.max(prev + delta, 0)
+      onTotalChange?.(messageType, nextTotal)
+      return nextTotal
+    })
+  }
+
+  const filterPendingDeletedMessages = (nextMessages: Message[]) => {
+    const pendingDeletedMessageIds = pendingDeletedMessageIdsRef.current
+    if (pendingDeletedMessageIds.size === 0) return nextMessages
+
+    return nextMessages.filter(message => !pendingDeletedMessageIds.has(message.id))
+  }
+
+  const getVisibleTotal = (serverTotal: number) => {
+    return Math.max(serverTotal - pendingDeletedMessageIdsRef.current.size, 0)
+  }
+
+  const removeMessageFromList = (messageId: string) => {
+    const nextMessages = messagesRef.current.filter(message => message.id !== messageId)
+    messagesRef.current = nextMessages
+    setMessages(nextMessages)
+  }
+
+  const restoreMessageToList = (message: Message, index: number) => {
+    if (messagesRef.current.some(currentMessage => currentMessage.id === message.id)) return
+
+    const nextMessages = [...messagesRef.current]
+    nextMessages.splice(Math.min(Math.max(index, 0), nextMessages.length), 0, message)
+    messagesRef.current = nextMessages
+    setMessages(nextMessages)
   }
 
   // 当 messages 改变时更新 ref
@@ -120,6 +157,10 @@ export function MessageList({ email, messageType, onMessageSelect, onMessagePref
   useEffect(() => {
     onBeforeAutoRefreshRef.current = onBeforeAutoRefresh
   }, [onBeforeAutoRefresh])
+
+  useEffect(() => {
+    pendingDeletedMessageIdsRef.current.clear()
+  }, [email.id, messageType])
 
   useEffect(() => {
     mountedRef.current = true
@@ -186,15 +227,16 @@ export function MessageList({ email, messageType, onMessageSelect, onMessagePref
       }
       
       if (!cursor) {
-        const newMessages = data.messages
+        const newMessages = filterPendingDeletedMessages(data.messages)
+        const visibleTotal = getVisibleTotal(data.total)
         if (replace) {
           setMessages(newMessages)
           setNextCursor(data.nextCursor)
-          updateTotal(data.total)
+          updateTotal(visibleTotal)
           return
         }
 
-        const oldMessages = messagesRef.current
+        const oldMessages = filterPendingDeletedMessages(messagesRef.current)
 
         const lastDuplicateIndex = newMessages.findIndex(
           newMsg => oldMessages.some(oldMsg => oldMsg.id === newMsg.id)
@@ -203,22 +245,22 @@ export function MessageList({ email, messageType, onMessageSelect, onMessagePref
         if (lastDuplicateIndex === -1) {
           setMessages(newMessages)
           setNextCursor(data.nextCursor)
-          updateTotal(data.total)
+          updateTotal(visibleTotal)
           return
         }
         const uniqueNewMessages = newMessages.slice(0, lastDuplicateIndex)
         setNextCursor(data.nextCursor)
         if (uniqueNewMessages.length === 0) {
-          updateTotal(data.total)
+          updateTotal(visibleTotal)
           return
         }
         setMessages([...uniqueNewMessages, ...oldMessages])
-        updateTotal(data.total)
+        updateTotal(visibleTotal)
         return
       }
-      setMessages(prev => [...prev, ...data.messages])
+      setMessages(prev => [...filterPendingDeletedMessages(prev), ...filterPendingDeletedMessages(data.messages)])
       setNextCursor(data.nextCursor)
-      updateTotal(data.total)
+      updateTotal(getVisibleTotal(data.total))
     } catch (error) {
       console.error("Failed to fetch messages:", error)
     } finally {
@@ -344,6 +386,21 @@ export function MessageList({ email, messageType, onMessageSelect, onMessagePref
   }, 200)
 
   const handleDelete = async (message: Message) => {
+    const shouldOptimisticallyDelete = isIcloudMail && messageType === "received"
+    const previousIndex = messagesRef.current.findIndex(currentMessage => currentMessage.id === message.id)
+
+    if (shouldOptimisticallyDelete) {
+      pendingDeletedMessageIdsRef.current.add(message.id)
+      removeMessageFromList(message.id)
+      adjustTotal(-1)
+
+      if (selectedMessageId === message.id) {
+        onMessageSelect(null)
+      }
+    }
+
+    messageDeleteDialog.close()
+
     try {
       const response = await fetch(`/api/emails/${email.id}/${message.id}${messageType === 'sent' ? '?type=sent' : ''}`, {
         method: "DELETE"
@@ -351,6 +408,13 @@ export function MessageList({ email, messageType, onMessageSelect, onMessagePref
 
       if (!response.ok) {
         const data = await response.json()
+
+        if (shouldOptimisticallyDelete) {
+          pendingDeletedMessageIdsRef.current.delete(message.id)
+          restoreMessageToList(message, previousIndex)
+          adjustTotal(1)
+        }
+
         toast({
           title: (data as { error?: string }).error || tFeedback("deleteFailed"),
           variant: "destructive"
@@ -358,27 +422,31 @@ export function MessageList({ email, messageType, onMessageSelect, onMessagePref
         return
       }
 
-      setMessages(prev => prev.filter(e => e.id !== message.id))
-      setTotal(prev => {
-        const nextTotal = Math.max(prev - 1, 0)
-        onTotalChange?.(messageType, nextTotal)
-        return nextTotal
-      })
+      pendingDeletedMessageIdsRef.current.delete(message.id)
+
+      if (!shouldOptimisticallyDelete) {
+        removeMessageFromList(message.id)
+        adjustTotal(-1)
+
+        if (selectedMessageId === message.id) {
+          onMessageSelect(null)
+        }
+      }
 
       toast({
         title: tFeedback("deleteSuccess")
       })
-
-      if (selectedMessageId === message.id) {
-        onMessageSelect(null)
-      }
     } catch {
+      if (shouldOptimisticallyDelete) {
+        pendingDeletedMessageIdsRef.current.delete(message.id)
+        restoreMessageToList(message, previousIndex)
+        adjustTotal(1)
+      }
+
       toast({
         title: tFeedback("deleteFailed"),
         variant: "destructive"
       })
-    } finally {
-      messageDeleteDialog.close()
     }
   }
 
@@ -568,7 +636,7 @@ export function MessageList({ email, messageType, onMessageSelect, onMessagePref
         <AlertDialogHeader className="min-w-0">
           <AlertDialogTitle>{t("deleteConfirm")}</AlertDialogTitle>
           <AlertDialogDescription className="min-w-0 break-words [overflow-wrap:anywhere]">
-            {t("deleteDescription")}
+            {t(isIcloudMail && messageType === "received" ? "icloudDeleteDescription" : "deleteDescription")}
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter className="flex-wrap">
