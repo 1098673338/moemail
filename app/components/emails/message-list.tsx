@@ -67,9 +67,8 @@ export function MessageList({ email, messageType, onMessageSelect, onMessagePref
   const t = useTranslations("emails.messages")
   const tCommon = useTranslations("common.actions")
   const tFeedback = useTranslations("common.feedback")
-  const isCustomEmail = Boolean(email.isCustom)
   const [messages, setMessages] = useState<Message[]>([])
-  const [loading, setLoading] = useState(!isCustomEmail)
+  const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
   const [nextCursor, setNextCursor] = useState<string | null>(null)
   const [loadingMore, setLoadingMore] = useState(false)
@@ -174,7 +173,7 @@ export function MessageList({ email, messageType, onMessageSelect, onMessagePref
   }, [])
 
   useEffect(() => {
-    if (isCustomEmail || loading || refreshing || loadingMore || !onMessagePrefetch || messages.length === 0) return
+    if (loading || refreshing || loadingMore || !onMessagePrefetch || messages.length === 0) return
 
     let cancelled = false
 
@@ -193,19 +192,9 @@ export function MessageList({ email, messageType, onMessageSelect, onMessagePref
     return () => {
       cancelled = true
     }
-  }, [isCustomEmail, loading, loadingMore, messageType, messages, onMessagePrefetch, refreshing])
+  }, [loading, loadingMore, messageType, messages, onMessagePrefetch, refreshing])
 
   const fetchMessages = async (cursor?: string, replace = false) => {
-    if (isCustomEmail) {
-      setMessages([])
-      setNextCursor(null)
-      updateTotal(0)
-      setLoading(false)
-      setRefreshing(false)
-      setLoadingMore(false)
-      return
-    }
-
     const requestEmailId = email.id
     const requestMessageType = messageType
     const requestListVersion = cursor
@@ -372,14 +361,6 @@ export function MessageList({ email, messageType, onMessageSelect, onMessagePref
   }
 
   const handleRefresh = async () => {
-    if (isCustomEmail) {
-      setMessages([])
-      setNextCursor(null)
-      updateTotal(0)
-      setRefreshing(false)
-      return
-    }
-
     if (refreshInFlightRef.current || loadingRef.current || refreshingRef.current || loadingMoreRef.current) {
       return
     }
@@ -409,7 +390,7 @@ export function MessageList({ email, messageType, onMessageSelect, onMessagePref
       }
     } finally {
       refreshInFlightRef.current = false
-      if (!isCustomEmail && email.id) {
+      if (email.id) {
         startPolling()
       }
     }
@@ -497,16 +478,6 @@ export function MessageList({ email, messageType, onMessageSelect, onMessagePref
     if (!email.id) {
       return
     }
-    if (isCustomEmail) {
-      stopPolling()
-      setLoading(false)
-      setRefreshing(false)
-      setLoadingMore(false)
-      setMessages([])
-      setNextCursor(null)
-      updateTotal(0)
-      return
-    }
     loadingRef.current = true
     setLoading(true)
     setRefreshing(false)
@@ -550,23 +521,15 @@ export function MessageList({ email, messageType, onMessageSelect, onMessagePref
       stopPolling() 
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [email.id, isCustomEmail, autoRefreshEnabled, autoRefreshInterval, autoRefreshDuration, isIcloudMail, messageType])
+  }, [email.id, autoRefreshEnabled, autoRefreshInterval, autoRefreshDuration, isIcloudMail, messageType])
 
   useEffect(() => {
-    if (isCustomEmail) {
-      setMessages([])
-      setNextCursor(null)
-      updateTotal(0)
-      setRefreshing(false)
-      return
-    }
-
     if (refreshTrigger && refreshTrigger > 0) {
       setRefreshing(true)
       fetchMessages(undefined, true)
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [refreshTrigger, isCustomEmail])
+  }, [refreshTrigger])
 
   return (
   <>

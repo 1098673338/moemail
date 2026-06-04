@@ -35,6 +35,25 @@ export async function DELETE(
         { status: 403 }
       )
     }
+
+    const externalMailAccount = await db.query.externalMailAccounts.findFirst({
+      where: and(
+        eq(externalMailAccounts.userId, userId!),
+        eq(externalMailAccounts.emailId, id),
+        eq(externalMailAccounts.provider, ICLOUD_MAIL_PROVIDER)
+      ),
+      columns: {
+        id: true,
+      },
+    })
+
+    if (externalMailAccount) {
+      return NextResponse.json(
+        { error: "iCloud 接入邮箱只能在个人中心删除" },
+        { status: 400 }
+      )
+    }
+
     await db.delete(messages)
       .where(eq(messages.emailId, id))
 
@@ -267,14 +286,6 @@ export async function GET(
         { error: "无权限查看" },
         { status: 403 }
       )
-    }
-
-    if (email.isCustom) {
-      return NextResponse.json({
-        messages: [],
-        nextCursor: null,
-        total: 0
-      })
     }
 
     if (messageType === 'sent') {

@@ -1310,15 +1310,17 @@ export function EmailList({ onEmailSelect, onGroupChange, selectedEmailId, refre
                               {tShare("shareButton")}
                             </DropdownMenuItem>
                           )}
-                          <DropdownMenuItem
-                            onClick={() => {
-                              emailDeleteDialog.openWithTarget(email)
-                              setOpenMoreEmailId(null)
-                            }}
-                          >
-                            <Trash2 className="mr-2 h-4 w-4" />
-                            {tCommon("delete")}
-                          </DropdownMenuItem>
+                          {!email.isIcloudMail && (
+                            <DropdownMenuItem
+                              onClick={() => {
+                                emailDeleteDialog.openWithTarget(email)
+                                setOpenMoreEmailId(null)
+                              }}
+                            >
+                              <Trash2 className="mr-2 h-4 w-4" />
+                              {tCommon("delete")}
+                            </DropdownMenuItem>
+                          )}
                           {!email.isIcloudMail && (
                             <>
                               <div className="my-1 h-px bg-border" />

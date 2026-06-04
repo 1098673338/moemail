@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server"
 import { createDb } from "@/lib/db"
-import { deletedMessages, messages, emails } from "@/lib/schema"
-import { deleteExternalMailMessage, getExternalMailErrorMessage } from "@/lib/external-mail"
+import { messages, emails } from "@/lib/schema"
+import { deleteExternalMailMessage, deleteLocalExternalMessageViews, getExternalMailErrorMessage } from "@/lib/external-mail"
 import { and, eq } from "drizzle-orm"
 import { getUserId } from "@/lib/apiKey"
 export const runtime = "edge"
@@ -47,13 +47,8 @@ export async function DELETE(
     const externalDeleted = await deleteExternalMailMessage(userId!, id, messageId, messageType)
 
     if (externalDeleted) {
-      await db.insert(deletedMessages)
-        .values({
-          emailId: id,
-          messageId,
-          deletedAt: new Date(),
-        })
-        .onConflictDoNothing()
+      await deleteLocalExternalMessageViews(db, userId!, messageId)
+      return NextResponse.json({ success: true })
     }
 
     await db.delete(messages)
@@ -86,7 +81,6 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
         receivedAt: messages.receivedAt,
         sentAt: messages.sentAt,
         type: messages.type,
-        emailIsCustom: emails.isCustom,
       })
       .from(messages)
       .innerJoin(emails, eq(messages.emailId, emails.id))
@@ -97,7 +91,7 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
       ))
       .limit(1)
     
-    if (!message || message.emailIsCustom) {
+    if (!message) {
       return NextResponse.json(
         { error: "Message not found" },
         { status: 404 }

@@ -1,6 +1,6 @@
 import { and, desc, eq, gt, inArray, like, sql } from "drizzle-orm"
 import { getRequestContext } from "@cloudflare/next-on-pages"
-import PostalMime, { type Address } from "postal-mime"
+import PostalMime, { addressParser, type Address, type Email as ParsedEmail } from "postal-mime"
 import { EMAIL_CONFIG } from "@/config"
 import { getUserRole } from "@/lib/auth"
 import { createDb, type Db } from "@/lib/db"
@@ -25,6 +25,7 @@ export type ExternalMailAccountRecord = typeof externalMailAccounts.$inferSelect
 
 export interface ExternalMailConnectionAccount {
   id: string
+  userId: string
   emailId: string
   emailAddress: string
   username: string
@@ -43,6 +44,7 @@ export interface SyncedExternalMailMessage {
   type: "received"
   receivedAt: Date
   sentAt: Date
+  recipientAddresses: string[]
 }
 
 interface ExternalMailCredentials {
@@ -104,10 +106,19 @@ interface ImapMailboxStatus {
   uidValidity: number | null
 }
 
+interface ExternalMessageIdentity {
+  accountId: string
+  uid: number
+  suffix: string
+  aliasHash: string | null
+}
+
 type SocketConnect = (address: SocketAddress | string, options?: SocketOptions) => Socket
 
 const PERMANENT_EXPIRES_AT = new Date("9999-01-01T00:00:00.000Z")
 const MESSAGE_ID_HEADER_REGEX = /<([^>]+)>/
+const EMAIL_ADDRESS_REGEX = /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i
+const EMAIL_ADDRESS_SCAN_REGEX = /[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/gi
 const TEXT_LINK_REGEX = /(?:https?:\/\/|www\.)[^\s<>"']+|[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/gi
 const TRAILING_URL_PUNCTUATION = ".,!?;:]}"
 const textEncoder = new TextEncoder()
@@ -299,6 +310,75 @@ function getDisplayAddresses(addresses?: Address[] | null) {
   return addresses?.map(getDisplayAddress).filter(Boolean).join(", ") || ""
 }
 
+function addNormalizedEmailAddress(output: Set<string>, value?: string | null) {
+  if (!value) return
+
+  const normalized = normalizeEmailAddress(value)
+  if (EMAIL_ADDRESS_REGEX.test(normalized)) {
+    output.add(normalized)
+  }
+}
+
+function addAddressObjects(output: Set<string>, addresses?: Address[] | null) {
+  if (!addresses) return
+
+  for (const address of addresses) {
+    if (address.group?.length) {
+      addAddressObjects(output, address.group)
+    }
+
+    addNormalizedEmailAddress(output, address.address)
+  }
+}
+
+function addAddressesFromText(output: Set<string>, value?: string | null) {
+  if (!value) return
+
+  try {
+    addAddressObjects(output, addressParser(value, { flatten: true }))
+  } catch {
+    // Fall back to a conservative scan below.
+  }
+
+  for (const match of value.matchAll(EMAIL_ADDRESS_SCAN_REGEX)) {
+    addNormalizedEmailAddress(output, match[0])
+  }
+}
+
+function getParsedHeaderValues(parsed: ParsedEmail, headerKeys: string[]) {
+  const targetKeys = new Set(headerKeys.map(key => key.toLowerCase()))
+  return parsed.headers
+    .filter(header => targetKeys.has(String(header.key || "").toLowerCase()))
+    .map(header => String(header.value || ""))
+    .filter(Boolean)
+}
+
+function getParsedRecipientAddresses(parsed: ParsedEmail) {
+  const addresses = new Set<string>()
+
+  addAddressObjects(addresses, parsed.to)
+  addAddressObjects(addresses, parsed.cc)
+  addAddressObjects(addresses, parsed.bcc)
+  addAddressesFromText(addresses, parsed.deliveredTo)
+
+  for (const headerValue of getParsedHeaderValues(parsed, [
+    "to",
+    "cc",
+    "bcc",
+    "delivered-to",
+    "x-original-to",
+    "x-envelope-to",
+    "envelope-to",
+    "resent-to",
+    "resent-cc",
+    "x-forwarded-to",
+  ])) {
+    addAddressesFromText(addresses, headerValue)
+  }
+
+  return Array.from(addresses)
+}
+
 function getParsedMessageTimestamp(parsedDate?: string, fallbackDate?: Date | string) {
   const parsedTime = parsedDate ? new Date(parsedDate).getTime() : NaN
   if (Number.isFinite(parsedTime)) return new Date(parsedTime)
@@ -318,6 +398,20 @@ async function getExternalMessageId(accountId: string, uid: number, parsedMessag
     : String(uid)
 
   return `external:${accountId}:${uid}:${suffix}`
+}
+
+function getExternalBaseMessageId(identity: ExternalMessageIdentity) {
+  return `external:${identity.accountId}:${identity.uid}:${identity.suffix}`
+}
+
+async function getExternalAliasMessageId(baseMessageId: string, aliasAddress: string) {
+  const identity = parseExternalMessageIdentity(baseMessageId)
+  if (!identity) {
+    throw new Error("iCloud 邮件 ID 无效，无法生成分发副本")
+  }
+
+  const aliasHash = (await sha256Hex(normalizeEmailAddress(aliasAddress))).slice(0, 16)
+  return `${getExternalBaseMessageId(identity)}:alias:${aliasHash}`
 }
 
 function stripHtml(value: string) {
@@ -941,6 +1035,7 @@ export async function testIcloudConnection(credentials: TestIcloudConnectionCred
 
   const account: ExternalMailConnectionAccount = {
     id: "connection-test",
+    userId: "",
     emailId: "",
     emailAddress,
     username,
@@ -1145,6 +1240,7 @@ async function parseExternalMessage(
   const id = await getExternalMessageId(account.id, input.uid, parsed.messageId)
   const content = parsed.text || ""
   const html = parsed.html || textToLinkedHtml(content)
+  const recipientAddresses = getParsedRecipientAddresses(parsed)
 
   return {
     id,
@@ -1157,14 +1253,14 @@ async function parseExternalMessage(
     type: "received",
     receivedAt: timestamp,
     sentAt: timestamp,
+    recipientAddresses,
   }
 }
 
 export async function syncExternalMailMessages(options: {
   account: ExternalMailConnectionAccount
   password: string
-  messageExists: (messageId: string) => Promise<boolean> | boolean
-  insertMessage: (message: SyncedExternalMailMessage) => Promise<void> | void
+  insertMessage: (message: SyncedExternalMailMessage) => Promise<number> | number
   deleteMissingMessages?: (input: DeleteMissingExternalMailMessagesInput) => Promise<number> | number
   updateAccount: (cursor: { lastUid: number; lastSyncAt: Date }) => Promise<void> | void
   rescan?: boolean
@@ -1246,10 +1342,7 @@ export async function syncExternalMailMessages(options: {
         internalDate: message.internalDate,
       })
 
-      if (await options.messageExists(parsedMessage.id)) continue
-
-      await options.insertMessage(parsedMessage)
-      imported += 1
+      imported += await options.insertMessage(parsedMessage)
     }
 
     if (options.deleteMissingMessages && remoteUidsForReconcile) {
@@ -1307,8 +1400,91 @@ async function hasLocalExternalMessageRecord(db: Db, emailId: string, messageId:
   return Boolean(deleted)
 }
 
+async function insertExternalMessageRecord(
+  db: Db,
+  message: SyncedExternalMailMessage,
+  input: {
+    emailId: string
+    messageId: string
+  }
+) {
+  await db.insert(messages)
+    .values({
+      id: input.messageId,
+      emailId: input.emailId,
+      fromAddress: message.fromAddress,
+      toAddress: message.toAddress,
+      subject: message.subject,
+      content: message.content,
+      html: message.html,
+      type: message.type,
+      receivedAt: message.receivedAt,
+      sentAt: message.sentAt,
+    })
+    .onConflictDoNothing()
+}
+
+async function findExternalAliasTargetEmails(
+  db: Db,
+  account: ExternalMailConnectionAccount,
+  recipientAddresses: string[]
+) {
+  const normalizedRecipients = Array.from(new Set(
+    recipientAddresses
+      .map(address => normalizeEmailAddress(address))
+      .filter(address => address && address !== normalizeEmailAddress(account.emailAddress))
+  ))
+
+  if (normalizedRecipients.length === 0) return []
+
+  return db
+    .select({
+      id: emails.id,
+      address: emails.address,
+    })
+    .from(emails)
+    .where(and(
+      eq(emails.userId, account.userId),
+      eq(emails.isCustom, true),
+      gt(emails.expiresAt, new Date()),
+      inArray(sql<string>`LOWER(${emails.address})`, normalizedRecipients)
+    ))
+}
+
+async function insertExternalMessageViews(
+  db: Db,
+  account: ExternalMailConnectionAccount,
+  message: SyncedExternalMailMessage
+) {
+  let inserted = 0
+
+  if (!await hasLocalExternalMessageRecord(db, account.emailId, message.id)) {
+    await insertExternalMessageRecord(db, message, {
+      emailId: account.emailId,
+      messageId: message.id,
+    })
+    inserted += 1
+  }
+
+  const aliasTargets = await findExternalAliasTargetEmails(db, account, message.recipientAddresses)
+
+  for (const target of aliasTargets) {
+    const aliasMessageId = await getExternalAliasMessageId(message.id, target.address)
+
+    if (await hasLocalExternalMessageRecord(db, target.id, aliasMessageId)) continue
+
+    await insertExternalMessageRecord(db, message, {
+      emailId: target.id,
+      messageId: aliasMessageId,
+    })
+    inserted += 1
+  }
+
+  return inserted
+}
+
 function parseExternalMessageIdentity(messageId: string) {
-  const match = messageId.match(/^external:([^:]+):(\d+):([^:]+)$/)
+  const match = messageId.match(/^external:([^:]+):(\d+):([^:]+)(?::alias:([^:]+))?$/)
   if (!match) return null
 
   const uid = Number(match[2])
@@ -1318,6 +1494,7 @@ function parseExternalMessageIdentity(messageId: string) {
     accountId: match[1],
     uid,
     suffix: match[3],
+    aliasHash: match[4] || null,
   }
 }
 
@@ -1328,6 +1505,7 @@ function externalMessageIdentityMatches(localMessageId: string, remoteMessageId:
   return Boolean(
     localIdentity
     && remoteIdentity
+    && localIdentity.accountId === remoteIdentity.accountId
     && localIdentity.uid === remoteIdentity.uid
     && localIdentity.suffix === remoteIdentity.suffix
   )
@@ -1343,8 +1521,9 @@ async function deleteMissingLocalExternalMessages(
       id: messages.id,
     })
     .from(messages)
+    .innerJoin(emails, eq(messages.emailId, emails.id))
     .where(and(
-      eq(messages.emailId, account.emailId),
+      eq(emails.userId, account.userId),
       eq(messages.type, "received"),
       like(messages.id, `external:${account.id}:%`)
     ))
@@ -1392,22 +1571,8 @@ export async function syncExternalMailAccount(userId: string, accountId: string,
     password,
     rescan: options?.rescan,
     recentLimit: options?.recentLimit,
-    messageExists: async (messageId) => {
-      return hasLocalExternalMessageRecord(db, account.emailId, messageId)
-    },
     insertMessage: async (message) => {
-      await db.insert(messages).values({
-        id: message.id,
-        emailId: message.emailId,
-        fromAddress: message.fromAddress,
-        toAddress: message.toAddress,
-        subject: message.subject,
-        content: message.content,
-        html: message.html,
-        type: message.type,
-        receivedAt: message.receivedAt,
-        sentAt: message.sentAt,
-      })
+      return insertExternalMessageViews(db, account, message)
     },
     deleteMissingMessages: async (input) => {
       return deleteMissingLocalExternalMessages(db, account, input)
@@ -1443,22 +1608,8 @@ export async function syncExternalMailAccountByEmailId(emailId: string, options?
     password,
     rescan: options?.rescan,
     recentLimit: options?.recentLimit,
-    messageExists: async (messageId) => {
-      return hasLocalExternalMessageRecord(db, account.emailId, messageId)
-    },
     insertMessage: async (message) => {
-      await db.insert(messages).values({
-        id: message.id,
-        emailId: message.emailId,
-        fromAddress: message.fromAddress,
-        toAddress: message.toAddress,
-        subject: message.subject,
-        content: message.content,
-        html: message.html,
-        type: message.type,
-        receivedAt: message.receivedAt,
-        sentAt: message.sentAt,
-      })
+      return insertExternalMessageViews(db, account, message)
     },
     deleteMissingMessages: async (input) => {
       return deleteMissingLocalExternalMessages(db, account, input)
@@ -1500,12 +1651,16 @@ export async function deleteExternalMailMessage(
   messageType?: string | null
 ) {
   if (messageType === "sent") return false
+  void emailId
+
+  const messageIdentity = parseExternalMessageIdentity(messageId)
+  if (!messageIdentity) return false
 
   const db = createDb()
   const account = await db.query.externalMailAccounts.findFirst({
     where: and(
+      eq(externalMailAccounts.id, messageIdentity.accountId),
       eq(externalMailAccounts.userId, userId),
-      eq(externalMailAccounts.emailId, emailId),
       eq(externalMailAccounts.provider, ICLOUD_MAIL_PROVIDER)
     ),
   })
@@ -1514,11 +1669,6 @@ export async function deleteExternalMailMessage(
 
   if (!account.enabled) {
     throw new Error("iCloud 邮箱账号已停用，无法从 iCloud 远端删除邮件")
-  }
-
-  const messageIdentity = parseExternalMessageIdentity(messageId)
-  if (!messageIdentity) {
-    throw new Error("这封 iCloud 邮件缺少远端 UID，无法从 iCloud 删除")
   }
 
   const password = await decryptExternalMailPassword(account.passwordEncrypted)
@@ -1544,6 +1694,43 @@ export async function deleteExternalMailMessage(
   }
 
   return true
+}
+
+export async function deleteLocalExternalMessageViews(db: Db, userId: string, messageId: string) {
+  const messageIdentity = parseExternalMessageIdentity(messageId)
+  if (!messageIdentity) return 0
+
+  const baseMessageId = getExternalBaseMessageId(messageIdentity)
+  const localMessages = await db
+    .select({
+      id: messages.id,
+      emailId: messages.emailId,
+    })
+    .from(messages)
+    .innerJoin(emails, eq(messages.emailId, emails.id))
+    .where(and(
+      eq(emails.userId, userId),
+      like(messages.id, `${baseMessageId}%`)
+    ))
+
+  const relatedMessages = localMessages.filter(message => (
+    externalMessageIdentityMatches(message.id, baseMessageId)
+  ))
+
+  if (relatedMessages.length === 0) return 0
+
+  await db.insert(deletedMessages)
+    .values(relatedMessages.map(message => ({
+      emailId: message.emailId,
+      messageId: message.id,
+      deletedAt: new Date(),
+    })))
+    .onConflictDoNothing()
+
+  await db.delete(messages)
+    .where(inArray(messages.id, relatedMessages.map(message => message.id)))
+
+  return relatedMessages.length
 }
 
 export async function findExternalMailAccountByEmailId(userId: string, emailId: string) {
