@@ -62,15 +62,21 @@ export function ThreeColumnLayout() {
   const emailColumnStyle = { gridColumn: "span 4 / span 4" }
   const messageListColumnStyle = { gridColumn: "span 6 / span 6" }
   const contentColumnStyle = { gridColumn: "span 14 / span 14" }
-  const showMessageList = Boolean(selectedEmail && !selectedEmail.isCustom)
+  const showMessageList = Boolean(selectedEmail)
   const selectedEmailIsIcloudMail = Boolean(
     selectedEmail?.isIcloudMail
     || (externalMailAccount && externalMailAccount.emailId === selectedEmail?.id)
   )
+  const selectedEmailUsesExternalMailSync = Boolean(
+    selectedEmailIsIcloudMail
+    || selectedEmail?.isCustom
+  )
 
-  const fetchExternalMailAccount = useCallback(async (emailId: string) => {
+  const fetchExternalMailAccounts = useCallback(async (emailId?: string) => {
     const url = new URL("/api/external-mail/accounts", window.location.origin)
-    url.searchParams.set("emailId", emailId)
+    if (emailId) {
+      url.searchParams.set("emailId", emailId)
+    }
     url.searchParams.set("_", String(Date.now()))
 
     const response = await fetch(url, {
@@ -81,8 +87,13 @@ export function ThreeColumnLayout() {
     }
 
     if (!response.ok) return null
-    return data.accounts?.[0] ?? null
+    return data.accounts ?? []
   }, [])
+
+  const fetchExternalMailAccount = useCallback(async (emailId: string) => {
+    const accounts = await fetchExternalMailAccounts(emailId)
+    return accounts?.[0] ?? null
+  }, [fetchExternalMailAccounts])
 
   useEffect(() => {
     let cancelled = false
@@ -185,7 +196,16 @@ export function ThreeColumnLayout() {
   }
 
   const handleMessageListRefresh = async (messageType: MessageType) => {
-    if (messageType !== 'received' || !selectedEmail || !selectedEmailIsIcloudMail) {
+    if (messageType !== 'received' || !selectedEmail || !selectedEmailUsesExternalMailSync) {
+      return
+    }
+
+    if (selectedEmail.isCustom) {
+      const accounts = await fetchExternalMailAccounts()
+      await Promise.all((accounts ?? [])
+        .filter(account => account.enabled)
+        .map(account => syncExternalMail(account, { rescan: true }))
+      )
       return
     }
 
@@ -202,6 +222,15 @@ export function ThreeColumnLayout() {
 
   const handleMessageListAutoRefresh = async (messageType: MessageType, emailId: string) => {
     if (messageType !== 'received') {
+      return
+    }
+
+    if (selectedEmail?.id === emailId && selectedEmail.isCustom) {
+      const accounts = await fetchExternalMailAccounts()
+      await Promise.all((accounts ?? [])
+        .filter(account => account.enabled)
+        .map(account => syncExternalMail(account, { recentLimit: EMAIL_CONFIG.ICLOUD_AUTO_SYNC_LIMIT }))
+      )
       return
     }
 
@@ -290,7 +319,7 @@ export function ThreeColumnLayout() {
                 sendPermissionLoading={sendPermissionLoading}
                 onBeforeRefresh={handleMessageListRefresh}
                 onBeforeAutoRefresh={handleMessageListAutoRefresh}
-                isIcloudMail={selectedEmailIsIcloudMail}
+                isIcloudMail={selectedEmailUsesExternalMailSync}
               />
             </div>
           ) : (
@@ -308,7 +337,7 @@ export function ThreeColumnLayout() {
                 emailId={selectedEmail.id}
                 messageId={selectedMessageId}
                 messageType={selectedMessageType}
-                hideSenderAddress={selectedEmailIsIcloudMail}
+                hideSenderAddress={selectedEmailUsesExternalMailSync}
                 initialMessage={selectedMessagePreview ? {
                   ...selectedMessagePreview,
                   type: selectedMessageType,

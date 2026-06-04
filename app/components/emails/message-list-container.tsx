@@ -49,7 +49,6 @@ export function MessageListContainer({
   isIcloudMail = false,
 }: MessageListContainerProps) {
   const t = useTranslations("emails.messages")
-  const isCustomEmail = Boolean(email.isCustom)
   const [activeTab, setActiveTab] = useState<'received' | 'sent'>('received')
   const [messageCounts, setMessageCounts] = useState<Record<'received' | 'sent', number>>({
     received: 0,
@@ -57,11 +56,6 @@ export function MessageListContainer({
   })
 
   useEffect(() => {
-    if (isCustomEmail) {
-      setMessageCounts({ received: 0, sent: 0 })
-      return
-    }
-
     if (!email.id || !canSendEmails) return
 
     let cancelled = false
@@ -101,7 +95,7 @@ export function MessageListContainer({
     return () => {
       cancelled = true
     }
-  }, [email.id, canSendEmails, activeTab, refreshTrigger, isCustomEmail])
+  }, [email.id, canSendEmails, activeTab, refreshTrigger])
 
   const handleTabChange = (tabId: string) => {
     setActiveTab(tabId as 'received' | 'sent')
