@@ -7,6 +7,7 @@ import { getUserId } from "@/lib/apiKey"
 import { checkBasicSendPermission } from "@/lib/send-permissions"
 import { EXPIRY_OPTIONS } from "@/types/email"
 import { EXTERNAL_EMAIL_GROUP_ID } from "@/lib/email-group-constants"
+import { backfillExternalAliasMessagesForEmail } from "@/lib/external-mail"
 
 export const runtime = "edge"
 
@@ -296,6 +297,10 @@ export async function GET(
           { status: 403 }
         )
       }
+    }
+
+    if (!cursorStr && messageType !== 'sent') {
+      await backfillExternalAliasMessagesForEmail(db, email)
     }
 
     const baseConditions = and(

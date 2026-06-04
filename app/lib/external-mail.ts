@@ -345,6 +345,12 @@ function addAddressesFromText(output: Set<string>, value?: string | null) {
   }
 }
 
+function getEmailAddressesFromText(value?: string | null) {
+  const addresses = new Set<string>()
+  addAddressesFromText(addresses, value)
+  return Array.from(addresses)
+}
+
 function getParsedHeaderValues(parsed: ParsedEmail, headerKeys: string[]) {
   const targetKeys = new Set(headerKeys.map(key => key.toLowerCase()))
   return parsed.headers
@@ -1475,6 +1481,70 @@ async function insertExternalMessageViews(
 
     await insertExternalMessageRecord(db, message, {
       emailId: target.id,
+      messageId: aliasMessageId,
+    })
+    inserted += 1
+  }
+
+  return inserted
+}
+
+function escapeSqlLikePattern(value: string) {
+  return value.replace(/[\\%_]/g, char => `\\${char}`)
+}
+
+export async function backfillExternalAliasMessagesForEmail(
+  db: Db,
+  email: Pick<typeof emails.$inferSelect, "id" | "address" | "isCustom" | "userId" | "expiresAt">
+) {
+  if (!email.isCustom || !email.userId || email.expiresAt < new Date()) return 0
+
+  const aliasAddress = normalizeEmailAddress(email.address)
+  const candidateMessages = await db
+    .select({
+      id: messages.id,
+      emailId: messages.emailId,
+      fromAddress: messages.fromAddress,
+      toAddress: messages.toAddress,
+      subject: messages.subject,
+      content: messages.content,
+      html: messages.html,
+      receivedAt: messages.receivedAt,
+      sentAt: messages.sentAt,
+    })
+    .from(messages)
+    .innerJoin(externalMailAccounts, eq(messages.emailId, externalMailAccounts.emailId))
+    .where(and(
+      eq(externalMailAccounts.userId, email.userId),
+      eq(externalMailAccounts.provider, ICLOUD_MAIL_PROVIDER),
+      eq(messages.type, "received"),
+      like(messages.id, "external:%"),
+      sql`LOWER(${messages.toAddress}) LIKE ${`%${escapeSqlLikePattern(aliasAddress)}%`} ESCAPE '\\'`
+    ))
+
+  let inserted = 0
+
+  for (const message of candidateMessages) {
+    const recipientAddresses = getEmailAddressesFromText(message.toAddress)
+    if (!recipientAddresses.includes(aliasAddress)) continue
+
+    const aliasMessageId = await getExternalAliasMessageId(message.id, aliasAddress)
+    if (await hasLocalExternalMessageRecord(db, email.id, aliasMessageId)) continue
+
+    await insertExternalMessageRecord(db, {
+      id: message.id,
+      emailId: message.emailId,
+      fromAddress: message.fromAddress || "",
+      toAddress: message.toAddress || "",
+      subject: message.subject,
+      content: message.content,
+      html: message.html,
+      type: "received",
+      receivedAt: message.receivedAt,
+      sentAt: message.sentAt,
+      recipientAddresses,
+    }, {
+      emailId: email.id,
       messageId: aliasMessageId,
     })
     inserted += 1
