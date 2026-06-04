@@ -751,10 +751,13 @@ export function EmailList({ onEmailSelect, onGroupChange, selectedEmailId, refre
     const previousGroupId = previousEmail?.groupId ?? null
     const nextGroupId = mergedEmail.groupId ?? null
     const isExternalEmail = Boolean(mergedEmail.isIcloudMail)
-    const staysVisible = selectedGroupId === null
-      || (selectedGroupId === EXTERNAL_EMAIL_GROUP_ID && isExternalEmail)
-      || selectedGroupId === nextGroupId
-      || (selectedGroupId === "none" && !nextGroupId && !isExternalEmail)
+    const staysVisible = selectedGroupId === EXTERNAL_EMAIL_GROUP_ID
+      ? isExternalEmail
+      : !isExternalEmail && (
+        selectedGroupId === null
+        || selectedGroupId === nextGroupId
+        || (selectedGroupId === "none" && !nextGroupId)
+      )
 
     if (previousGroupId !== nextGroupId) {
       setGroups(prev => prev.map(group => {

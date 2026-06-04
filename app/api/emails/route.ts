@@ -38,7 +38,11 @@ export async function GET(request: Request) {
 
     const conditions = [baseConditions]
 
-    if (groupId === "none") {
+    if (!groupId) {
+      if (externalMailEmailIds.length > 0) {
+        conditions.push(notInArray(emails.id, externalMailEmailIds))
+      }
+    } else if (groupId === "none") {
       conditions.push(isNull(emails.groupId))
       if (externalMailEmailIds.length > 0) {
         conditions.push(notInArray(emails.id, externalMailEmailIds))

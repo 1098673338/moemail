@@ -50,7 +50,11 @@ export async function PATCH(request: Request) {
       gt(emails.expiresAt, new Date()),
     ]
 
-    if (selectedGroupId === "none") {
+    if (!selectedGroupId) {
+      if (externalMailEmailIds.length > 0) {
+        conditions.push(notInArray(emails.id, externalMailEmailIds))
+      }
+    } else if (selectedGroupId === "none") {
       conditions.push(isNull(emails.groupId))
       if (externalMailEmailIds.length > 0) {
         conditions.push(notInArray(emails.id, externalMailEmailIds))
