@@ -1,4 +1,5 @@
 import type { ReactNode } from "react"
+import { formatUtcPlus8DateTime } from "@/lib/date-format"
 
 interface MessageDetailHeaderProps {
   subject: string
@@ -40,7 +41,7 @@ export function MessageDetailHeader({
         {toAddress && (
           <p>{toLabel}: {toAddress}</p>
         )}
-        <p>{timeLabel}: {new Date(timestamp || 0).toLocaleString()}</p>
+        <p>{timeLabel}: {formatUtcPlus8DateTime(timestamp || 0)}</p>
       </div>
     </div>
   )

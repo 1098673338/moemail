@@ -1,9 +1,14 @@
 import { createDb } from "@/lib/db"
-import { emailShares, messages } from "@/lib/schema"
+import { emailShares, externalMailAccounts, messages } from "@/lib/schema"
 import { eq, and, lt, or, sql, ne, isNull } from "drizzle-orm"
 import { NextResponse } from "next/server"
 import { encodeCursor, decodeCursor } from "@/lib/cursor"
-import { EXTERNAL_MAIL_AUTO_SYNC_LIMIT, syncExternalMailAccountByEmailId } from "@/lib/external-mail"
+import {
+  backfillExternalAliasMessagesForEmail,
+  EXTERNAL_MAIL_AUTO_SYNC_LIMIT,
+  syncExternalMailAccount,
+  syncExternalMailAccountByEmailId,
+} from "@/lib/external-mail"
 
 export const runtime = "edge"
 
@@ -59,10 +64,31 @@ export async function GET(
 
     const emailId = share.email.id
 
-    if (shouldSync) {
+    if (shouldSync && share.email.isCustom && share.email.userId) {
+      const accounts = await db.query.externalMailAccounts.findMany({
+        where: and(
+          eq(externalMailAccounts.userId, share.email.userId),
+          eq(externalMailAccounts.provider, "icloud"),
+          eq(externalMailAccounts.enabled, true)
+        ),
+        columns: {
+          id: true,
+        },
+      })
+
+      await Promise.all(accounts.map(account => (
+        syncExternalMailAccount(share.email.userId!, account.id, { rescan, recentLimit }).catch((error) => {
+          console.error("Failed to sync shared custom external mail account:", error)
+        })
+      )))
+    } else if (shouldSync) {
       await syncExternalMailAccountByEmailId(emailId, { rescan, recentLimit }).catch((error) => {
         console.error("Failed to sync shared external mail account:", error)
       })
+    }
+
+    if (share.email.isCustom) {
+      await backfillExternalAliasMessagesForEmail(db, share.email)
     }
 
     // 只显示接收的邮件，不显示发送的邮件

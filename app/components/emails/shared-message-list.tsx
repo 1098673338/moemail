@@ -4,6 +4,7 @@ import { Loader2, Mail, MailX, RefreshCw } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useThrottle } from "@/hooks/use-throttle"
 import { Button } from "@/components/ui/button"
+import { formatUtcPlus8DateTimeToMinute } from "@/lib/date-format"
 
 interface Message {
   id: string
@@ -119,9 +120,7 @@ export function SharedMessageList({
                       {message.subject}
                     </p>
                     <p className="text-left text-xs text-gray-500">
-                      {new Date(
-                        message.received_at || message.sent_at || 0
-                      ).toLocaleString()}
+                      {formatUtcPlus8DateTimeToMinute(message.received_at || message.sent_at || 0)}
                     </p>
                   </div>
                 </div>

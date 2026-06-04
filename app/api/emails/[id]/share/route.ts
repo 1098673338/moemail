@@ -7,6 +7,10 @@ import { nanoid } from "nanoid"
 
 export const runtime = "edge"
 
+function canShareEmailAddress(address: string) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(address.trim())
+}
+
 // 获取邮箱的所有分享链接
 export async function GET(
   request: Request,
@@ -30,7 +34,7 @@ export async function GET(
       return NextResponse.json({ error: "Email not found" }, { status: 404 })
     }
 
-    if (email.isCustom) {
+    if (!canShareEmailAddress(email.address)) {
       return NextResponse.json({ shares: [], total: 0 })
     }
 
@@ -73,9 +77,9 @@ export async function POST(
       return NextResponse.json({ error: "Email not found" }, { status: 404 })
     }
 
-    if (email.isCustom) {
+    if (!canShareEmailAddress(email.address)) {
       return NextResponse.json(
-        { error: "自定义邮箱不能分享" },
+        { error: "只有包含完整邮箱地址的自定义邮箱才能分享" },
         { status: 400 }
       )
     }

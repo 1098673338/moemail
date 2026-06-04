@@ -80,6 +80,7 @@ interface EmailGroup {
 type DropPosition = "before" | "after"
 
 const EMPTY_STATE_CLASS = "pointer-events-none absolute inset-0 flex -translate-y-6 flex-col items-center justify-center px-6 text-center"
+const canShareEmailAddress = (address: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(address.trim())
 
 export function EmailList({ onEmailSelect, onGroupChange, selectedEmailId, refreshTrigger, onRefresh }: EmailListProps) {
   const { data: session } = useSession()
@@ -1304,7 +1305,7 @@ export function EmailList({ onEmailSelect, onGroupChange, selectedEmailId, refre
                               {tEdit("menu")}
                             </DropdownMenuItem>
                           )}
-                          {!email.isCustom && (
+                          {canShareEmailAddress(email.address) && (
                             <DropdownMenuItem onSelect={() => openShareDialog(email)}>
                               <Share2 className="mr-2 h-4 w-4" />
                               {tShare("shareButton")}

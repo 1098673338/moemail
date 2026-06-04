@@ -1,6 +1,7 @@
 import { createDb, type Db } from "@/lib/db"
 import { emailShares, externalMailAccounts, messageShares, messages, emails } from "@/lib/schema"
 import { eq, desc, and, or, ne, isNull } from "drizzle-orm"
+import { backfillExternalAliasMessagesForEmail } from "@/lib/external-mail"
 
 const ICLOUD_MAIL_PROVIDER = "icloud"
 
@@ -43,6 +44,17 @@ async function hasIcloudMailAccount(db: Db, emailId: string) {
   return Boolean(account)
 }
 
+function isExternalMailMessageId(messageId: string) {
+  return messageId.startsWith("external:")
+}
+
+async function hasSharedEmailExternalContext(
+  db: Db,
+  email: Pick<typeof emails.$inferSelect, "id" | "isCustom">
+) {
+  return Boolean(email.isCustom || await hasIcloudMailAccount(db, email.id))
+}
+
 export async function getSharedEmail(token: string): Promise<SharedEmail | null> {
   const db = createDb()
 
@@ -74,7 +86,7 @@ export async function getSharedEmail(token: string): Promise<SharedEmail | null>
       createdAt: share.email.createdAt,
       expiresAt: share.email.expiresAt,
       shareExpiresAt: share.expiresAt ?? undefined,
-      isIcloudMail: await hasIcloudMailAccount(db, share.email.id),
+      isIcloudMail: await hasSharedEmailExternalContext(db, share.email),
     }
   } catch (error) {
     console.error("Failed to fetch shared email:", error)
@@ -106,6 +118,10 @@ export async function getSharedEmailMessages(token: string, limit = 20): Promise
     // 检查分享是否过期
     if (share.expiresAt && share.expiresAt < new Date()) {
       return { messages: [], nextCursor: null, total: 0 }
+    }
+
+    if (share.email.isCustom) {
+      await backfillExternalAliasMessagesForEmail(db, share.email)
     }
 
     // 只显示接收的邮件，不显示发送的邮件
@@ -208,7 +224,11 @@ export async function getSharedMessage(token: string): Promise<SharedMessage | n
       expiresAt: share.expiresAt ?? undefined,
       emailAddress: email?.address,
       emailExpiresAt: email?.expiresAt,
-      isIcloudMail: await hasIcloudMailAccount(db, message.emailId),
+      isIcloudMail: Boolean(
+        isExternalMailMessageId(message.id)
+        || email?.isCustom
+        || await hasIcloudMailAccount(db, message.emailId)
+      ),
     }
   } catch (error) {
     console.error("Failed to fetch shared message:", error)
