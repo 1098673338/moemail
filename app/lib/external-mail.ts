@@ -1,4 +1,4 @@
-import { and, desc, eq, gt, inArray, like, sql } from "drizzle-orm"
+import { and, desc, eq, gt, gte, inArray, lt, sql } from "drizzle-orm"
 import { getRequestContext } from "@cloudflare/next-on-pages"
 import PostalMime, { addressParser, type Address, type Email as ParsedEmail } from "postal-mime"
 import { EMAIL_CONFIG } from "@/config"
@@ -1489,10 +1489,6 @@ async function insertExternalMessageViews(
   return inserted
 }
 
-function escapeSqlLikePattern(value: string) {
-  return value.replace(/[\\%_]/g, char => `\\${char}`)
-}
-
 export async function backfillExternalAliasMessagesForEmail(
   db: Db,
   email: Pick<typeof emails.$inferSelect, "id" | "address" | "isCustom" | "userId" | "expiresAt">
@@ -1517,9 +1513,7 @@ export async function backfillExternalAliasMessagesForEmail(
     .where(and(
       eq(externalMailAccounts.userId, email.userId),
       eq(externalMailAccounts.provider, ICLOUD_MAIL_PROVIDER),
-      eq(messages.type, "received"),
-      like(messages.id, "external:%"),
-      sql`LOWER(${messages.toAddress}) LIKE ${`%${escapeSqlLikePattern(aliasAddress)}%`} ESCAPE '\\'`
+      eq(messages.type, "received")
     ))
 
   let inserted = 0
@@ -1586,6 +1580,7 @@ async function deleteMissingLocalExternalMessages(
   account: ExternalMailConnectionAccount,
   input: DeleteMissingExternalMailMessagesInput
 ) {
+  const accountMessageIdPrefix = `external:${account.id}:`
   const localMessages = await db
     .select({
       id: messages.id,
@@ -1595,7 +1590,8 @@ async function deleteMissingLocalExternalMessages(
     .where(and(
       eq(emails.userId, account.userId),
       eq(messages.type, "received"),
-      like(messages.id, `external:${account.id}:%`)
+      gte(messages.id, accountMessageIdPrefix),
+      lt(messages.id, `${accountMessageIdPrefix}\uffff`)
     ))
 
   const remoteUids = new Set(input.remoteUids)
@@ -1780,7 +1776,8 @@ export async function deleteLocalExternalMessageViews(db: Db, userId: string, me
     .innerJoin(emails, eq(messages.emailId, emails.id))
     .where(and(
       eq(emails.userId, userId),
-      like(messages.id, `${baseMessageId}%`)
+      gte(messages.id, baseMessageId),
+      lt(messages.id, `${baseMessageId}\uffff`)
     ))
 
   const relatedMessages = localMessages.filter(message => (

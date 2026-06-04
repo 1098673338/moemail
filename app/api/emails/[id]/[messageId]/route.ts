@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server"
 import { createDb } from "@/lib/db"
-import { messages, emails } from "@/lib/schema"
+import { deletedMessages, messages, emails } from "@/lib/schema"
 import { deleteExternalMailMessage, deleteLocalExternalMessageViews, getExternalMailErrorMessage } from "@/lib/external-mail"
 import { and, eq } from "drizzle-orm"
 import { getUserId } from "@/lib/apiKey"
@@ -47,7 +47,20 @@ export async function DELETE(
     const externalDeleted = await deleteExternalMailMessage(userId!, id, messageId, messageType)
 
     if (externalDeleted) {
-      await deleteLocalExternalMessageViews(db, userId!, messageId)
+      try {
+        await deleteLocalExternalMessageViews(db, userId!, messageId)
+      } catch (cleanupError) {
+        console.error("Failed to cleanup local iCloud message views after remote delete:", cleanupError)
+        await db.insert(deletedMessages)
+          .values({
+            emailId: id,
+            messageId,
+            deletedAt: new Date(),
+          })
+          .onConflictDoNothing()
+        await db.delete(messages)
+          .where(eq(messages.id, messageId))
+      }
       return NextResponse.json({ success: true })
     }
 
