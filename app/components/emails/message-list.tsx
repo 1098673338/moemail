@@ -9,6 +9,7 @@ import { useThrottle } from "@/hooks/use-throttle"
 import { EMAIL_CONFIG } from "@/config"
 import { useToast } from "@/components/ui/use-toast"
 import { useDeferredDialogTarget } from "@/hooks/use-deferred-dialog-target"
+import { formatUtcPlus8DateTime } from "@/lib/date-format"
 import { ShareMessageDialog } from "./share-message-dialog"
 import {
   AlertDialog,
@@ -587,7 +588,7 @@ export function MessageList({ email, messageType, onMessageSelect, onMessagePref
                   <div className="min-w-0 flex-1">
                     <p className="font-medium text-sm truncate">{message.subject}</p>
                     <p className="truncate text-left text-xs text-gray-500">
-                      {new Date(message.received_at || message.sent_at || 0).toLocaleString()}
+                      {formatUtcPlus8DateTime(message.received_at || message.sent_at || 0)}
                     </p>
                   </div>
                   <div className="hidden shrink-0 items-center justify-center gap-1 self-center group-hover:flex" onClick={(e) => e.stopPropagation()}>

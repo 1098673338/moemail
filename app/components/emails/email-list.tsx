@@ -1256,7 +1256,7 @@ export function EmailList({ onEmailSelect, onGroupChange, selectedEmailId, refre
                         {new Date(email.expiresAt).getFullYear() === 9999 ? (
                           t("permanent")
                         ) : (
-                          new Date(email.expiresAt).toLocaleString()
+                          formatUtcPlus8Date(email.expiresAt)
                         )}
                       </div>
                     )}

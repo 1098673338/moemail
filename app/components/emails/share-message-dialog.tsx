@@ -25,6 +25,7 @@ import {
 import { useToast } from "@/components/ui/use-toast"
 import { useCopy } from "@/hooks/use-copy"
 import { useDeferredDialogTarget } from "@/hooks/use-deferred-dialog-target"
+import { formatUtcPlus8DateTime } from "@/lib/date-format"
 import { SHARE_EXPIRY_OPTIONS } from "@/types/email"
 
 interface ShareMessageDialogProps {
@@ -303,11 +304,11 @@ export function ShareMessageDialog({ emailId, messageId, messageSubject, trigger
                             "break-words",
                             isExpired ? "text-destructive/70" : "text-gray-500"
                           )}>
-                            {t("createdAt")}: {new Date(
+                            {t("createdAt")}: {formatUtcPlus8DateTime(
                               typeof share.createdAt === 'number' 
                                 ? share.createdAt 
                                 : share.createdAt
-                            ).toLocaleString()}
+                            )}
                           </span>
                           <span className={cn(
                             "break-words",
@@ -315,11 +316,11 @@ export function ShareMessageDialog({ emailId, messageId, messageSubject, trigger
                           )}>
                             {t("expiresAt")}: {
                               share.expiresAt
-                                ? new Date(
+                                ? formatUtcPlus8DateTime(
                                     typeof share.expiresAt === 'number' 
                                       ? share.expiresAt 
                                       : share.expiresAt
-                                  ).toLocaleString()
+                                  )
                                 : t("permanent")
                             }
                           </span>
