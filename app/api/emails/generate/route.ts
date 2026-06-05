@@ -8,7 +8,7 @@ import { getRequestContext } from "@cloudflare/next-on-pages"
 import { getUserId } from "@/lib/apiKey"
 import { getUserRole } from "@/lib/auth"
 import { ROLES } from "@/lib/permissions"
-import { generateEmailName, getEmailNamePrefix, isValidEmailNamePrefix } from "@/lib/email-name"
+import { generateEmailName, getEmailNamePrefix, isValidEmailNamePrefix, startsWithValidEmailNameChar } from "@/lib/email-name"
 import { EXTERNAL_EMAIL_GROUP_ID } from "@/lib/email-group-constants"
 
 export const runtime = "edge"
@@ -17,7 +17,14 @@ const MAX_TAG_LENGTH = 32
 
 const getEmailNameError = (value: string) => {
   if (!isValidEmailNamePrefix(value)) {
-    return "邮箱前缀只能包含字母、数字、下划线和连字符"
+    return "邮箱前缀只能包含字母、数字、下划线和连字符，且必须以字母或数字开头"
+  }
+  return null
+}
+
+const getCustomAddressError = (value: string) => {
+  if (!startsWithValidEmailNameChar(getEmailNamePrefix(value))) {
+    return "邮箱地址必须以字母或数字开头"
   }
   return null
 }
@@ -83,11 +90,20 @@ export async function POST(request: Request) {
     let address: string
 
     if (createCustomEmail) {
-      address = typeof customAddress === "string" ? customAddress : ""
+      address = typeof customAddress === "string" ? customAddress.trim() : ""
 
       if (address.length === 0) {
         return NextResponse.json(
           { error: "请输入自定义邮箱" },
+          { status: 400 }
+        )
+      }
+
+      const customAddressError = getCustomAddressError(address)
+
+      if (customAddressError) {
+        return NextResponse.json(
+          { error: customAddressError },
           { status: 400 }
         )
       }

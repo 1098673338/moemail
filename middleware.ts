@@ -16,12 +16,20 @@ const API_PERMISSIONS: Record<string, Permission> = {
   '/api/api-keys': PERMISSIONS.MANAGE_API_KEY,
 }
 
+function isPublicSharedApiPath(pathname: string) {
+  return pathname === '/api/shared' || pathname.startsWith('/api/shared/')
+}
+
 export async function middleware(request: NextRequest) {
   const url = new URL(request.url)
   const pathname = url.pathname
 
   if (pathname.startsWith('/api')) {
     if (pathname.startsWith('/api/auth')) {
+      return NextResponse.next()
+    }
+
+    if (request.method === 'GET' && isPublicSharedApiPath(pathname)) {
       return NextResponse.next()
     }
 

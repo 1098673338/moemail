@@ -15,7 +15,7 @@ import { EXPIRY_OPTIONS } from "@/types/email"
 import { useCopy } from "@/hooks/use-copy"
 import { useConfig } from "@/hooks/use-config"
 import { cn } from "@/lib/utils"
-import { generateEmailName, getEmailNamePrefix, isValidEmailNamePrefix } from "@/lib/email-name"
+import { generateEmailName, getEmailNamePrefix, isValidEmailNamePrefix, startsWithValidEmailNameChar } from "@/lib/email-name"
 import { EXTERNAL_EMAIL_GROUP_ID } from "@/lib/email-group-constants"
 
 interface CreateDialogProps {
@@ -62,6 +62,10 @@ export function CreateDialog({ onEmailCreated, selectedGroupId, selectedGroupNam
   const emailNamePrefix = getEmailNamePrefix(emailName)
   const emailNameError = createMode === "standard" && emailNamePrefix && !isValidEmailNamePrefix(emailNamePrefix)
     ? t("nameInvalidCharacters")
+    : ""
+  const trimmedCustomAddress = customAddress.trim()
+  const customAddressError = createMode === "custom" && trimmedCustomAddress && !startsWithValidEmailNameChar(getEmailNamePrefix(trimmedCustomAddress))
+    ? t("addressInvalidStart")
     : ""
   const formLabelClass = "w-12 shrink-0 whitespace-nowrap text-muted-foreground"
   const formRowClass = "flex items-center gap-2"
@@ -135,14 +139,15 @@ export function CreateDialog({ onEmailCreated, selectedGroupId, selectedGroupNam
 
   const createEmail = async () => {
     if (emailNameError) return
-    if (createMode === "custom" && customAddress.length === 0) return
+    if (customAddressError) return
+    if (createMode === "custom" && trimmedCustomAddress.length === 0) return
 
     setLoading(true)
     try {
       const requestBody = createMode === "custom"
         ? {
             isCustom: true,
-            address: customAddress,
+            address: trimmedCustomAddress,
             groupId: createGroupId === UNGROUPED_GROUP_VALUE ? null : createGroupId,
             tag: tag.trim() || null
           }
@@ -225,11 +230,20 @@ export function CreateDialog({ onEmailCreated, selectedGroupId, selectedGroupNam
           </Tabs>
 
           {createMode === "custom" ? (
-            <Input
-              value={customAddress}
-              onChange={(e) => setCustomAddress(e.target.value)}
-              placeholder={t("customAddressPlaceholder")}
-            />
+            <div className="flex min-w-0 flex-col gap-1">
+              <Input
+                value={customAddress}
+                onChange={(e) => setCustomAddress(e.target.value)}
+                placeholder={t("customAddressPlaceholder")}
+                aria-invalid={Boolean(customAddressError)}
+                className={cn(
+                  customAddressError && "border-destructive focus-visible:ring-destructive"
+                )}
+              />
+              {customAddressError && (
+                <p className="text-xs text-destructive">{customAddressError}</p>
+              )}
+            </div>
           ) : (
             <div className="flex min-w-0 flex-col gap-2">
               <div className="flex min-w-0 gap-2">
@@ -394,7 +408,7 @@ export function CreateDialog({ onEmailCreated, selectedGroupId, selectedGroupNam
           <Button variant="outline" onClick={() => handleOpenChange(false)} disabled={loading}>
             {tCommon("cancel")}
           </Button>
-          <Button onClick={createEmail} disabled={loading || Boolean(emailNameError) || (createMode === "custom" && customAddress.length === 0)}>
+          <Button onClick={createEmail} disabled={loading || Boolean(emailNameError) || Boolean(customAddressError) || (createMode === "custom" && trimmedCustomAddress.length === 0)}>
             {loading ? t("creating") : t("create")}
           </Button>
         </div>

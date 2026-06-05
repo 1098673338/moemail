@@ -8,11 +8,19 @@ import { checkBasicSendPermission } from "@/lib/send-permissions"
 import { EXPIRY_OPTIONS } from "@/types/email"
 import { EXTERNAL_EMAIL_GROUP_ID } from "@/lib/email-group-constants"
 import { backfillExternalAliasMessagesForEmail } from "@/lib/external-mail"
+import { getEmailNamePrefix, startsWithValidEmailNameChar } from "@/lib/email-name"
 
 export const runtime = "edge"
 
 const MAX_TAG_LENGTH = 32
 const ICLOUD_MAIL_PROVIDER = "icloud"
+
+const getCustomAddressError = (value: string) => {
+  if (!startsWithValidEmailNameChar(getEmailNamePrefix(value))) {
+    return "邮箱地址必须以字母或数字开头"
+  }
+  return null
+}
 
 export async function DELETE(
   request: Request,
@@ -156,11 +164,20 @@ export async function PATCH(
     const updateData: Partial<typeof emails.$inferInsert> = {}
 
     if (hasAddress && email.isCustom) {
-      const nextAddress = typeof body.address === "string" ? body.address : ""
+      const nextAddress = typeof body.address === "string" ? body.address.trim() : ""
 
       if (nextAddress.length === 0) {
         return NextResponse.json(
           { error: "请输入自定义邮箱" },
+          { status: 400 }
+        )
+      }
+
+      const customAddressError = getCustomAddressError(nextAddress)
+
+      if (customAddressError) {
+        return NextResponse.json(
+          { error: customAddressError },
           { status: 400 }
         )
       }

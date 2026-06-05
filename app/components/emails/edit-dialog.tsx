@@ -10,6 +10,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useToast } from "@/components/ui/use-toast"
 import { TagCombobox } from "@/components/emails/tag-combobox"
 import { EXPIRY_OPTIONS } from "@/types/email"
+import { getEmailNamePrefix, startsWithValidEmailNameChar } from "@/lib/email-name"
+import { cn } from "@/lib/utils"
 
 interface Email {
   id: string
@@ -69,6 +71,10 @@ export function EditDialog({ email, groups, open, onOpenChange, onEmailUpdated }
   const formLabelClass = "w-12 shrink-0 whitespace-nowrap text-muted-foreground"
   const formRowClass = "flex items-center gap-2"
   const groupSelectItemClass = "hover:bg-accent hover:text-accent-foreground"
+  const trimmedCustomAddress = customAddress.trim()
+  const customAddressError = email?.isCustom && trimmedCustomAddress && !startsWithValidEmailNameChar(getEmailNamePrefix(trimmedCustomAddress))
+    ? tCreate("addressInvalidStart")
+    : ""
 
   const handleDropdownOpenChange = (dropdown: EditDropdown, nextOpen: boolean) => {
     setOpenDropdown(currentDropdown => (
@@ -109,6 +115,8 @@ export function EditDialog({ email, groups, open, onOpenChange, onEmailUpdated }
 
   const updateEmail = async () => {
     if (!email) return
+    if (customAddressError) return
+    if (email.isCustom && trimmedCustomAddress.length === 0) return
 
     setSaving(true)
 
@@ -126,7 +134,7 @@ export function EditDialog({ email, groups, open, onOpenChange, onEmailUpdated }
       if (!email.isCustom) {
         requestBody.expiryTime = parseInt(expiryTime)
       } else {
-        requestBody.address = customAddress
+        requestBody.address = trimmedCustomAddress
       }
 
       const response = await fetch(`/api/emails/${email.id}`, {
@@ -184,9 +192,16 @@ export function EditDialog({ email, groups, open, onOpenChange, onEmailUpdated }
                 id="edit-email-address"
                 value={customAddress}
                 onChange={(event) => setCustomAddress(event.target.value)}
-                className="min-w-0 flex-1"
+                aria-invalid={Boolean(customAddressError)}
+                className={cn(
+                  "min-w-0 flex-1",
+                  customAddressError && "border-destructive focus-visible:ring-destructive"
+                )}
               />
             </div>
+          )}
+          {customAddressError && (
+            <p className="text-xs text-destructive">{customAddressError}</p>
           )}
 
           {!email?.isIcloudMail && (
@@ -272,7 +287,7 @@ export function EditDialog({ email, groups, open, onOpenChange, onEmailUpdated }
           <Button variant="outline" onClick={() => handleOpenChange(false)} disabled={saving}>
             {tCommon("cancel")}
           </Button>
-          <Button onClick={updateEmail} disabled={saving || Boolean(email?.isCustom && customAddress.length === 0)}>
+          <Button onClick={updateEmail} disabled={saving || Boolean(customAddressError) || Boolean(email?.isCustom && trimmedCustomAddress.length === 0)}>
             {saving ? tEdit("saving") : tCommon("save")}
           </Button>
         </div>
