@@ -355,15 +355,14 @@ export function CreateDialog({ onEmailCreated, selectedGroupId, selectedGroupNam
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    {EXPIRY_OPTIONS.map((option, index) => {
-                      const labels = [t("oneHour"), t("oneDay"), t("threeDays"), t("fifteenDays"), t("thirtyDays"), t("permanent")]
+                    {EXPIRY_OPTIONS.map((option) => {
                       return (
                         <SelectItem
                           key={option.value}
                           value={option.value.toString()}
                           className={groupSelectItemClass}
                         >
-                          {labels[index]}
+                          {option.label}
                         </SelectItem>
                       )
                     })}

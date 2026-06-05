@@ -54,7 +54,7 @@ export function ShareDialog({ emailId, open: controlledOpen, onOpenChange, trigg
   const [shares, setShares] = useState<ShareLink[]>([])
   const [loading, setLoading] = useState(false)
   const [creating, setCreating] = useState(false)
-  const [expiryTime, setExpiryTime] = useState(SHARE_EXPIRY_OPTIONS[1].value.toString())
+  const [expiryTime, setExpiryTime] = useState(SHARE_EXPIRY_OPTIONS[0].value.toString())
   const shareDeleteDialog = useDeferredDialogTarget<ShareLink>()
   const deleteTarget = shareDeleteDialog.target
   const [deleting, setDeleting] = useState(false)
