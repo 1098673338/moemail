@@ -349,7 +349,7 @@ export function SharedEmailPageClient({
       <div className="flex h-full w-full flex-col p-5">
         <div className="grid min-h-0 flex-1 gap-5" style={{ gridTemplateColumns: "repeat(24, minmax(0, 1fr))" }}>
           <div className={columnClass} style={{ gridColumn: "span 6 / span 6" }}>
-            <div className="flex h-12 shrink-0 items-center justify-between border-b border-gray-200 px-2">
+            <div className="flex h-12 shrink-0 items-center justify-between border-b border-gray-200 pl-2 pr-3">
               <h2 className="w-full min-w-0 overflow-hidden pl-2 text-sm font-bold">
                 <div className="flex w-full items-center justify-between gap-2">
                   <div className="flex min-w-0 items-center gap-2">
