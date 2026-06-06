@@ -1,5 +1,6 @@
 "use client"
 
+import type { ReactNode } from "react"
 import { Loader2, Mail, MailX, RefreshCw } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useThrottle } from "@/hooks/use-throttle"
@@ -27,9 +28,9 @@ interface SharedMessageListProps {
   refreshing?: boolean
   hasMore?: boolean
   total?: number
+  tabControls?: ReactNode
   emptyStateOffsetClass?: string
   t: {
-    received: string
     noMessages: string
     messageCount: string
     loading: string
@@ -49,6 +50,7 @@ export function SharedMessageList({
   refreshing = false,
   hasMore = false,
   total = 0,
+  tabControls,
   emptyStateOffsetClass = "-translate-y-6",
   t,
 }: SharedMessageListProps) {
@@ -66,16 +68,19 @@ export function SharedMessageList({
 
   return (
     <div className="flex h-full min-h-0 flex-col">
-      <div className="flex h-12 shrink-0 items-center justify-between border-b border-gray-200 px-3">
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={onRefresh}
-          disabled={refreshing || loading}
-          className={cn("h-8 w-8", refreshing && "animate-spin")}
-        >
-          <RefreshCw className="h-4 w-4" />
-        </Button>
+      <div className="flex h-12 shrink-0 items-center justify-between gap-2 border-b border-gray-200 px-3">
+        <div className="flex min-w-0 items-center gap-3">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={onRefresh}
+            disabled={refreshing || loading}
+            className={cn("h-8 w-8 shrink-0", refreshing && "animate-spin")}
+          >
+            <RefreshCw className="h-4 w-4" />
+          </Button>
+          {tabControls}
+        </div>
         <span className="text-xs text-gray-500">
           {total > 0 ? `${total} ${t.messageCount}` : t.noMessages}
         </span>

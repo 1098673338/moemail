@@ -23,7 +23,9 @@ export async function GET(
   const db = createDb()
   const { searchParams } = new URL(request.url)
   const cursor = searchParams.get('cursor')
-  const shouldSync = searchParams.get('sync') === '1' && !cursor
+  const messageType = searchParams.get('type') === 'sent' ? 'sent' : 'received'
+  const countOnly = searchParams.get('countOnly') === '1'
+  const shouldSync = messageType === 'received' && searchParams.get('sync') === '1' && !cursor
   const rescan = searchParams.get('rescan') === '1'
   const recentLimitValue = Number(searchParams.get('recentLimit') || "")
   const recentLimit = Number.isInteger(recentLimitValue) && recentLimitValue > 0
@@ -91,29 +93,37 @@ export async function GET(
       await backfillExternalAliasMessagesForEmail(db, share.email)
     }
 
-    // 只显示接收的邮件，不显示发送的邮件
-    const baseConditions = and(
-      eq(messages.emailId, emailId),
-      or(
-        ne(messages.type, "sent"),
-        isNull(messages.type)
-      )
-    )
+    const baseConditions = messageType === 'sent'
+      ? and(
+          eq(messages.emailId, emailId),
+          eq(messages.type, "sent")
+        )
+      : and(
+          eq(messages.emailId, emailId),
+          or(
+            ne(messages.type, "sent"),
+            isNull(messages.type)
+          )
+        )
 
-    // 获取消息总数（只统计接收的邮件）
     const totalResult = await db.select({ count: sql<number>`count(*)` })
       .from(messages)
       .where(baseConditions)
     const totalCount = Number(totalResult[0].count)
 
+    if (countOnly) {
+      return NextResponse.json({ total: totalCount })
+    }
+
     const conditions = [baseConditions]
+    const timestampColumn = messageType === 'sent' ? messages.sentAt : messages.receivedAt
 
     if (cursor) {
       const { timestamp, id } = decodeCursor(cursor)
       const cursorCondition = or(
-        lt(messages.receivedAt, new Date(timestamp)),
+        lt(timestampColumn, new Date(timestamp)),
         and(
-          eq(messages.receivedAt, new Date(timestamp)),
+          eq(timestampColumn, new Date(timestamp)),
           lt(messages.id, id)
         )
       )
@@ -124,17 +134,19 @@ export async function GET(
 
     const results = await db.query.messages.findMany({
       where: and(...conditions),
-      orderBy: (messages, { desc }) => [
-        desc(messages.receivedAt),
-        desc(messages.id)
-      ],
+      orderBy: messageType === 'sent'
+        ? (messages, { desc }) => [desc(messages.sentAt), desc(messages.id)]
+        : (messages, { desc }) => [desc(messages.receivedAt), desc(messages.id)],
       limit: PAGE_SIZE + 1
     })
 
     const hasMore = results.length > PAGE_SIZE
     const nextCursor = hasMore
       ? encodeCursor(
-          results[PAGE_SIZE - 1].receivedAt.getTime(),
+          (messageType === 'sent'
+            ? results[PAGE_SIZE - 1].sentAt
+            : results[PAGE_SIZE - 1].receivedAt
+          ).getTime(),
           results[PAGE_SIZE - 1].id
         )
       : null

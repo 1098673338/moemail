@@ -8,6 +8,7 @@ import { useCopy } from "@/hooks/use-copy"
 import { EMAIL_CONFIG } from "@/config"
 import { formatUtcPlus8DateTimeToMinute, isPermanentDate } from "@/lib/date-format"
 import { Copy } from "lucide-react"
+import { SlidingTabsList, SlidingTabsTrigger, Tabs } from "@/components/ui/tabs"
 
 interface Email {
   id: string
@@ -33,6 +34,8 @@ interface MessageDetail extends Message {
   html?: string
 }
 
+type MessageType = "received" | "sent"
+
 interface SharedEmailPageClientProps {
   email: Email
   initialMessages: Message[]
@@ -53,18 +56,26 @@ export function SharedEmailPageClient({
   const { copyToClipboard } = useCopy()
 
   const [messages, setMessages] = useState<Message[]>(initialMessages)
+  const [activeType, setActiveType] = useState<MessageType>("received")
+  const [messageCounts, setMessageCounts] = useState<Record<MessageType, number>>({
+    received: initialTotal,
+    sent: 0,
+  })
   const [selectedMessage, setSelectedMessage] = useState<MessageDetail | null>(null)
   const [messageLoading, setMessageLoading] = useState(false)
+  const [listLoading, setListLoading] = useState(false)
   const [nextCursor, setNextCursor] = useState<string | null>(initialNextCursor)
   const [loadingMore, setLoadingMore] = useState(false)
   const [total, setTotal] = useState(initialTotal)
   const [refreshing, setRefreshing] = useState(false)
   const pollTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const messagesRef = useRef<Message[]>(initialMessages)
+  const activeTypeRef = useRef<MessageType>("received")
   const refreshingRef = useRef(false)
   const loadingMoreRef = useRef(false)
   const autoRefreshInFlightRef = useRef(false)
   const autoRefreshStartedAtRef = useRef(Date.now())
+  const listRequestIdRef = useRef(0)
   const messageDetailCacheRef = useRef<Map<string, MessageDetail>>(new Map())
   const messageDetailRequestRef = useRef<Map<string, Promise<MessageDetail>>>(new Map())
   const columnClass = "min-h-0 border border-gray-200 bg-background rounded-lg overflow-hidden flex flex-col"
@@ -98,11 +109,15 @@ export function SharedEmailPageClient({
   }, [loadingMore])
 
   const fetchMessages = async (cursor?: string, options?: {
+    type?: MessageType
     sync?: boolean
     rescan?: boolean
     recentLimit?: number
     replace?: boolean
   }) => {
+    const requestType = options?.type ?? activeTypeRef.current
+    const requestId = ++listRequestIdRef.current
+
     try {
       if (cursor) {
         loadingMoreRef.current = true
@@ -110,6 +125,9 @@ export function SharedEmailPageClient({
       }
 
       const url = new URL(`/api/shared/${token}/messages`, window.location.origin)
+      if (requestType === "sent") {
+        url.searchParams.set("type", "sent")
+      }
       if (cursor) {
         url.searchParams.set('cursor', cursor)
       }
@@ -133,6 +151,15 @@ export function SharedEmailPageClient({
           nextCursor: string | null
           total: number
         }
+
+        if (requestId !== listRequestIdRef.current || activeTypeRef.current !== requestType) {
+          return
+        }
+
+        setMessageCounts(prev => ({
+          ...prev,
+          [requestType]: messagesData.total,
+        }))
 
         if (!cursor) {
           // 刷新时：合并新消息和旧消息，避免重复
@@ -174,12 +201,45 @@ export function SharedEmailPageClient({
     } catch (err) {
       console.error("Failed to fetch messages:", err)
     } finally {
-      loadingMoreRef.current = false
-      refreshingRef.current = false
-      setLoadingMore(false)
-      setRefreshing(false)
+      if (requestId === listRequestIdRef.current) {
+        loadingMoreRef.current = false
+        refreshingRef.current = false
+        setLoadingMore(false)
+        setRefreshing(false)
+        setListLoading(false)
+      }
     }
   }
+
+  useEffect(() => {
+    let cancelled = false
+    const inactiveType: MessageType = activeType === "received" ? "sent" : "received"
+    const url = new URL(`/api/shared/${token}/messages`, window.location.origin)
+    url.searchParams.set("countOnly", "1")
+    if (inactiveType === "sent") {
+      url.searchParams.set("type", "sent")
+    }
+
+    fetch(url, { cache: "no-store" })
+      .then(async response => {
+        if (!response.ok) return null
+        return response.json() as Promise<{ total?: number }>
+      })
+      .then(data => {
+        if (cancelled || !data || !Number.isFinite(data.total)) return
+        setMessageCounts(prev => ({
+          ...prev,
+          [inactiveType]: data.total!,
+        }))
+      })
+      .catch(error => {
+        console.error("Failed to fetch shared message count:", error)
+      })
+
+    return () => {
+      cancelled = true
+    }
+  }, [activeType, token])
 
   const stopPolling = () => {
     if (pollTimeoutRef.current) {
@@ -206,7 +266,8 @@ export function SharedEmailPageClient({
 
     try {
       await fetchMessages(undefined, {
-        sync: isIcloudMail,
+        type: activeTypeRef.current,
+        sync: activeTypeRef.current === "received" && isIcloudMail,
         recentLimit: isIcloudMail ? EMAIL_CONFIG.ICLOUD_AUTO_SYNC_LIMIT : undefined,
       })
     } finally {
@@ -257,8 +318,9 @@ export function SharedEmailPageClient({
     setRefreshing(true)
     try {
       await fetchMessages(undefined, {
-        sync: isIcloudMail,
-        rescan: isIcloudMail,
+        type: activeTypeRef.current,
+        sync: activeTypeRef.current === "received" && isIcloudMail,
+        rescan: activeTypeRef.current === "received" && isIcloudMail,
         replace: true,
       })
     } finally {
@@ -269,7 +331,7 @@ export function SharedEmailPageClient({
   // 启动轮询
   useEffect(() => {
     resetAutoRefreshWindow()
-    if (isIcloudMail) {
+    if (isIcloudMail && activeType === "received") {
       void runAutoRefresh()
     }
     startPolling()
@@ -277,12 +339,32 @@ export function SharedEmailPageClient({
       stopPolling()
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [token, isIcloudMail, autoRefreshInterval, autoRefreshDuration])
+  }, [token, isIcloudMail, autoRefreshInterval, autoRefreshDuration, activeType])
 
   const handleLoadMore = () => {
     if (nextCursor && !loadingMore) {
-      fetchMessages(nextCursor)
+      fetchMessages(nextCursor, { type: activeTypeRef.current })
     }
+  }
+
+  const handleTypeChange = (value: string) => {
+    const nextType = value as MessageType
+    if (nextType === activeTypeRef.current) return
+
+    listRequestIdRef.current += 1
+    activeTypeRef.current = nextType
+    messagesRef.current = []
+    setActiveType(nextType)
+    setMessages([])
+    setNextCursor(null)
+    setTotal(messageCounts[nextType])
+    setSelectedMessage(null)
+    setMessageLoading(false)
+    setListLoading(true)
+    void fetchMessages(undefined, {
+      type: nextType,
+      replace: true,
+    })
   }
 
   const fetchMessageDetailData = (messageId: string) => {
@@ -344,6 +426,19 @@ export function SharedEmailPageClient({
     }
   }
 
+  const tabControls = (
+    <SlidingTabsList className="h-8 w-fit min-w-48 max-w-full shrink-0">
+      <SlidingTabsTrigger value="received" className="h-6 min-w-max gap-1 px-2 py-0.5 text-xs">
+        <span className="whitespace-nowrap">{t("messages.received")}</span>
+        <span className="whitespace-nowrap tabular-nums opacity-60">{messageCounts.received}</span>
+      </SlidingTabsTrigger>
+      <SlidingTabsTrigger value="sent" className="h-6 min-w-max gap-1 px-2 py-0.5 text-xs">
+        <span className="whitespace-nowrap">{t("messages.sent")}</span>
+        <span className="whitespace-nowrap tabular-nums opacity-60">{messageCounts.sent}</span>
+      </SlidingTabsTrigger>
+    </SlidingTabsList>
+  )
+
   return (
     <div className="h-screen bg-gray-50">
       <div className="flex h-full w-full flex-col p-5">
@@ -372,46 +467,49 @@ export function SharedEmailPageClient({
               </h2>
             </div>
             <div className="min-h-0 flex-1">
-              <SharedMessageList
-                messages={messages.map(msg => ({
-                  ...msg,
-                  received_at: (() => {
-                    if (!msg.received_at) return undefined
-                    try {
-                      const date = new Date(msg.received_at)
-                      return isNaN(date.getTime()) ? undefined : date.getTime()
-                    } catch {
-                      return undefined
-                    }
-                  })(),
-                  sent_at: (() => {
-                    if (!msg.sent_at) return undefined
-                    try {
-                      const date = new Date(msg.sent_at)
-                      return isNaN(date.getTime()) ? undefined : date.getTime()
-                    } catch {
-                      return undefined
-                    }
-                  })()
-                }))}
-                selectedMessageId={selectedMessage?.id}
-                onMessageSelect={fetchMessageDetail}
-                onMessagePrefetch={prefetchMessageDetail}
-                onLoadMore={handleLoadMore}
-                onRefresh={handleRefresh}
-                loading={false}
-                loadingMore={loadingMore}
-                refreshing={refreshing}
-                hasMore={!!nextCursor}
-                total={total}
-                t={{
-                  received: t("messages.received"),
-                  noMessages: t("messages.noMessages"),
-                  messageCount: t("messages.messageCount"),
-                  loading: t("messageView.loading"),
-                  loadingMore: t("messages.loadingMore")
-                }}
-              />
+              <Tabs value={activeType} onValueChange={handleTypeChange} className="h-full">
+                <SharedMessageList
+                  messages={messages.map(msg => ({
+                    ...msg,
+                    received_at: (() => {
+                      if (!msg.received_at) return undefined
+                      try {
+                        const date = new Date(msg.received_at)
+                        return isNaN(date.getTime()) ? undefined : date.getTime()
+                      } catch {
+                        return undefined
+                      }
+                    })(),
+                    sent_at: (() => {
+                      if (!msg.sent_at) return undefined
+                      try {
+                        const date = new Date(msg.sent_at)
+                        return isNaN(date.getTime()) ? undefined : date.getTime()
+                      } catch {
+                        return undefined
+                      }
+                    })()
+                  }))}
+                  selectedMessageId={selectedMessage?.id}
+                  onMessageSelect={fetchMessageDetail}
+                  onMessagePrefetch={prefetchMessageDetail}
+                  onLoadMore={handleLoadMore}
+                  onRefresh={handleRefresh}
+                  loading={listLoading}
+                  loadingMore={loadingMore}
+                  refreshing={refreshing}
+                  hasMore={!!nextCursor}
+                  total={total}
+                  tabControls={tabControls}
+                  emptyStateOffsetClass="-translate-y-12"
+                  t={{
+                    noMessages: t("messages.noMessages"),
+                    messageCount: t("messages.messageCount"),
+                    loading: t("messageView.loading"),
+                    loadingMore: t("messages.loadingMore")
+                  }}
+                />
+              </Tabs>
             </div>
           </div>
 
