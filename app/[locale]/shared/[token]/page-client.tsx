@@ -2,12 +2,13 @@
 
 import { useState, useEffect, useRef } from "react"
 import { useTranslations } from "next-intl"
-import { BrandHeader } from "@/components/ui/brand-header"
 import { FloatingFontSwitcher } from "@/components/layout/floating-font-switcher"
 import { SharedMessageList } from "@/components/emails/shared-message-list"
 import { SharedMessageDetail } from "@/components/emails/shared-message-detail"
+import { useCopy } from "@/hooks/use-copy"
 import { EMAIL_CONFIG } from "@/config"
-import { formatUtcPlus8DateTime, isPermanentDate } from "@/lib/date-format"
+import { formatUtcPlus8DateTimeToMinute, isPermanentDate } from "@/lib/date-format"
+import { Copy } from "lucide-react"
 
 interface Email {
   id: string
@@ -49,6 +50,8 @@ export function SharedEmailPageClient({
   token
 }: SharedEmailPageClientProps) {
   const t = useTranslations("emails")
+  const tCommon = useTranslations("common.actions")
+  const { copyToClipboard } = useCopy()
 
   const [messages, setMessages] = useState<Message[]>(initialMessages)
   const [selectedMessage, setSelectedMessage] = useState<MessageDetail | null>(null)
@@ -65,7 +68,14 @@ export function SharedEmailPageClient({
   const autoRefreshStartedAtRef = useRef(Date.now())
   const messageDetailCacheRef = useRef<Map<string, MessageDetail>>(new Map())
   const messageDetailRequestRef = useRef<Map<string, Promise<MessageDetail>>>(new Map())
-  const columnClass = "border border-gray-200 bg-background rounded-lg overflow-hidden"
+  const columnClass = "min-h-0 border border-gray-200 bg-background rounded-lg overflow-hidden flex flex-col"
+  const expiresAt = email.shareExpiresAt || email.expiresAt
+  const formattedExpiresAt = formatUtcPlus8DateTimeToMinute(expiresAt)
+  const expiresAtLabel = formattedExpiresAt
+    ? isPermanentDate(expiresAt)
+      ? "永久有效"
+      : `有效期: ${formattedExpiresAt}`
+    : ""
   const isIcloudMail = Boolean(email.isIcloudMail)
   const autoRefreshInterval = isIcloudMail
     ? EMAIL_CONFIG.ICLOUD_SYNC_INTERVAL
@@ -337,64 +347,72 @@ export function SharedEmailPageClient({
   return (
     <div className="h-screen bg-gray-50">
       <div className="mx-auto flex h-full w-full max-w-[1720px] flex-col px-5 pb-5 pt-4">
-        <BrandHeader
-          title={email.address}
-          showBrand={false}
-          brandHref={null}
-          subtitle={(() => {
-            const expiresAt = email.shareExpiresAt || email.expiresAt
-            const formattedExpiresAt = formatUtcPlus8DateTime(expiresAt)
-
-            if (!formattedExpiresAt) return ""
-
-            return isPermanentDate(expiresAt)
-              ? "永久有效"
-              : `有效期至: ${formattedExpiresAt}`
-          })()}
-        />
-
-        <div className="mt-4 grid min-h-0 flex-1 gap-5" style={{ gridTemplateColumns: "repeat(24, minmax(0, 1fr))" }}>
+        <div className="grid min-h-0 flex-1 gap-5" style={{ gridTemplateColumns: "repeat(24, minmax(0, 1fr))" }}>
           <div className={columnClass} style={{ gridColumn: "span 6 / span 6" }}>
-            <SharedMessageList
-              messages={messages.map(msg => ({
-                ...msg,
-                received_at: (() => {
-                  if (!msg.received_at) return undefined
-                  try {
-                    const date = new Date(msg.received_at)
-                    return isNaN(date.getTime()) ? undefined : date.getTime()
-                  } catch {
-                    return undefined
-                  }
-                })(),
-                sent_at: (() => {
-                  if (!msg.sent_at) return undefined
-                  try {
-                    const date = new Date(msg.sent_at)
-                    return isNaN(date.getTime()) ? undefined : date.getTime()
-                  } catch {
-                    return undefined
-                  }
-                })()
-              }))}
-              selectedMessageId={selectedMessage?.id}
-              onMessageSelect={fetchMessageDetail}
-              onMessagePrefetch={prefetchMessageDetail}
-              onLoadMore={handleLoadMore}
-              onRefresh={handleRefresh}
-              loading={false}
-              loadingMore={loadingMore}
-              refreshing={refreshing}
-              hasMore={!!nextCursor}
-              total={total}
-              t={{
-                received: t("messages.received"),
-                noMessages: t("messages.noMessages"),
-                messageCount: t("messages.messageCount"),
-                loading: t("messageView.loading"),
-                loadingMore: t("messages.loadingMore")
-              }}
-            />
+            <div className="flex h-12 shrink-0 items-center justify-between border-b border-gray-200 px-2">
+              <h2 className="w-full min-w-0 overflow-hidden pl-2 text-sm font-bold">
+                <div className="flex w-full items-center justify-between gap-2">
+                  <div className="flex min-w-0 items-center gap-2">
+                    <span className="min-w-0 truncate">{email.address}</span>
+                    <button
+                      type="button"
+                      aria-label={tCommon("copy")}
+                      className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md hover:bg-accent hover:text-accent-foreground"
+                      onClick={() => copyToClipboard(email.address)}
+                    >
+                      <Copy className="size-4" />
+                    </button>
+                  </div>
+                  {expiresAtLabel && (
+                    <span className="shrink-0 whitespace-nowrap pr-2 text-xs font-normal text-gray-500 tabular-nums">
+                      {expiresAtLabel}
+                    </span>
+                  )}
+                </div>
+              </h2>
+            </div>
+            <div className="min-h-0 flex-1">
+              <SharedMessageList
+                messages={messages.map(msg => ({
+                  ...msg,
+                  received_at: (() => {
+                    if (!msg.received_at) return undefined
+                    try {
+                      const date = new Date(msg.received_at)
+                      return isNaN(date.getTime()) ? undefined : date.getTime()
+                    } catch {
+                      return undefined
+                    }
+                  })(),
+                  sent_at: (() => {
+                    if (!msg.sent_at) return undefined
+                    try {
+                      const date = new Date(msg.sent_at)
+                      return isNaN(date.getTime()) ? undefined : date.getTime()
+                    } catch {
+                      return undefined
+                    }
+                  })()
+                }))}
+                selectedMessageId={selectedMessage?.id}
+                onMessageSelect={fetchMessageDetail}
+                onMessagePrefetch={prefetchMessageDetail}
+                onLoadMore={handleLoadMore}
+                onRefresh={handleRefresh}
+                loading={false}
+                loadingMore={loadingMore}
+                refreshing={refreshing}
+                hasMore={!!nextCursor}
+                total={total}
+                t={{
+                  received: t("messages.received"),
+                  noMessages: t("messages.noMessages"),
+                  messageCount: t("messages.messageCount"),
+                  loading: t("messageView.loading"),
+                  loadingMore: t("messages.loadingMore")
+                }}
+              />
+            </div>
           </div>
 
           <div className={columnClass} style={{ gridColumn: "span 18 / span 18" }}>
