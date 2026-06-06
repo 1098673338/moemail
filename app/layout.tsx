@@ -2,9 +2,7 @@ import { NextIntlClientProvider } from "next-intl"
 import { getTranslations } from "next-intl/server"
 import type { Metadata, Viewport } from "next"
 import { Toaster } from "@/components/ui/toaster"
-import { cn } from "@/lib/utils"
 import { i18n, type Locale } from "@/i18n/config"
-import { zpix } from "./fonts"
 import "./globals.css"
 import { Providers } from "./providers"
 
@@ -17,22 +15,6 @@ export const viewport: Viewport = {
   maximumScale: 1,
   userScalable: false,
 }
-
-const fontPreferenceScript = `
-  (function() {
-    try {
-      var font = localStorage.getItem("moemail-font");
-      if (font === "sans") {
-        font = "system";
-      }
-      var allowedFonts = ["pixel", "system"];
-      if (allowedFonts.indexOf(font) === -1) {
-        font = "pixel";
-      }
-      document.documentElement.dataset.font = font;
-    } catch (_) {}
-  })();
-`
 
 async function getMessages(locale: Locale) {
   try {
@@ -101,9 +83,8 @@ export default async function RootLayout({
   const messages = await getMessages(locale)
 
   return (
-    <html lang={locale} data-font="pixel" suppressHydrationWarning>
+    <html lang={locale}>
       <head>
-        <script dangerouslySetInnerHTML={{ __html: fontPreferenceScript }} />
         <meta name="application-name" content="MoeMail" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="default" />
@@ -111,14 +92,7 @@ export default async function RootLayout({
         <meta name="format-detection" content="telephone=no" />
         <meta name="mobile-web-app-capable" content="yes" />
       </head>
-      <body
-        className={cn(
-          zpix.variable,
-          "font-sans min-h-screen antialiased",
-          "bg-background text-foreground",
-          "transition-colors duration-300"
-        )}
-      >
+      <body className="min-h-screen bg-background font-sans text-foreground antialiased transition-colors duration-300">
         <Providers>
           <NextIntlClientProvider locale={locale} messages={messages}>
             {children}

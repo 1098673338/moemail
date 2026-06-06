@@ -2,7 +2,6 @@
 
 import { useState, useEffect, useRef } from "react"
 import { useTranslations } from "next-intl"
-import { FloatingFontSwitcher } from "@/components/layout/floating-font-switcher"
 import { SharedMessageList } from "@/components/emails/shared-message-list"
 import { SharedMessageDetail } from "@/components/emails/shared-message-detail"
 import { useCopy } from "@/hooks/use-copy"
@@ -347,7 +346,7 @@ export function SharedEmailPageClient({
 
   return (
     <div className="h-screen bg-gray-50">
-      <div className="mx-auto flex h-full w-full max-w-[1720px] flex-col p-5">
+      <div className="flex h-full w-full flex-col p-5">
         <div className="grid min-h-0 flex-1 gap-5" style={{ gridTemplateColumns: "repeat(24, minmax(0, 1fr))" }}>
           <div className={columnClass} style={{ gridColumn: "span 6 / span 6" }}>
             <div className="flex h-12 shrink-0 items-center justify-between border-b border-gray-200 px-2">
@@ -455,7 +454,6 @@ export function SharedEmailPageClient({
         </div>
       </div>
 
-      <FloatingFontSwitcher />
     </div>
   )
 }

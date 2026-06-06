@@ -2,7 +2,6 @@
 
 import { useTranslations } from "next-intl"
 import { BrandHeader } from "@/components/ui/brand-header"
-import { FloatingFontSwitcher } from "@/components/layout/floating-font-switcher"
 import { SharedMessageDetail } from "@/components/emails/shared-message-detail"
 import { formatUtcPlus8DateTime, isPermanentDate } from "@/lib/date-format"
 
@@ -34,7 +33,7 @@ export function SharedMessagePageClient({ message }: SharedMessagePageClientProp
 
   return (
     <div className="h-screen bg-gray-50">
-      <div className="mx-auto flex h-full w-full max-w-[1720px] flex-col px-5 pb-5 pt-4">
+      <div className="flex h-full w-full flex-col p-5">
         <BrandHeader
           title={title}
           showBrand={false}
@@ -85,7 +84,6 @@ export function SharedMessagePageClient({ message }: SharedMessagePageClientProp
         </div>
       </div>
       
-      <FloatingFontSwitcher />
     </div>
   )
 }

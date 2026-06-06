@@ -8,10 +8,6 @@
     min-width: 1920px;
   }
 
-  body {
-    --font-family-app: var(--font-zpix), system-ui, sans-serif;
-  }
-
   :root {
     --background: 0 0% 100%;
     --foreground: 240 10% 3.9%;
@@ -33,14 +29,6 @@
     --input: 240 5.9% 90%;
     --ring: 255 65% 52%;  /* #826DD9 */
     --radius: 0.75rem;
-  }
-
-  :root[data-font="pixel"] body {
-    --font-family-app: var(--font-zpix), system-ui, sans-serif;
-  }
-
-  :root[data-font="system"] body {
-    --font-family-app: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans SC", "Microsoft YaHei", sans-serif;
   }
 
 }
