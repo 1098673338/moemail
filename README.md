@@ -515,26 +515,6 @@ GET /api/emails/{emailId}/share
 DELETE /api/emails/{emailId}/share/{shareId}
 ```
 
-#### Create Message Share Link
-```http
-POST /api/emails/{emailId}/messages/{messageId}/share
-Content-Type: application/json
-
-{
-  "expiresIn": 86400000
-}
-```
-
-#### Get Message Share Links
-```http
-GET /api/emails/{emailId}/messages/{messageId}/share
-```
-
-#### Delete Message Share Link
-```http
-DELETE /api/emails/{emailId}/messages/{messageId}/share/{shareId}
-```
-
 ## CLI Tool
 
 MoeMail provides an agent-first CLI tool for AI agents and automation workflows.

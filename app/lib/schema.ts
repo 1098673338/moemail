@@ -208,23 +208,6 @@ export const emailShares = sqliteTable('email_share', {
   tokenIdx: index('email_share_token_idx').on(table.token),
 }));
 
-export const messageShares = sqliteTable('message_share', {
-  id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
-  messageId: text('message_id')
-    .notNull()
-    .references(() => messages.id, { onDelete: "cascade" }),
-  token: text('token').notNull().unique(),
-  createdAt: integer('created_at', { mode: 'timestamp_ms' })
-    .notNull()
-    .$defaultFn(() => new Date()),
-  expiresAt: integer('expires_at', { mode: 'timestamp_ms' }),
-}, (table) => ({
-  messageIdIdx: index('message_share_message_id_idx').on(table.messageId),
-  tokenIdx: index('message_share_token_idx').on(table.token),
-}));
-
-
-
 export const apiKeysRelations = relations(apiKeys, ({ one }) => ({
   user: one(users, {
     fields: [apiKeys.userId],
@@ -277,13 +260,6 @@ export const emailSharesRelations = relations(emailShares, ({ one }) => ({
   email: one(emails, {
     fields: [emailShares.emailId],
     references: [emails.id],
-  }),
-}));
-
-export const messageSharesRelations = relations(messageShares, ({ one }) => ({
-  message: one(messages, {
-    fields: [messageShares.messageId],
-    references: [messages.id],
   }),
 }));
 

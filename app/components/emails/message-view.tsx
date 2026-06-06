@@ -2,9 +2,8 @@
 
 import { useState, useEffect, useMemo } from "react"
 import { useTranslations } from "next-intl"
-import { Loader2, Share2 } from "lucide-react"
+import { Loader2 } from "lucide-react"
 import { useToast } from "@/components/ui/use-toast"
-import { ShareMessageDialog } from "./share-message-dialog"
 import { MessageDetailHeader } from "./message-detail-header"
 import { LinkifiedText } from "./linkified-text"
 import { buildHtmlDocument } from "./html-message-document"
@@ -409,18 +408,6 @@ export function MessageView({ emailId, messageId, messageType = 'received', init
         fromAddress={!hideSenderAddress && !isSentMessage ? message.from_address : undefined}
         toAddress={message.to_address}
         timestamp={message.sent_at || message.received_at || 0}
-        action={
-          <ShareMessageDialog
-            emailId={emailId}
-            messageId={message.id}
-            messageSubject={message.subject}
-            trigger={
-              <button className="flex size-7 items-center justify-center rounded-md transition-colors hover:bg-primary/10">
-                <Share2 className="h-4 w-4 text-gray-500" />
-              </button>
-            }
-          />
-        }
       />
       
       <div className="flex-1 overflow-auto relative">

@@ -2,7 +2,7 @@
 
 import { type ReactNode, useState, useEffect, useRef } from "react"
 import { useTranslations } from "next-intl"
-import { Loader2, Mail, MailX, RefreshCw, Trash2, Share2 } from "lucide-react"
+import { Loader2, Mail, MailX, RefreshCw, Trash2 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { useThrottle } from "@/hooks/use-throttle"
@@ -10,7 +10,6 @@ import { EMAIL_CONFIG } from "@/config"
 import { useToast } from "@/components/ui/use-toast"
 import { useDeferredDialogTarget } from "@/hooks/use-deferred-dialog-target"
 import { formatUtcPlus8DateTime } from "@/lib/date-format"
-import { ShareMessageDialog } from "./share-message-dialog"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -592,20 +591,6 @@ export function MessageList({ email, messageType, onMessageSelect, onMessagePref
                     </p>
                   </div>
                   <div className="hidden shrink-0 items-center justify-center gap-1 self-center group-hover:flex" onClick={(e) => e.stopPropagation()}>
-                    <ShareMessageDialog
-                      emailId={email.id}
-                      messageId={message.id}
-                      messageSubject={message.subject}
-                      trigger={
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8 hover:bg-black/10"
-                        >
-                          <Share2 className="h-4 w-4" />
-                        </Button>
-                      }
-                    />
                     <Button
                       variant="ghost"
                       size="icon"

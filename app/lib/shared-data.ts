@@ -1,5 +1,5 @@
 import { createDb, type Db } from "@/lib/db"
-import { emailShares, externalMailAccounts, messageShares, messages, emails } from "@/lib/schema"
+import { emailShares, externalMailAccounts, messages, emails } from "@/lib/schema"
 import { eq, desc, and, or, ne, isNull } from "drizzle-orm"
 import { backfillExternalAliasMessagesForEmail } from "@/lib/external-mail"
 
@@ -24,10 +24,6 @@ export interface SharedMessage {
   received_at?: Date
   sent_at?: Date
   type?: "received" | "sent"
-  expiresAt?: Date
-  emailAddress?: string
-  emailExpiresAt?: Date
-  isIcloudMail?: boolean
 }
 
 async function hasIcloudMailAccount(db: Db, emailId: string) {
@@ -42,10 +38,6 @@ async function hasIcloudMailAccount(db: Db, emailId: string) {
   })
 
   return Boolean(account)
-}
-
-function isExternalMailMessageId(messageId: string) {
-  return messageId.startsWith("external:")
 }
 
 async function hasSharedEmailExternalContext(
@@ -177,61 +169,5 @@ export async function getSharedEmailMessages(token: string, limit = 20): Promise
   } catch (error) {
     console.error("Failed to fetch shared email messages:", error)
     return { messages: [], nextCursor: null, total: 0 }
-  }
-}
-
-export async function getSharedMessage(token: string): Promise<SharedMessage | null> {
-  const db = createDb()
-
-  try {
-    const share = await db.query.messageShares.findFirst({
-      where: eq(messageShares.token, token)
-    })
-
-    if (!share) {
-      return null
-    }
-
-    // 检查分享是否过期
-    if (share.expiresAt && share.expiresAt < new Date()) {
-      return null
-    }
-
-    // 获取消息详情
-    const message = await db.query.messages.findFirst({
-      where: eq(messages.id, share.messageId)
-    })
-
-    if (!message) {
-      return null
-    }
-
-    // 获取邮箱信息
-    const email = await db.query.emails.findFirst({
-      where: eq(emails.id, message.emailId)
-    })
-
-    return {
-      id: message.id,
-      from_address: message.fromAddress ?? undefined,
-      to_address: message.toAddress ?? undefined,
-      subject: message.subject,
-      content: message.content ?? undefined,
-      html: message.html ?? undefined,
-      received_at: message.receivedAt,
-      sent_at: message.sentAt,
-      type: message.type as "received" | "sent" | undefined,
-      expiresAt: share.expiresAt ?? undefined,
-      emailAddress: email?.address,
-      emailExpiresAt: email?.expiresAt,
-      isIcloudMail: Boolean(
-        isExternalMailMessageId(message.id)
-        || email?.isCustom
-        || await hasIcloudMailAccount(db, message.emailId)
-      ),
-    }
-  } catch (error) {
-    console.error("Failed to fetch shared message:", error)
-    return null
   }
 }

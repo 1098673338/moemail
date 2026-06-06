@@ -178,52 +178,15 @@
     "createFailed": "创建分享链接失败",
     "shareButton": "分享"
   },
-  "shareMessage": {
-    "title": "分享邮件",
-    "description": "创建分享链接，让其他人可以查看这封邮件",
-    "createLink": "创建链接",
-    "creating": "创建中...",
-    "loading": "加载中...",
-    "expiryTime": "链接有效期",
-    "oneDay": "24小时",
-    "oneWeek": "1 周",
-    "permanent": "永久",
-    "activeLinks": "当前分享链接",
-    "noLinks": "暂无分享链接",
-    "createdAt": "创建时间",
-    "expiresAt": "过期时间",
-    "expired": "已过期",
-    "copy": "复制链接",
-    "copied": "已复制",
-    "copyFailed": "复制失败",
-    "delete": "删除",
-    "deleteConfirm": "确认删除分享链接？",
-    "deleteDescription": "此操作无法撤销，分享链接将立即失效。",
-    "cancel": "取消",
-    "deleteSuccess": "删除成功",
-    "deleteFailed": "删除失败",
-    "createSuccess": "分享链接创建成功",
-    "createFailed": "创建分享链接失败",
-    "shareButton": "分享邮件"
-  },
   "shared": {
     "loading": "加载中...",
     "emailNotFound": "无法访问邮箱",
-    "messageNotFound": "无法访问邮件",
     "linkExpired": "分享链接不存在或已过期",
     "linkInvalid": "链接无效",
     "linkInvalidDescription": "此分享链接可能已过期或不存在",
     "sharedMailbox": "分享邮箱",
-    "sharedMessage": "分享邮件",
     "expiresAt": "邮箱过期时间",
     "permanent": "永久有效",
-    "createOwnEmail": "创建自己的临时邮箱",
-    "brand": {
-      "title": "MoeMail",
-      "subtitle": "萌萌哒临时邮箱服务",
-      "cta": "立即体验",
-      "officialSite": "官网",
-      "copyright": "© 2024 MoeMail. 萌萌哒临时邮箱服务"
-    }
+    "createOwnEmail": "创建自己的临时邮箱"
   }
 }

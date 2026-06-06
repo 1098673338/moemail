@@ -6,7 +6,6 @@ import {
   emailShares,
   emails,
   messages,
-  messageShares,
   roles,
   userRoles,
   users,
@@ -191,17 +190,6 @@ export async function DELETE(request: Request) {
     if (targetUser.userRoles.some(record => record.role.name === ROLES.EMPEROR)) {
       return Response.json({ error: "不能删除皇帝用户" }, { status: 400 })
     }
-
-    await db.delete(messageShares)
-      .where(sql`${messageShares.messageId} in (
-        select ${messages.id}
-        from ${messages}
-        where ${messages.emailId} in (
-          select ${emails.id}
-          from ${emails}
-          where ${emails.userId} = ${userId}
-        )
-      )`)
 
     await db.delete(emailShares)
       .where(sql`${emailShares.emailId} in (
