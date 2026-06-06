@@ -22,10 +22,10 @@ interface Message {
 
 interface MessageViewProps {
   emailId: string
+  emailAddress: string
   messageId: string
   messageType?: 'received' | 'sent'
   initialMessage?: Message
-  hideSenderAddress?: boolean
   onClose: () => void
 }
 
@@ -269,7 +269,7 @@ export async function prefetchMessage(
   return request
 }
 
-export function MessageView({ emailId, messageId, messageType = 'received', initialMessage, hideSenderAddress = false }: MessageViewProps) {
+export function MessageView({ emailId, emailAddress, messageId, messageType = 'received', initialMessage }: MessageViewProps) {
   const t = useTranslations("emails.messageView")
   const cacheKey = getMessageCacheKey(emailId, messageId, messageType)
   const cachedInitialMessage = messageCache.get(cacheKey)
@@ -404,10 +404,8 @@ export function MessageView({ emailId, messageId, messageType = 'received', init
         subject={message.subject}
         fromLabel={t("from")}
         toLabel={t("to")}
-        timeLabel={t("time")}
-        fromAddress={!hideSenderAddress && !isSentMessage ? message.from_address : undefined}
-        toAddress={message.to_address}
-        timestamp={message.sent_at || message.received_at || 0}
+        fromAddress={message.from_address || (isSentMessage ? emailAddress : undefined)}
+        toAddress={message.to_address || (!isSentMessage ? emailAddress : undefined)}
       />
       
       <div className="flex-1 overflow-auto relative">

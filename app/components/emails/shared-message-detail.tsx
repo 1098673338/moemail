@@ -20,8 +20,8 @@ interface MessageDetail {
 
 interface SharedMessageDetailProps {
   message: MessageDetail | null
+  emailAddress: string
   loading?: boolean
-  hideSenderAddress?: boolean
   t: {
     messageContent: string
     selectMessage: string
@@ -29,7 +29,6 @@ interface SharedMessageDetailProps {
     from: string
     to: string
     subject: string
-    time: string
   }
 }
 
@@ -39,8 +38,8 @@ const hasMessageBody = (message: MessageDetail | null) => {
 
 export function SharedMessageDetail({
   message,
+  emailAddress,
   loading = false,
-  hideSenderAddress = false,
   t,
 }: SharedMessageDetailProps) {
   const iframeRef = useRef<HTMLIFrameElement>(null)
@@ -110,10 +109,8 @@ export function SharedMessageDetail({
         subject={message.subject}
         fromLabel={t.from}
         toLabel={t.to}
-        timeLabel={t.time}
-        fromAddress={!hideSenderAddress && !isSentMessage ? message.from_address : undefined}
-        toAddress={message.to_address}
-        timestamp={message.sent_at || message.received_at || 0}
+        fromAddress={message.from_address || (isSentMessage ? emailAddress : undefined)}
+        toAddress={message.to_address || (!isSentMessage ? emailAddress : undefined)}
       />
 
       <div className="flex-1 overflow-auto relative">

@@ -1,14 +1,11 @@
 import type { ReactNode } from "react"
-import { formatUtcPlus8DateTime } from "@/lib/date-format"
 
 interface MessageDetailHeaderProps {
   subject: string
   fromLabel: string
   toLabel: string
-  timeLabel: string
   fromAddress?: string
   toAddress?: string
-  timestamp?: number
   action?: ReactNode
 }
 
@@ -16,10 +13,8 @@ export function MessageDetailHeader({
   subject,
   fromLabel,
   toLabel,
-  timeLabel,
   fromAddress,
   toAddress,
-  timestamp,
   action,
 }: MessageDetailHeaderProps) {
   return (
@@ -35,13 +30,8 @@ export function MessageDetailHeader({
         )}
       </div>
       <div className="flex flex-col gap-[3px] text-xs leading-4 text-gray-500">
-        {fromAddress && (
-          <p>{fromLabel}: {fromAddress}</p>
-        )}
-        {toAddress && (
-          <p>{toLabel}: {toAddress}</p>
-        )}
-        <p>{timeLabel}: {formatUtcPlus8DateTime(timestamp || 0)}</p>
+        <p>{fromLabel}: {fromAddress || "-"}</p>
+        <p>{toLabel}: {toAddress || "-"}</p>
       </div>
     </div>
   )

@@ -114,6 +114,7 @@ const handleEmail = async (message: ForwardableEmailMessage, env: Env) => {
     const savedMessage = await db.insert(messages).values({
       emailId: targetEmail.id,
       fromAddress: message.from,
+      toAddress: targetEmail.address,
       subject: parsedMessage.subject || '(无主题)',
       content: parsedMessage.text || '',
       html,

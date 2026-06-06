@@ -335,9 +335,9 @@ export function ThreeColumnLayout() {
             <div className="min-h-0 flex-1 overflow-auto">
               <MessageView
                 emailId={selectedEmail.id}
+                emailAddress={selectedEmail.address}
                 messageId={selectedMessageId}
                 messageType={selectedMessageType}
-                hideSenderAddress={selectedEmailUsesExternalMailSync}
                 initialMessage={selectedMessagePreview ? {
                   ...selectedMessagePreview,
                   type: selectedMessageType,

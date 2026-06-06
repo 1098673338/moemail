@@ -515,6 +515,7 @@ export function SharedEmailPageClient({
 
           <div className={columnClass} style={{ gridColumn: "span 18 / span 18" }}>
             <SharedMessageDetail
+              emailAddress={email.address}
               message={selectedMessage ? {
                 ...selectedMessage,
                 received_at: (() => {
@@ -537,15 +538,13 @@ export function SharedEmailPageClient({
                 })()
               } : null}
               loading={messageLoading}
-              hideSenderAddress={Boolean(email.isIcloudMail)}
               t={{
                 messageContent: t("layout.messageContent"),
                 selectMessage: t("layout.selectMessage"),
                 loading: t("messageView.loading"),
                 from: t("messageView.from"),
                 to: t("messageView.to"),
-                subject: t("messages.subject"),
-                time: t("messageView.time")
+                subject: t("messages.subject")
               }}
             />
           </div>
