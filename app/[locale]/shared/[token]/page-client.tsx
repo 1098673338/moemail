@@ -74,7 +74,7 @@ export function SharedEmailPageClient({
   const expiresAtLabel = formattedExpiresAt
     ? isPermanentDate(expiresAt)
       ? "永久有效"
-      : compactExpiresAt
+      : `${compactExpiresAt} 过期`
     : ""
   const isIcloudMail = Boolean(email.isIcloudMail)
   const autoRefreshInterval = isIcloudMail

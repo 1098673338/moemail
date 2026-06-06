@@ -82,7 +82,7 @@ export function BrandHeader({
   )
 
   return (
-    <div className="space-y-2 pb-2 text-center">
+    <div className="space-y-2 text-center">
       {showBrand && (
         <div className="flex justify-center pt-2">
           {brandHref ? (
