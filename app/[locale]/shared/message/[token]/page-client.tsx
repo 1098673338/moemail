@@ -37,6 +37,7 @@ export function SharedMessagePageClient({ message }: SharedMessagePageClientProp
       <div className="mx-auto flex h-full w-full max-w-[1720px] flex-col px-5 pb-5 pt-4">
         <BrandHeader
           title={title}
+          showBrand={false}
           brandHref={null}
           subtitle={(() => {
             const expiresAt = message.expiresAt || message.emailExpiresAt
