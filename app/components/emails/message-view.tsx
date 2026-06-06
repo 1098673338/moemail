@@ -3,8 +3,6 @@
 import { useState, useEffect, useMemo } from "react"
 import { useTranslations } from "next-intl"
 import { Loader2, Share2 } from "lucide-react"
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
-import { Label } from "@/components/ui/label"
 import { useToast } from "@/components/ui/use-toast"
 import { ShareMessageDialog } from "./share-message-dialog"
 import { MessageDetailHeader } from "./message-detail-header"
@@ -31,8 +29,6 @@ interface MessageViewProps {
   hideSenderAddress?: boolean
   onClose: () => void
 }
-
-type ViewMode = "html" | "text"
 
 const messageCache = new Map<string, Message>()
 const messageRequestCache = new Map<string, Promise<Message>>()
@@ -282,7 +278,6 @@ export function MessageView({ emailId, messageId, messageType = 'received', init
   const [message, setMessage] = useState<Message | null>(firstMessage)
   const [loading, setLoading] = useState(!hasMessageBody(firstMessage))
   const [error, setError] = useState<string | null>(null)
-  const [viewMode, setViewMode] = useState<ViewMode>(firstMessage?.html ? "html" : "text")
   const [htmlReady, setHtmlReady] = useState(false)
   const { toast } = useToast()
 
@@ -294,7 +289,6 @@ export function MessageView({ emailId, messageId, messageType = 'received', init
 
     setError(null)
     setMessage(nextInitialMessage)
-    setViewMode(nextInitialMessage?.html ? "html" : "text")
 
     if (hasMessageBody(nextInitialMessage)) {
       setLoading(false)
@@ -309,7 +303,6 @@ export function MessageView({ emailId, messageId, messageType = 'received', init
         if (cancelled) return
 
         setMessage(data)
-        setViewMode(data.html ? "html" : "text")
       } catch (error) {
         if (cancelled) return
 
@@ -344,7 +337,7 @@ export function MessageView({ emailId, messageId, messageType = 'received', init
   useEffect(() => {
     setHtmlReady(false)
 
-    if (viewMode !== "html" || !message?.html) return
+    if (!message?.html) return
 
     let cancelled = false
     const idleWindow = window as typeof window & {
@@ -372,12 +365,12 @@ export function MessageView({ emailId, messageId, messageType = 'received', init
       cancelled = true
       window.cancelAnimationFrame(frameHandle)
     }
-  }, [message?.html, message?.id, viewMode])
+  }, [message?.html, message?.id])
 
   const htmlDocument = useMemo(() => {
-    if (viewMode !== "html" || !htmlReady || !message?.html) return undefined
+    if (!htmlReady || !message?.html) return undefined
     return buildHtmlDocument(message.html)
-  }, [htmlReady, message?.html, viewMode])
+  }, [htmlReady, message?.html])
 
   if (loading && !message) {
     return (
@@ -430,35 +423,6 @@ export function MessageView({ emailId, messageId, messageType = 'received', init
         }
       />
       
-      {message.html && message.content && (
-        <div className="border-b border-gray-200 p-2">
-          <RadioGroup
-            value={viewMode}
-            onValueChange={(value) => setViewMode(value as ViewMode)}
-            className="flex items-center gap-4"
-          >
-            <div className="flex items-center space-x-2">
-              <RadioGroupItem value="html" id="html" />
-              <Label 
-                htmlFor="html" 
-                className="text-xs cursor-pointer"
-              >
-                {t("htmlFormat")}
-              </Label>
-            </div>
-            <div className="flex items-center space-x-2">
-              <RadioGroupItem value="text" id="text" />
-              <Label 
-                htmlFor="text" 
-                className="text-xs cursor-pointer"
-              >
-                {t("textFormat")}
-              </Label>
-            </div>
-          </RadioGroup>
-        </div>
-      )}
-      
       <div className="flex-1 overflow-auto relative">
         {loading && !bodyLoaded ? (
           <div className="flex h-full flex-col items-center justify-center px-6 text-center text-sm text-gray-500">
@@ -475,18 +439,14 @@ export function MessageView({ emailId, messageId, messageType = 'received', init
               {t("retry")}
             </button>
           </div>
-        ) : viewMode === "html" && message.html ? (
+        ) : message.html ? (
           htmlDocument ? (
-          <iframe
-            srcDoc={htmlDocument}
-            className="absolute inset-0 w-full h-full border-0 bg-transparent"
-            sandbox="allow-same-origin allow-popups"
-            title={message.subject}
-          />
-          ) : message.content ? (
-            <div className="p-4 text-sm whitespace-pre-wrap">
-              <LinkifiedText text={message.content} />
-            </div>
+            <iframe
+              srcDoc={htmlDocument}
+              className="absolute inset-0 w-full h-full border-0 bg-transparent"
+              sandbox="allow-same-origin allow-popups"
+              title={message.subject}
+            />
           ) : (
             <div className="flex h-full flex-col items-center justify-center px-6 text-center text-sm text-gray-500">
               <Loader2 className="mb-3 h-8 w-8 animate-spin text-primary/40" />

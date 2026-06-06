@@ -428,9 +428,7 @@ export function SharedEmailPageClient({
                 from: t("messageView.from"),
                 to: t("messageView.to"),
                 subject: t("messages.subject"),
-                time: t("messageView.time"),
-                htmlFormat: t("messageView.htmlFormat"),
-                textFormat: t("messageView.textFormat")
+                time: t("messageView.time")
               }}
             />
           </div>
