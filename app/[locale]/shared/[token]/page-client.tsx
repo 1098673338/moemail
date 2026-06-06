@@ -71,10 +71,11 @@ export function SharedEmailPageClient({
   const columnClass = "min-h-0 border border-gray-200 bg-background rounded-lg overflow-hidden flex flex-col"
   const expiresAt = email.shareExpiresAt || email.expiresAt
   const formattedExpiresAt = formatUtcPlus8DateTimeToMinute(expiresAt)
+  const compactExpiresAt = formattedExpiresAt.slice(5)
   const expiresAtLabel = formattedExpiresAt
     ? isPermanentDate(expiresAt)
       ? "永久有效"
-      : `有效期: ${formattedExpiresAt}`
+      : compactExpiresAt
     : ""
   const isIcloudMail = Boolean(email.isIcloudMail)
   const autoRefreshInterval = isIcloudMail
@@ -346,7 +347,7 @@ export function SharedEmailPageClient({
 
   return (
     <div className="h-screen bg-gray-50">
-      <div className="mx-auto flex h-full w-full max-w-[1720px] flex-col px-5 pb-5 pt-4">
+      <div className="mx-auto flex h-full w-full max-w-[1720px] flex-col p-5">
         <div className="grid min-h-0 flex-1 gap-5" style={{ gridTemplateColumns: "repeat(24, minmax(0, 1fr))" }}>
           <div className={columnClass} style={{ gridColumn: "span 6 / span 6" }}>
             <div className="flex h-12 shrink-0 items-center justify-between border-b border-gray-200 px-2">
