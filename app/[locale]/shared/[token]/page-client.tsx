@@ -364,7 +364,7 @@ export function SharedEmailPageClient({
                     </button>
                   </div>
                   {expiresAtLabel && (
-                    <span className="shrink-0 whitespace-nowrap pr-2 text-xs font-normal text-gray-500 tabular-nums">
+                    <span className="shrink-0 whitespace-nowrap text-xs font-normal text-gray-500 tabular-nums">
                       {expiresAtLabel}
                     </span>
                   )}
