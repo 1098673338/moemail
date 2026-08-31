@@ -178,7 +178,7 @@ export function ThreeColumnLayout() {
     }
 
     if (!response.ok) {
-      throw new Error(data.error || "同步 iCloud 邮箱失败")
+      throw new Error(data.error || "同步 iCloud 邮件失败")
     }
 
     const nextLastUid = Number.isFinite(data.lastUid) ? data.lastUid! : account.lastUid

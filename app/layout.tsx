@@ -1,12 +1,10 @@
 import { NextIntlClientProvider } from "next-intl"
-import { getTranslations } from "next-intl/server"
 import type { Metadata, Viewport } from "next"
 import { Toaster } from "@/components/ui/toaster"
-import { i18n, type Locale } from "@/i18n/config"
+import { i18n } from "@/i18n/config"
+import { getMessages } from "@/i18n/messages"
+import metadataMessages from "@/i18n/messages/zh-CN/metadata.json"
 import "./globals.css"
-import { Providers } from "./providers"
-
-export const runtime = "edge"
 
 export const viewport: Viewport = {
   themeColor: '#826DD9',
@@ -16,71 +14,52 @@ export const viewport: Viewport = {
   userScalable: false,
 }
 
-async function getMessages(locale: Locale) {
-  try {
-    const common = (await import(`@/i18n/messages/${locale}/common.json`)).default
-    const home = (await import(`@/i18n/messages/${locale}/home.json`)).default
-    const auth = (await import(`@/i18n/messages/${locale}/auth.json`)).default
-    const metadata = (await import(`@/i18n/messages/${locale}/metadata.json`)).default
-    const emails = (await import(`@/i18n/messages/${locale}/emails.json`)).default
-    const profile = (await import(`@/i18n/messages/${locale}/profile.json`)).default
-    return { common, home, auth, metadata, emails, profile }
-  } catch (error) {
-    console.error(`Failed to load messages for locale ${locale}:`, error)
-    return { common: {}, home: {}, auth: {}, metadata: {}, emails: {}, profile: {} }
-  }
-}
+const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "https://moemail.app"
 
-export async function generateMetadata(): Promise<Metadata> {
-  const locale = i18n.defaultLocale
-  const t = await getTranslations({ locale, namespace: "metadata" })
-  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "https://moemail.app"
-
-  return {
-    title: t("title"),
-    description: t("description"),
-    keywords: t("keywords"),
-    authors: [{ name: "SoftMoe Studio" }],
-    creator: "SoftMoe Studio",
-    publisher: "SoftMoe Studio",
-    robots: {
+export const metadata: Metadata = {
+  title: metadataMessages.title,
+  description: metadataMessages.description,
+  keywords: metadataMessages.keywords,
+  authors: [{ name: "SoftMoe Studio" }],
+  creator: "SoftMoe Studio",
+  publisher: "SoftMoe Studio",
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: {
       index: true,
       follow: true,
-      googleBot: {
-        index: true,
-        follow: true,
-      },
     },
-    openGraph: {
-      type: "website",
-      locale: "zh_CN",
-      url: baseUrl,
-      title: t("title"),
-      description: t("description"),
-      siteName: "MoeMail",
-    },
-    twitter: {
-      card: "summary_large_image",
-      title: t("title"),
-      description: t("description"),
-    },
-    alternates: {
-      canonical: baseUrl,
-    },
-    manifest: '/manifest.json',
-    icons: [
-      { rel: 'apple-touch-icon', url: '/icons/icon-192x192.png' },
-    ],
-  }
+  },
+  openGraph: {
+    type: "website",
+    locale: "zh_CN",
+    url: baseUrl,
+    title: metadataMessages.title,
+    description: metadataMessages.description,
+    siteName: "MoeMail",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: metadataMessages.title,
+    description: metadataMessages.description,
+  },
+  alternates: {
+    canonical: baseUrl,
+  },
+  manifest: '/manifest.json',
+  icons: [
+    { rel: 'apple-touch-icon', url: '/icons/icon-192x192.png' },
+  ],
 }
 
-export default async function RootLayout({
+export default function RootLayout({
   children,
 }: {
   children: React.ReactNode
 }) {
   const locale = i18n.defaultLocale
-  const messages = await getMessages(locale)
+  const messages = getMessages(locale)
 
   return (
     <html lang={locale}>
@@ -93,11 +72,9 @@ export default async function RootLayout({
         <meta name="mobile-web-app-capable" content="yes" />
       </head>
       <body className="min-h-screen bg-background font-sans text-foreground antialiased transition-colors duration-300">
-        <Providers>
-          <NextIntlClientProvider locale={locale} messages={messages}>
-            {children}
-          </NextIntlClientProvider>
-        </Providers>
+        <NextIntlClientProvider locale={locale} messages={messages}>
+          {children}
+        </NextIntlClientProvider>
         <Toaster />
       </body>
     </html>

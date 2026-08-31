@@ -1,9 +1,7 @@
 import { auth } from "@/lib/auth"
 import { NextResponse } from "next/server"
 import type { NextRequest } from "next/server"
-import { PERMISSIONS } from "@/lib/permissions"
-import { checkPermission } from "@/lib/auth"
-import { Permission } from "@/lib/permissions"
+import { hasPermission, PERMISSIONS, type Permission, type Role } from "@/lib/permissions"
 import { handleApiKeyAuth } from "@/lib/apiKey"
 
 const API_PERMISSIONS: Record<string, Permission> = {
@@ -52,7 +50,10 @@ export async function middleware(request: NextRequest) {
 
     for (const [route, permission] of Object.entries(API_PERMISSIONS)) {
       if (pathname.startsWith(route)) {
-        const hasAccess = await checkPermission(permission)
+        const hasAccess = hasPermission(
+          (session.user.roles ?? []).map(role => role.name) as Role[],
+          permission
+        )
 
         if (!hasAccess) {
           return NextResponse.json(
@@ -89,7 +90,11 @@ export async function middleware(request: NextRequest) {
 
 export const config = {
   matcher: [
-    '/((?!_next|.*\\..*).*)', // all pages excluding static assets
+    '/zh-CN/:path*',
+    '/en/:path*',
+    '/zh-TW/:path*',
+    '/ja/:path*',
+    '/ko/:path*',
     '/api/emails/:path*',
     '/api/email-groups/:path*',
     '/api/external-mail/:path*',

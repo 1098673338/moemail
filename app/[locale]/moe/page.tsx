@@ -1,10 +1,10 @@
 import { Header } from "@/components/layout/header"
 import { ThreeColumnLayout } from "@/components/emails/three-column-layout"
 import { NoPermissionDialog } from "@/components/no-permission-dialog"
+import { SessionBoundary } from "@/components/auth/session-boundary"
 import { auth } from "@/lib/auth"
 import { redirect } from "next/navigation"
-import { checkPermission } from "@/lib/auth"
-import { PERMISSIONS } from "@/lib/permissions"
+import { hasPermission, PERMISSIONS, type Role } from "@/lib/permissions"
 
 export const runtime = "edge"
 
@@ -15,17 +15,22 @@ export default async function MoePage() {
     redirect("/")
   }
 
-  const hasPermission = await checkPermission(PERMISSIONS.MANAGE_EMAIL)
+  const canManageEmail = hasPermission(
+    (session.user.roles ?? []).map(role => role.name) as Role[],
+    PERMISSIONS.MANAGE_EMAIL
+  )
 
   return (
-    <div className="bg-gradient-to-b from-gray-50 to-gray-100 h-screen">
-      <div className="h-full w-full px-5">
-        <Header />
-        <main className="h-full">
-          <ThreeColumnLayout />
-          {!hasPermission && <NoPermissionDialog />}
-        </main>
+    <SessionBoundary>
+      <div className="bg-gradient-to-b from-gray-50 to-gray-100 h-screen">
+        <div className="h-full w-full px-5">
+          <Header />
+          <main className="h-full">
+            <ThreeColumnLayout />
+            {!canManageEmail && <NoPermissionDialog />}
+          </main>
+        </div>
       </div>
-    </div>
+    </SessionBoundary>
   )
 }

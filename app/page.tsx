@@ -1,8 +1,6 @@
-import Home from "./[locale]/page"
+import { HomePage } from "@/components/home/home-page"
 import { i18n } from "@/i18n/config"
 
-export const runtime = "edge"
-
 export default function Page() {
-  return <Home params={Promise.resolve({ locale: i18n.defaultLocale })} />
+  return <HomePage locale={i18n.defaultLocale} />
 }
