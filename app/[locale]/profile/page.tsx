@@ -1,6 +1,5 @@
 import { Header } from "@/components/layout/header"
 import { ProfileCard } from "@/components/profile/profile-card"
-import { SessionBoundary } from "@/components/auth/session-boundary"
 import { auth } from "@/lib/auth"
 import { redirect } from "next/navigation"
 
@@ -14,15 +13,13 @@ export default async function ProfilePage() {
   }
 
   return (
-    <SessionBoundary>
-      <div className="min-h-screen bg-gradient-to-b from-gray-50 to-gray-100">
-        <div className="container mx-auto px-4 lg:px-8 max-w-[1600px]">
-          <Header />
-          <main className="pt-16 pb-5">
-            <ProfileCard user={session.user} />
-          </main>
-        </div>
+    <div className="min-h-screen bg-gradient-to-b from-gray-50 to-gray-100">
+      <div className="container mx-auto px-4 lg:px-8 max-w-[1600px]">
+        <Header />
+        <main className="pt-16 pb-5">
+          <ProfileCard user={session.user} />
+        </main>
       </div>
-    </SessionBoundary>
+    </div>
   )
 }
