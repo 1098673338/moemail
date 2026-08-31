@@ -201,7 +201,7 @@ const checkAndCreateDatabase = async () => {
 const migrateDatabase = () => {
   console.log("📝 Migrating remote database...");
   try {
-    execSync("pnpm run db:migrate-remote", { stdio: "inherit" });
+    execSync("npm run db:migrate-remote", { stdio: "inherit" });
     console.log("✅ Database migration completed successfully");
   } catch (error) {
     console.error("❌ Database migration failed:", error);
@@ -337,7 +337,7 @@ const pushPagesSecret = () => {
     console.log(`📝 Found ${Object.keys(secrets).length} secrets to push:`, Object.keys(secrets).join(', '));
 
     // 使用临时文件推送secrets
-    execSync(`pnpm dlx wrangler pages secret bulk ${runtimeEnvFile}`, { 
+    execSync(`npx wrangler pages secret bulk ${runtimeEnvFile}`, {
       stdio: "inherit" 
     });
 
@@ -370,7 +370,7 @@ const pushPagesSecret = () => {
 const deployPages = () => {
   console.log("🚧 Deploying to Cloudflare Pages...");
   try {
-    execSync("pnpm run deploy:pages", { stdio: "inherit" });
+    execSync("npm run deploy:pages", { stdio: "inherit" });
     console.log("✅ Pages deployment completed successfully");
   } catch (error) {
     console.error("❌ Pages deployment failed:", error);
@@ -384,11 +384,11 @@ const deployPages = () => {
 const deployEmailWorker = () => {
   console.log("🚧 Deploying Email Worker...");
   try {
-    execSync("pnpm dlx wrangler deploy --config wrangler.email.json", { stdio: "inherit" });
+    execSync("npx wrangler deploy --config wrangler.email.json", { stdio: "inherit" });
     console.log("✅ Email Worker deployed successfully");
   } catch (error) {
     console.error("❌ Email Worker deployment failed:", error);
-    // 继续执行而不中断
+    throw error;
   }
 };
 
@@ -398,11 +398,11 @@ const deployEmailWorker = () => {
 const deployCleanupWorker = () => {
   console.log("🚧 Deploying Cleanup Worker...");
   try {
-    execSync("pnpm dlx wrangler deploy --config wrangler.cleanup.json", { stdio: "inherit" });
+    execSync("npx wrangler deploy --config wrangler.cleanup.json", { stdio: "inherit" });
     console.log("✅ Cleanup Worker deployed successfully");
   } catch (error) {
     console.error("❌ Cleanup Worker deployment failed:", error);
-    // 继续执行而不中断
+    throw error;
   }
 };
 
