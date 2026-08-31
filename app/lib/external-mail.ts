@@ -71,6 +71,8 @@ interface CreateExternalMailAccountInput extends ExternalMailCredentials {
   enabled?: boolean
 }
 
+type UpdateExternalMailCredentialsInput = ExternalMailCredentials
+
 interface SendExternalMailInput {
   to: string
   subject: string
@@ -1232,6 +1234,59 @@ export async function createExternalMailAccount(userId: string, input: CreateExt
     .returning())[0]
 
   return serializeExternalMailAccount(account, emailRecord)
+}
+
+export async function updateExternalMailCredentials(
+  userId: string,
+  accountId: string,
+  input: UpdateExternalMailCredentialsInput
+) {
+  const db = createDb()
+  const account = await db.query.externalMailAccounts.findFirst({
+    where: and(
+      eq(externalMailAccounts.id, accountId),
+      eq(externalMailAccounts.userId, userId),
+      eq(externalMailAccounts.provider, ICLOUD_MAIL_PROVIDER)
+    ),
+    with: {
+      email: {
+        columns: {
+          address: true,
+          createdAt: true,
+          expiresAt: true,
+        },
+      },
+    },
+  })
+
+  if (!account) {
+    throw new Error("iCloud 邮箱账号不存在")
+  }
+
+  const username = normalizeUsername(input.username || account.emailAddress)
+  if (!username || !input.password) {
+    throw new Error("请输入 Apple ID 邮箱和 App 专用密码")
+  }
+
+  await testIcloudConnection({
+    emailAddress: account.emailAddress,
+    username,
+    password: input.password,
+  })
+
+  const [updatedAccount] = await db.update(externalMailAccounts)
+    .set({
+      username,
+      passwordEncrypted: await encryptExternalMailPassword(input.password),
+      updatedAt: new Date(),
+    })
+    .where(and(
+      eq(externalMailAccounts.id, account.id),
+      eq(externalMailAccounts.userId, userId)
+    ))
+    .returning()
+
+  return serializeExternalMailAccount(updatedAccount, account.email)
 }
 
 async function parseExternalMessage(

@@ -754,6 +754,10 @@ CONTENT=$(moemail read --email-id $EMAIL_ID --message-id $MSG_ID --json)
 - `AUTH_GOOGLE_SECRET`: Google OAuth App Secret
 - `AUTH_SECRET`: NextAuth Secret，用来加密 session，请设置一个随机字符串
 
+### iCloud 邮件
+- `EXTERNAL_MAIL_SECRET`: 用于加密已保存 iCloud App 专用密码的固定随机密钥。邮箱接入后不要随意更换；如果密钥丢失或轮换，请在个人中心更新各账户的登录凭据。
+- `EXTERNAL_MAIL_DOMAIN`: iCloud 发件客户端使用的域名，例如 `example.com`。
+
 ### Cloudflare 配置
 - `CLOUDFLARE_API_TOKEN`: Cloudflare API Token
 - `CLOUDFLARE_ACCOUNT_ID`: Cloudflare Account ID

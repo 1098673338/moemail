@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react"
 import { useTranslations } from "next-intl"
-import { Cloud, Eye, EyeOff, Loader2, MailCheck, PlugZap, RefreshCw, Trash2 } from "lucide-react"
+import { Cloud, Eye, EyeOff, KeyRound, Loader2, MailCheck, PlugZap, RefreshCw, Trash2, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { useToast } from "@/components/ui/use-toast"
@@ -38,6 +38,7 @@ export function ExternalMailPanel() {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [testing, setTesting] = useState(false)
+  const [editingId, setEditingId] = useState<string | null>(null)
   const [syncingId, setSyncingId] = useState<string | null>(null)
   const [deletingId, setDeletingId] = useState<string | null>(null)
   const [showPassword, setShowPassword] = useState(false)
@@ -178,6 +179,74 @@ export function ExternalMailPanel() {
     }
   }
 
+  const updateAccountCredentials = async () => {
+    if (!editingId) return
+
+    let payload: ReturnType<typeof validateForm>
+
+    try {
+      payload = validateForm()
+    } catch (error) {
+      toast({
+        title: error instanceof Error ? error.message : t("updateFailed"),
+        variant: "destructive",
+      })
+      return
+    }
+
+    setSaving(true)
+
+    try {
+      const response = await fetch(`/api/external-mail/accounts/${editingId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          username: payload.username,
+          password: payload.password,
+        }),
+      })
+      const data = await response.json().catch(() => ({})) as {
+        account?: ExternalMailAccount
+        error?: string
+      }
+
+      if (!response.ok || !data.account) {
+        throw new Error(data.error || t("updateFailed"))
+      }
+
+      setAccounts(prev => prev.map(account => (
+        account.id === data.account!.id ? data.account! : account
+      )))
+      setEditingId(null)
+      setForm(emptyForm)
+      setShowPassword(false)
+      toast({ title: t("updateSuccess") })
+    } catch (error) {
+      toast({
+        title: error instanceof Error ? error.message : t("updateFailed"),
+        variant: "destructive",
+      })
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const beginCredentialUpdate = (account: ExternalMailAccount) => {
+    setEditingId(account.id)
+    setForm({
+      emailAddress: account.emailAddress,
+      username: account.username,
+      password: "",
+    })
+    setShowPassword(false)
+  }
+
+  const cancelCredentialUpdate = () => {
+    setEditingId(null)
+    setForm(emptyForm)
+    setShowPassword(false)
+  }
+
   const syncAccount = async (accountId: string) => {
     setSyncingId(accountId)
 
@@ -251,7 +320,20 @@ export function ExternalMailPanel() {
           <Cloud className="h-5 w-5 shrink-0 text-primary" />
           <h2 className="truncate text-lg font-semibold">{t("title")}</h2>
         </div>
-        <div className="flex shrink-0 items-center gap-2">
+        <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
+          {editingId && (
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="h-8 gap-2"
+              onClick={cancelCredentialUpdate}
+              disabled={saving || testing}
+            >
+              <X className="h-4 w-4" />
+              {t("cancelUpdate")}
+            </Button>
+          )}
           <Button
             type="button"
             variant="outline"
@@ -267,11 +349,19 @@ export function ExternalMailPanel() {
             type="button"
             size="sm"
             className="h-8 gap-2"
-            onClick={createAccount}
+            onClick={editingId ? updateAccountCredentials : createAccount}
             disabled={saving || testing}
           >
-            {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <MailCheck className="h-4 w-4" />}
-            {saving ? t("creating") : t("create")}
+            {saving ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : editingId ? (
+              <KeyRound className="h-4 w-4" />
+            ) : (
+              <MailCheck className="h-4 w-4" />
+            )}
+            {saving
+              ? (editingId ? t("savingCredentials") : t("creating"))
+              : (editingId ? t("saveCredentials") : t("create"))}
           </Button>
         </div>
       </div>
@@ -284,7 +374,7 @@ export function ExternalMailPanel() {
             value={form.emailAddress}
             onChange={(event) => updateForm("emailAddress", event.target.value)}
             placeholder={t("emailAddressPlaceholder")}
-            disabled={saving || testing}
+            disabled={saving || testing || Boolean(editingId)}
           />
         </div>
         <div className="grid grid-cols-[180px_minmax(0,1fr)] items-center gap-4">
@@ -357,11 +447,22 @@ export function ExternalMailPanel() {
               <div className="flex shrink-0 items-center justify-end gap-2">
                 <Button
                   type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="h-8 gap-2"
+                  onClick={() => beginCredentialUpdate(account)}
+                  disabled={saving || testing || syncingId === account.id || deletingId === account.id}
+                >
+                  <KeyRound className="h-4 w-4" />
+                  {t("updateCredentials")}
+                </Button>
+                <Button
+                  type="button"
                   variant="outline"
                   size="sm"
                   className="h-8 gap-2"
                   onClick={() => syncAccount(account.id)}
-                  disabled={syncingId === account.id || deletingId === account.id}
+                  disabled={saving || testing || syncingId === account.id || deletingId === account.id}
                 >
                   {syncingId === account.id ? (
                     <Loader2 className="h-4 w-4 animate-spin" />
@@ -376,7 +477,7 @@ export function ExternalMailPanel() {
                   size="icon"
                   className="h-8 w-8"
                   onClick={() => deleteAccount(account.id)}
-                  disabled={deletingId === account.id || syncingId === account.id}
+                  disabled={saving || testing || deletingId === account.id || syncingId === account.id}
                   aria-label={t("delete")}
                 >
                   {deletingId === account.id ? (

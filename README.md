@@ -587,6 +587,10 @@ For full documentation, see [packages/cli/README.md](packages/cli/README.md).
 - `AUTH_GOOGLE_SECRET`: Google OAuth App Secret
 - `AUTH_SECRET`: NextAuth Secret
 
+### iCloud Mail
+- `EXTERNAL_MAIL_SECRET`: Stable random secret used to encrypt stored iCloud App-Specific Passwords. Do not change it after accounts are connected; if it is lost or rotated, update each account's credentials in the profile page.
+- `EXTERNAL_MAIL_DOMAIN`: Domain used by the iCloud outbound mail client, such as `example.com`.
+
 ### Cloudflare
 - `CLOUDFLARE_API_TOKEN`: Cloudflare API Token
 - `CLOUDFLARE_ACCOUNT_ID`: Cloudflare Account ID
