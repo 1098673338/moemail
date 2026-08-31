@@ -4,6 +4,7 @@ import PostalMime, { addressParser, type Address, type Email as ParsedEmail } fr
 import { EMAIL_CONFIG } from "@/config"
 import { getUserRole } from "@/lib/auth"
 import { createDb, type Db } from "@/lib/db"
+import { chunkForD1BoundParameters } from "@/lib/d1-batch"
 import { ROLES } from "@/lib/permissions"
 import { deletedMessages, externalMailAccounts, emails, messages, users } from "@/lib/schema"
 
@@ -1606,8 +1607,10 @@ async function deleteMissingLocalExternalMessages(
 
   if (missingMessageIds.length === 0) return 0
 
-  await db.delete(messages)
-    .where(inArray(messages.id, missingMessageIds))
+  for (const messageIdChunk of chunkForD1BoundParameters(missingMessageIds)) {
+    await db.delete(messages)
+      .where(inArray(messages.id, messageIdChunk))
+  }
 
   return missingMessageIds.length
 }
@@ -1786,16 +1789,21 @@ export async function deleteLocalExternalMessageViews(db: Db, userId: string, me
 
   if (relatedMessages.length === 0) return 0
 
-  await db.insert(deletedMessages)
-    .values(relatedMessages.map(message => ({
-      emailId: message.emailId,
-      messageId: message.id,
-      deletedAt: new Date(),
-    })))
-    .onConflictDoNothing()
+  for (const messageChunk of chunkForD1BoundParameters(relatedMessages, 4)) {
+    await db.insert(deletedMessages)
+      .values(messageChunk.map(message => ({
+        emailId: message.emailId,
+        messageId: message.id,
+        deletedAt: new Date(),
+      })))
+      .onConflictDoNothing()
+  }
 
-  await db.delete(messages)
-    .where(inArray(messages.id, relatedMessages.map(message => message.id)))
+  const relatedMessageIds = relatedMessages.map(message => message.id)
+  for (const messageIdChunk of chunkForD1BoundParameters(relatedMessageIds)) {
+    await db.delete(messages)
+      .where(inArray(messages.id, messageIdChunk))
+  }
 
   return relatedMessages.length
 }
