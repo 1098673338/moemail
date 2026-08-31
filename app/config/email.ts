@@ -2,8 +2,8 @@ export const EMAIL_CONFIG = {
   MAX_ACTIVE_EMAILS: 30, // Maximum number of active emails
   MAX_CONFIGURABLE_LIMIT: 9999,
   UNLIMITED_LIMIT: 9999,
-  POLL_INTERVAL: 1_000, // Polling interval in milliseconds
-  ICLOUD_SYNC_INTERVAL: 1_000,
+  POLL_INTERVAL: 3_000, // Polling interval in milliseconds
+  ICLOUD_SYNC_INTERVAL: 10_000,
   ICLOUD_AUTO_REFRESH_DURATION: 10 * 60_000,
   ICLOUD_AUTO_SYNC_LIMIT: 10,
   DEFAULT_DAILY_SEND_LIMITS: {
