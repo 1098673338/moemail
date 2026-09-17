@@ -37,9 +37,11 @@ pnpm exec wrangler kv key put EMAIL_DOMAINS 'example.test' --binding SITE_CONFIG
 - `WORKER_NAME`、`DATABASE_NAME`、`DATABASE_ID`、`KV_NAMESPACE_ID`
 - `CREDENTIAL_ENCRYPTION_KEY`、`ICLOUD_BRIDGE_TOKEN`
 
-工作流会先导出远端 D1，再执行迁移；它要求
-`<WORKER_NAME>-email-receiver-worker` 和
-`<WORKER_NAME>-cleanup-worker` 已存在，并构建和部署三个 Worker。任一资源、
+如果既有 Worker 并非 `email-receiver-worker` 与 `cleanup-worker`，再额外配置
+`EMAIL_RECEIVER_WORKER_NAME` 和 `CLEANUP_WORKER_NAME`；否则无需配置。
+
+工作流会先导出远端 D1，再执行迁移；它要求既有的邮件接收和清理 Worker 已存在，
+并构建和部署三个 Worker。任一资源、
 迁移或部署失败都会失败退出。主应用 Worker 可以首次创建以替代 Pages；D1、KV、
 Email Routing 和两个既有 Worker 不会被创建。
 

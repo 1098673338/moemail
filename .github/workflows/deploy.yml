@@ -33,6 +33,8 @@ jobs:
           DATABASE_NAME: ${{ secrets.DATABASE_NAME }}
           DATABASE_ID: ${{ secrets.DATABASE_ID }}
           KV_NAMESPACE_ID: ${{ secrets.KV_NAMESPACE_ID }}
+          EMAIL_RECEIVER_WORKER_NAME: ${{ secrets.EMAIL_RECEIVER_WORKER_NAME }}
+          CLEANUP_WORKER_NAME: ${{ secrets.CLEANUP_WORKER_NAME }}
           CREDENTIAL_ENCRYPTION_KEY: ${{ secrets.CREDENTIAL_ENCRYPTION_KEY }}
           ICLOUD_BRIDGE_TOKEN: ${{ secrets.ICLOUD_BRIDGE_TOKEN }}
         run: pnpm exec tsx scripts/deploy/index.ts

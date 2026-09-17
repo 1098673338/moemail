@@ -5,6 +5,13 @@ import { resolve } from "node:path";
 const required = ["CLOUDFLARE_API_TOKEN", "CLOUDFLARE_ACCOUNT_ID", "WORKER_NAME", "DATABASE_NAME", "DATABASE_ID", "KV_NAMESPACE_ID", "CREDENTIAL_ENCRYPTION_KEY", "ICLOUD_BRIDGE_TOKEN"] as const;
 for (const key of required) if (!process.env[key]) throw new Error(`Missing required GitHub Secret: ${key}`);
 
+// These are the legacy Worker service names already targeted by Email Routing
+// and the existing cleanup cron. They must be deployed in place, never renamed
+// from the new main application's Worker name. Deployments may override them
+// when a pre-existing account used different names.
+const emailReceiverWorkerName = process.env.EMAIL_RECEIVER_WORKER_NAME?.trim() || "email-receiver-worker";
+const cleanupWorkerName = process.env.CLEANUP_WORKER_NAME?.trim() || "cleanup-worker";
+
 const replace = (file: string, target: string, name: string) => {
   const contents = readFileSync(file, "utf8")
     .replace(/"name": "[^"\n]+"/, `"name": "${name}"`)
@@ -25,13 +32,13 @@ async function requireExistingWorker(name: string) {
 // The main application Worker is the approved replacement for Pages and may be
 // created by its first deployment. The two routing/cleanup Workers must already
 // exist so that deployment can never silently change Email Routing targets.
-await requireExistingWorker(`${process.env.WORKER_NAME}-email-receiver-worker`);
-await requireExistingWorker(`${process.env.WORKER_NAME}-cleanup-worker`);
+await requireExistingWorker(emailReceiverWorkerName);
+await requireExistingWorker(cleanupWorkerName);
 
 mkdirSync("artifacts/d1-backup", { recursive: true });
 replace("wrangler.jsonc", "wrangler.release.jsonc", process.env.WORKER_NAME!);
-replace("wrangler.email.example.json", "wrangler.email.release.json", `${process.env.WORKER_NAME}-email-receiver-worker`);
-replace("wrangler.cleanup.example.json", "wrangler.cleanup.release.json", `${process.env.WORKER_NAME}-cleanup-worker`);
+replace("wrangler.email.example.json", "wrangler.email.release.json", emailReceiverWorkerName);
+replace("wrangler.cleanup.example.json", "wrangler.cleanup.release.json", cleanupWorkerName);
 
 const config = "wrangler.release.jsonc";
 run("pnpm", ["exec", "wrangler", "d1", "export", process.env.DATABASE_NAME!, "--remote", "--output", resolve("artifacts/d1-backup", `${process.env.DATABASE_NAME}-before-migration.sql`), "--config", config]);

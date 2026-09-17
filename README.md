@@ -40,9 +40,12 @@ Run the **Deploy** workflow manually after adding these repository secrets:
 - `WORKER_NAME`, `DATABASE_NAME`, `DATABASE_ID`, `KV_NAMESPACE_ID`
 - `CREDENTIAL_ENCRYPTION_KEY`, `ICLOUD_BRIDGE_TOKEN`
 
-The workflow exports remote D1 before migrations, verifies the existing
-`<WORKER_NAME>-email-receiver-worker` and `<WORKER_NAME>-cleanup-worker`, builds
-the main Worker, and deploys all three Workers. It fails if a required resource,
+Optional: set `EMAIL_RECEIVER_WORKER_NAME` and `CLEANUP_WORKER_NAME` only if
+your existing Workers are not named `email-receiver-worker` and `cleanup-worker`.
+
+The workflow exports remote D1 before migrations, verifies the existing email
+receiver and cleanup Workers, builds the main Worker, and deploys all three
+Workers. It fails if a required resource,
 migration, or deployment fails. The main Worker can be created as the approved
 Pages replacement; no D1, KV, Email Routing, or auxiliary Worker is created.
 
