@@ -21,6 +21,13 @@ export async function testIcloudConnection(input:{username:string;appPassword:st
 
 export async function connectIcloudAccount(input:{emailAddress:string;username:string;appPassword:string}){ const emailAddress=normalize(input.emailAddress); assertIcloud(emailAddress); if(await one("SELECT id FROM mail_account WHERE email_address=? COLLATE NOCASE",emailAddress)) throw new MailStoreError("这个 iCloud 邮箱已经连接","conflict"); const encrypted=encryptCredential(input.appPassword); await testIcloudConnection(input); const id=crypto.randomUUID(); const now=stamp(); await run("INSERT INTO mail_account (id,provider,email_address,username,encrypted_password,status,last_uid,created_at,updated_at) VALUES (?,'icloud',?,?,?,'active',0,?,?)",id,emailAddress,input.username.trim(),encrypted,now,now); try { await createAddress({address:emailAddress,type:"icloud_primary",accountId:id,label:"iCloud 主邮箱",note:"通过 IMAP 接入，用于同步隐藏邮件地址收到的邮件。"}); } catch(error) { await run("DELETE FROM mail_account WHERE id=?",id); throw error; } return id; }
 
+export async function updateIcloudAppPassword(accountId:string,appPassword:string){
+  const account=await one<Account>("SELECT * FROM mail_account WHERE id=?",accountId);
+  if(!account) throw new MailStoreError("iCloud 账号不存在","not_found");
+  await testIcloudConnection({username:account.username,appPassword});
+  await run("UPDATE mail_account SET encrypted_password=?,status='active',sync_error=NULL,updated_at=? WHERE id=?",encryptCredential(appPassword),stamp(),accountId);
+}
+
 export type IcloudAliasSnapshotItem={address:string;providerId:string;status:"active"|"disabled";providerLabel?:string|null;providerOrigin?:string|null;providerCreatedAt?:string|null};
 const D1_MUTATION_BATCH_SIZE = 50;
 function chunks<T>(values: T[], size = D1_MUTATION_BATCH_SIZE) { const result: T[][] = []; for (let index = 0; index < values.length; index += size) result.push(values.slice(index, index + size)); return result; }
@@ -77,8 +84,9 @@ export async function syncIcloudAccount(accountId:string) {
   const account=await one<Account>("SELECT * FROM mail_account WHERE id=?",accountId);
   if(!account) throw new MailStoreError("iCloud 账号不存在","not_found");
   if(account.status==="disabled") throw new Error("这个 iCloud 账号已停用");
-  const active=client(account); let imported=0,removed=0,synced=0,uidValidityChanged=false,maxUid=0;
+  let active:ReturnType<typeof client>|null=null; let imported=0,removed=0,synced=0,uidValidityChanged=false,maxUid=0;
   try {
+    active=client(account);
     await active.client.connect(active.username,active.password);
     const mailboxPath="INBOX";
     const mailbox=await active.client.examineInbox();
@@ -104,7 +112,7 @@ export async function syncIcloudAccount(accountId:string) {
     const automatic=await scanPendingAutomaticTags({accountId});
     return {imported,removed,synced,lastUid:maxUid,uidValidity:validity,uidValidityChanged,mailboxes:1,automaticTagScanned:automatic.scanned,automaticTagApplied:automatic.tagged};
   } catch(error) { const message=error instanceof Error ? error.message : "iCloud 同步失败"; await run("UPDATE mail_account SET status='sync_error',sync_error=?,updated_at=? WHERE id=?",message,stamp(),accountId); throw error; }
-  finally { await active.client.logout(); }
+  finally { await active?.client.logout(); }
 }
 
 export async function deleteIcloudMessage(messageId:string) { const local=await one<Account & {provider_uid:number;provider_mailbox:string|null;provider_message_id:string|null;account_status:string}>("SELECT m.*,a.username,a.encrypted_password,a.status account_status FROM message m JOIN mail_account a ON a.id=m.account_id WHERE m.id=? AND m.source='icloud' AND m.deleted_at IS NULL",messageId); if(!local) throw new MailStoreError("iCloud 邮件不存在","not_found"); if(local.account_status==="disabled") throw new Error("iCloud 账号已停用，无法删除远端邮件"); await hideLocalMessage(messageId); const active=client(local); try { await active.client.connect(active.username,active.password); await active.client.examineInbox(); const remote=await active.client.fetchMessage(local.provider_uid); if(remote){ const parsed=await PostalMime.parse(remote.source); if(local.provider_message_id && parsed.messageId && local.provider_message_id!==parsed.messageId) throw new Error("远端邮件身份发生变化，已取消删除"); await active.client.deleteMessage(local.provider_uid); } await purgeLocalMessage(messageId); } catch(error) { await restoreLocalMessage(messageId); throw error; } finally { await active.client.logout(); } }

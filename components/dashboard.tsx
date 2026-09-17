@@ -43,7 +43,7 @@ type TagFilter = string;
 type AddressTag = { name: string; color: string };
 type TagEditorState = { addressId: string; top: number; left: number; trigger: HTMLButtonElement };
 type IcloudSyncResponse = { imported: number; removed: number; synced: number };
-type Modal = "edit_address" | "icloud" | null;
+type Modal = "edit_address" | "icloud" | "icloud_password" | null;
 type Notice = { tone: "success" | "error"; text: string };
 const ADDRESS_PAGE_SIZE = 20;
 const DEFAULT_ADDRESS_SORT: AddressSort = { key: "receivedAt", direction: "desc" };
@@ -297,6 +297,7 @@ export function Dashboard() {
   const [addressSort, setAddressSort] = useState<AddressSort>({ ...DEFAULT_ADDRESS_SORT });
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [modal, setModal] = useState<Modal>(null);
+  const [credentialAccountId, setCredentialAccountId] = useState<string | null>(null);
   const [editingAddressId, setEditingAddressId] = useState<string | null>(null);
   const [addresses, setAddresses] = useState<MailAddressDto[]>([]);
   const [messages, setMessages] = useState<MailMessageDto[]>([]);
@@ -402,6 +403,13 @@ export function Dashboard() {
 
   const notifyBackgroundSyncError = useCallback((error: unknown) => {
     const message = error instanceof Error ? error.message : "自动同步失败，请稍后重试";
+    if (/当前同步密钥解密/.test(message)) {
+      setNotice({
+        tone: "error",
+        text: "已保存的 App 专用密码无法解密，自动同步已暂停。请在“账号设置”中更新 App 专用密码。",
+      });
+      return;
+    }
     if (/\bauthentication failed\b|authenticationfailed|app 专用密码|用户名或 app/i.test(message)) {
       setNotice({
         tone: "error",
@@ -639,6 +647,7 @@ export function Dashboard() {
           <SettingsView
             accounts={accounts}
             onConnectIcloud={() => setModal("icloud")}
+            onUpdateCredentials={(account) => { setCredentialAccountId(account.id); setModal("icloud_password"); }}
             onSync={(id) => void runAction(`icloud:sync:${id}`, async () => {
               const result = await requestJson<{ imported: number; removed: number; synced: number }>(`/api/icloud/accounts/${id}/sync`, { method: "POST" }, 75_000);
               return `iCloud 邮箱已同步全部 ${result.synced} 封邮件，新增 ${result.imported} 封，移除 ${result.removed} 封远端已删除邮件`;
@@ -687,9 +696,9 @@ export function Dashboard() {
 
       {modal && (
         <ModalShell
-          title={{ edit_address: "编辑邮箱", icloud: "连接 iCloud" }[modal]}
+          title={{ edit_address: "编辑邮箱", icloud: "连接 iCloud", icloud_password: "更新 App 专用密码" }[modal]}
           subtitle={modal === "edit_address" ? editingAddress?.address : undefined}
-          onClose={() => { setModal(null); setEditingAddressId(null); }}
+          onClose={() => { setModal(null); setEditingAddressId(null); setCredentialAccountId(null); }}
         >
           {modal === "edit_address" && editingAddress && <EditAddressForm address={editingAddress} onDone={() => { setModal(null); setEditingAddressId(null); }} onSave={async (input) => {
             const nextLabel = input.providerLabel || "";
@@ -704,6 +713,7 @@ export function Dashboard() {
             setNotice({ tone: "success", text: "邮箱资料已保存" });
           }} />}
           {modal === "icloud" && <IcloudForm onDone={() => { setModal(null); void loadData().catch(() => undefined); }} setNotice={setNotice} />}
+          {modal === "icloud_password" && credentialAccountId && <IcloudPasswordForm account={accounts.find((account) => account.id === credentialAccountId) || null} onDone={() => { setModal(null); setCredentialAccountId(null); void loadData().catch(() => undefined); }} setNotice={setNotice} />}
         </ModalShell>
       )}
       {confirmation && (
@@ -1250,6 +1260,7 @@ function MailReadingPane({ message, onCopyCode }: { message: MailMessageDto; onC
 function SettingsView(props: {
   accounts: ICloudAccountDto[];
   onConnectIcloud: () => void;
+  onUpdateCredentials: (account: ICloudAccountDto) => void;
   onSync: (id: string) => void;
   onClearAliases: (account: ICloudAccountDto) => void;
   onClearAliasData: (account: ICloudAccountDto) => void;
@@ -1268,6 +1279,7 @@ function SettingsView(props: {
             <span className={`status-pill ${account.status}`}>{account.status === "active" ? "已连接" : account.status === "sync_error" ? "需要检查" : "已停用"}</span>
             <div className="connection-actions">
               <button className="button secondary compact" disabled={props.isPending(`icloud:sync:${account.id}`) || props.isPending(`icloud:clear:${account.id}`) || props.isPending(`icloud:clear-data:${account.id}`) || props.isPending(`icloud:disconnect:${account.id}`)} onClick={() => props.onSync(account.id)}>{props.isPending(`icloud:sync:${account.id}`) ? <LoaderCircle className="spin" size={15} /> : <RefreshCw size={15} />}{props.isPending(`icloud:sync:${account.id}`) ? "正在同步…" : "同步邮箱"}</button>
+              <button className="button secondary compact" disabled={props.isPending(`icloud:sync:${account.id}`) || props.isPending(`icloud:clear:${account.id}`) || props.isPending(`icloud:clear-data:${account.id}`) || props.isPending(`icloud:disconnect:${account.id}`)} onClick={() => props.onUpdateCredentials(account)}><ShieldCheck size={15} />更新密码</button>
               <button className="button destructive compact" disabled={props.isPending(`icloud:sync:${account.id}`) || props.isPending(`icloud:clear:${account.id}`) || props.isPending(`icloud:clear-data:${account.id}`) || props.isPending(`icloud:disconnect:${account.id}`)} onClick={() => props.onClearAliases(account)}>{props.isPending(`icloud:clear:${account.id}`) ? <LoaderCircle className="spin" size={15} /> : <Trash2 size={15} />}{props.isPending(`icloud:clear:${account.id}`) ? "正在清空…" : "清空所有邮箱"}</button>
               <button className="button destructive compact" disabled={props.isPending(`icloud:sync:${account.id}`) || props.isPending(`icloud:clear:${account.id}`) || props.isPending(`icloud:clear-data:${account.id}`) || props.isPending(`icloud:disconnect:${account.id}`)} onClick={() => props.onClearAliasData(account)}>{props.isPending(`icloud:clear-data:${account.id}`) ? <LoaderCircle className="spin" size={15} /> : <DatabaseX size={15} />}{props.isPending(`icloud:clear-data:${account.id}`) ? "正在清除…" : "清空所有数据"}</button>
               <button className="button destructive compact" disabled={props.isPending(`icloud:sync:${account.id}`) || props.isPending(`icloud:clear:${account.id}`) || props.isPending(`icloud:clear-data:${account.id}`) || props.isPending(`icloud:disconnect:${account.id}`)} onClick={() => props.onDisconnect(account)}>{props.isPending(`icloud:disconnect:${account.id}`) ? <LoaderCircle className="spin" size={15} /> : <Unplug size={15} />}{props.isPending(`icloud:disconnect:${account.id}`) ? "正在断开…" : "断开连接"}</button>
@@ -1534,6 +1546,14 @@ function IcloudForm({ onDone, setNotice }: { onDone: () => void; setNotice: (not
   const [formError, setFormError] = useState<string | null>(null);
   const submit = async (event: FormEvent<HTMLFormElement>) => { event.preventDefault(); setSaving(true); setFormError(null); const form = new FormData(event.currentTarget); try { await requestJson("/api/icloud/accounts", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(Object.fromEntries(form)) }); setNotice({ tone: "success", text: "iCloud 账号已连接，IMAP 验证通过" }); onDone(); } catch (error) { setFormError(error instanceof Error ? error.message : "无法连接 iCloud 账号"); } finally { setSaving(false); } };
   return <form className="modal-form" onSubmit={submit}><div className="modal-form-body"><div className="form-hint warning"><ShieldCheck size={18} /><p>请输入 Apple 账户生成的 App 专用密码。不要在这里输入 Apple 账户密码。</p></div><label>iCloud 主邮箱<input name="emailAddress" type="email" required autoComplete="email" placeholder="name@icloud.com" /></label><label>IMAP 用户名<input name="username" required autoComplete="username" placeholder="通常与 Apple 账户邮箱相同" /></label><label>App 专用密码<input name="appPassword" type="password" required autoComplete="current-password" placeholder="xxxx-xxxx-xxxx-xxxx" /></label><FormError message={formError} /></div><div className="modal-form-footer"><button className="button primary" disabled={saving}>{saving && <LoaderCircle className="spin" size={17} />}{saving ? "正在验证连接…" : "验证并连接"}</button></div></form>;
+}
+
+function IcloudPasswordForm({ account, onDone, setNotice }: { account: ICloudAccountDto | null; onDone: () => void; setNotice: (notice: Notice) => void }) {
+  const [saving, setSaving] = useState(false);
+  const [formError, setFormError] = useState<string | null>(null);
+  if (!account) return null;
+  const submit = async (event: FormEvent<HTMLFormElement>) => { event.preventDefault(); setSaving(true); setFormError(null); const form = new FormData(event.currentTarget); try { await requestJson(`/api/icloud/accounts/${account.id}`, { method: "PATCH", headers: { "content-type": "application/json" }, body: JSON.stringify(Object.fromEntries(form)) }, 75_000); setNotice({ tone: "success", text: "App 专用密码已验证并更新，可以重新同步邮箱" }); onDone(); } catch (error) { setFormError(error instanceof Error ? error.message : "无法更新 App 专用密码"); } finally { setSaving(false); } };
+  return <form className="modal-form" onSubmit={submit}><div className="modal-form-body"><div className="form-hint warning"><ShieldCheck size={18} /><p>仅更新此账号的 App 专用密码，不会删除已同步的邮件、隐藏地址或资料。</p></div><label>iCloud 主邮箱<input value={account.emailAddress} readOnly /></label><label>IMAP 用户名<input value={account.username} readOnly /></label><label>新的 App 专用密码<input name="appPassword" type="password" required autoComplete="current-password" placeholder="xxxx-xxxx-xxxx-xxxx" /></label><FormError message={formError} /></div><div className="modal-form-footer"><button className="button ghost" type="button" disabled={saving} onClick={onDone}>取消</button><button className="button primary" disabled={saving}>{saving && <LoaderCircle className="spin" size={17} />}{saving ? "正在验证…" : "验证并更新"}</button></div></form>;
 }
 
 function EmptyState({ compact = false, title, description }: { compact?: boolean; title: string; description: string }) {

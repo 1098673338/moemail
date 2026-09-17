@@ -1,6 +1,13 @@
 import crypto from "node:crypto";
 import { getEnv } from "@/lib/env";
 
+export class StoredIcloudCredentialError extends Error {
+  constructor() {
+    super("已保存的 App 专用密码无法使用当前同步密钥解密。请在账号设置中更新 App 专用密码后重试。");
+    this.name = "StoredIcloudCredentialError";
+  }
+}
+
 function getKey() {
   const secret = getEnv().EXTERNAL_MAIL_SECRET;
   if (!secret || secret.length < 32) {
@@ -27,14 +34,19 @@ export function encryptCredential(value: string) {
 }
 
 export function decryptCredential(value: string) {
-  const [version, ivEncoded, tagEncoded, encryptedEncoded] = value.split(":");
-  if (version !== "v1" || !ivEncoded || !tagEncoded || !encryptedEncoded) {
-    throw new Error("凭据格式无效，请重新连接账号");
+  try {
+    const [version, ivEncoded, tagEncoded, encryptedEncoded] = value.split(":");
+    if (version !== "v1" || !ivEncoded || !tagEncoded || !encryptedEncoded) {
+      throw new StoredIcloudCredentialError();
+    }
+    const decipher = crypto.createDecipheriv("aes-256-gcm", getKey(), decode(ivEncoded));
+    decipher.setAuthTag(decode(tagEncoded));
+    return Buffer.concat([
+      decipher.update(decode(encryptedEncoded)),
+      decipher.final(),
+    ]).toString("utf8");
+  } catch (error) {
+    if (error instanceof StoredIcloudCredentialError) throw error;
+    throw new StoredIcloudCredentialError();
   }
-  const decipher = crypto.createDecipheriv("aes-256-gcm", getKey(), decode(ivEncoded));
-  decipher.setAuthTag(decode(tagEncoded));
-  return Buffer.concat([
-    decipher.update(decode(encryptedEncoded)),
-    decipher.final(),
-  ]).toString("utf8");
 }

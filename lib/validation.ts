@@ -31,6 +31,10 @@ export const connectIcloudSchema = z.object({
   appPassword: z.string().min(8).max(128),
 });
 
+export const updateIcloudAppPasswordSchema = z.object({
+  appPassword: z.string().min(8).max(128),
+});
+
 const icloudAliasSnapshotItemSchema = z.object({
   address: z.email("地址清单中包含无效邮箱")
     .transform((value) => value.trim().toLowerCase()),
