@@ -43,6 +43,7 @@ type TagFilter = string;
 type AddressTag = { name: string; color: string };
 type TagEditorState = { addressId: string; top: number; left: number; trigger: HTMLButtonElement };
 type IcloudSyncResponse = { imported: number; removed: number; synced: number; remaining?: number };
+type IcloudSyncProgress = { accountId: string; completed: number; total: number; remaining: number };
 type Modal = "edit_address" | "icloud" | "icloud_password" | null;
 type Notice = { tone: "success" | "error"; text: string };
 const ADDRESS_PAGE_SIZE = 20;
@@ -70,8 +71,17 @@ async function requestJson<T>(url: string, init?: RequestInit, timeoutMs = 30_00
   const timeout = window.setTimeout(() => controller.abort(), timeoutMs);
   try {
     const response = await fetch(url, { ...init, signal: init?.signal || controller.signal, cache: "no-store" });
-    const data = await response.json() as T & { error?: string };
-    if (!response.ok) throw new Error(data.error || "请求失败");
+    const body = await response.text();
+    let data: (T & { error?: string }) | null = null;
+    if (body.trim()) {
+      try {
+        data = JSON.parse(body) as T & { error?: string };
+      } catch {
+        // Cloudflare error documents are HTML. Keep their source out of the UI.
+      }
+    }
+    if (!response.ok) throw new Error(data?.error || `请求失败（HTTP ${response.status}）`);
+    if (!data) throw new Error(`接口返回了非 JSON 数据（HTTP ${response.status}）。请确认当前域名已更新到最新 Workers 后重试`);
     return data;
   } catch (error) {
     if (error instanceof DOMException && error.name === "AbortError") {
@@ -319,6 +329,7 @@ export function Dashboard() {
   const backgroundSyncNoticeAtRef = useRef(0);
   const [notice, setNotice] = useState<Notice | null>(null);
   const [confirmation, setConfirmation] = useState<Confirmation | null>(null);
+  const [icloudSyncProgress, setIcloudSyncProgress] = useState<IcloudSyncProgress | null>(null);
 
   const fetchData = useCallback(async () => {
     const [addressData, messageData, accountData] = await Promise.all([
@@ -372,6 +383,20 @@ export function Dashboard() {
     return () => window.clearTimeout(timer);
   }, [notice]);
 
+  const recordIcloudSyncProgress = useCallback((accountId: string, result: IcloudSyncResponse) => {
+    const remaining = result.remaining || 0;
+    if (remaining === 0) {
+      setIcloudSyncProgress((current) => current?.accountId === accountId ? null : current);
+      return;
+    }
+    setIcloudSyncProgress((current) => {
+      const previous = current?.accountId === accountId ? current : null;
+      const completed = (previous?.completed || 0) + result.synced;
+      const total = Math.max(previous?.total || 0, completed + remaining);
+      return { accountId, completed, total, remaining };
+    });
+  }, []);
+
   const syncIcloudAccounts = useCallback(async () => {
     if (icloudSyncInFlightRef.current) return icloudSyncInFlightRef.current;
     // A failed IMAP login is persisted as sync_error by the API. It requires a
@@ -383,11 +408,15 @@ export function Dashboard() {
     const requestId = ++icloudSyncRequestIdRef.current;
     const request = (async () => {
       try {
-        const results = await Promise.all(syncableAccounts.map((account) => requestJson<IcloudSyncResponse>(
-          `/api/icloud/accounts/${account.id}/sync`,
-          { method: "POST" },
-          75_000,
-        )));
+        const results = await Promise.all(syncableAccounts.map(async (account) => {
+          const result = await requestJson<IcloudSyncResponse>(
+            `/api/icloud/accounts/${account.id}/sync`,
+            { method: "POST" },
+            75_000,
+          );
+          recordIcloudSyncProgress(account.id, result);
+          return result;
+        }));
         await refreshData();
         return results;
       } catch (error) {
@@ -399,7 +428,7 @@ export function Dashboard() {
     })();
     icloudSyncInFlightRef.current = request;
     return request;
-  }, [refreshData]);
+  }, [recordIcloudSyncProgress, refreshData]);
 
   const notifyBackgroundSyncError = useCallback((error: unknown) => {
     const message = error instanceof Error ? error.message : "自动同步失败，请稍后重试";
@@ -424,7 +453,7 @@ export function Dashboard() {
   }, []);
 
   useEffect(() => {
-    if (view !== "icloud") return;
+    if (view !== "icloud" && !icloudSyncProgress) return;
     let cancelled = false;
     let timer: number | null = null;
 
@@ -451,7 +480,7 @@ export function Dashboard() {
       cancelled = true;
       if (timer !== null) window.clearTimeout(timer);
     };
-  }, [view, accounts.length, refreshData, syncIcloudAccounts, notifyBackgroundSyncError]);
+  }, [view, accounts.length, icloudSyncProgress, refreshData, syncIcloudAccounts, notifyBackgroundSyncError]);
 
   const drawerAddress = addresses.find((address) => address.id === drawerAddressId) || null;
   const editingAddress = addresses.find((address) => address.id === editingAddressId) || null;
@@ -646,10 +675,12 @@ export function Dashboard() {
         ) : (
           <SettingsView
             accounts={accounts}
+            syncProgress={icloudSyncProgress}
             onConnectIcloud={() => setModal("icloud")}
             onUpdateCredentials={(account) => { setCredentialAccountId(account.id); setModal("icloud_password"); }}
             onSync={(id) => void runAction(`icloud:sync:${id}`, async () => {
               const result = await requestJson<IcloudSyncResponse>(`/api/icloud/accounts/${id}/sync`, { method: "POST" }, 75_000);
+              recordIcloudSyncProgress(id, result);
               return result.remaining
                 ? `本次已同步 ${result.synced} 封邮件，新增 ${result.imported} 封；剩余 ${result.remaining} 封将继续同步`
                 : `iCloud 邮箱已同步全部 ${result.synced} 封邮件，新增 ${result.imported} 封，移除 ${result.removed} 封远端已删除邮件`;
@@ -1261,6 +1292,7 @@ function MailReadingPane({ message, onCopyCode }: { message: MailMessageDto; onC
 
 function SettingsView(props: {
   accounts: ICloudAccountDto[];
+  syncProgress: IcloudSyncProgress | null;
   onConnectIcloud: () => void;
   onUpdateCredentials: (account: ICloudAccountDto) => void;
   onSync: (id: string) => void;
@@ -1275,10 +1307,17 @@ function SettingsView(props: {
         <div className="settings-card-head"><div className="settings-icon apple">●</div><div><h2>iCloud 账号</h2><p>IMAP 用于同步邮件，浏览器同步助手用于读取账号中的完整隐藏邮件地址清单。</p></div><button className="button primary" onClick={props.onConnectIcloud}><Plus size={16} />连接 iCloud</button></div>
         {props.accounts.length === 0 ? (
           <div className="empty-inline"><div><Mail size={22} /></div><p><strong>还没有连接 iCloud 账号</strong><span>连接后，可以同步邮件和账号中的隐藏邮件地址。</span></p></div>
-        ) : props.accounts.map((account) => (
-          <div className="connection-row" key={account.id}>
+        ) : props.accounts.map((account) => {
+          const syncProgress = props.syncProgress?.accountId === account.id ? props.syncProgress : null;
+          const syncPercent = syncProgress ? Math.round((syncProgress.completed / Math.max(syncProgress.total, 1)) * 100) : 0;
+          return <div className="connection-row" key={account.id}>
             <div><strong>{account.emailAddress}</strong><span>{account.syncError || `邮件上次同步：${relativeTime(account.lastSyncAt)} · 地址：${account.aliasesActiveCount} 个使用中 · 地址清单更新于 ${relativeTime(account.aliasesLastSyncAt)}`}</span></div>
             <span className={`status-pill ${account.status}`}>{account.status === "active" ? "已连接" : account.status === "sync_error" ? "需要检查" : "已停用"}</span>
+            {syncProgress && <div className="connection-sync-progress" role="status">
+              <div className="connection-sync-progress-copy"><span>正在分批同步历史邮件</span><strong>{syncProgress.completed} / {syncProgress.total} 封</strong></div>
+              <div className="connection-sync-progress-track" role="progressbar" aria-label="邮件同步进度" aria-valuemin={0} aria-valuemax={syncProgress.total} aria-valuenow={syncProgress.completed}><span style={{ width: `${syncPercent}%` }} /></div>
+              <p>本次已同步 {syncProgress.completed} 封，剩余 {syncProgress.remaining} 封将继续同步。</p>
+            </div>}
             <div className="connection-actions">
               <button className="button secondary compact" disabled={props.isPending(`icloud:sync:${account.id}`) || props.isPending(`icloud:clear:${account.id}`) || props.isPending(`icloud:clear-data:${account.id}`) || props.isPending(`icloud:disconnect:${account.id}`)} onClick={() => props.onSync(account.id)}>{props.isPending(`icloud:sync:${account.id}`) ? <LoaderCircle className="spin" size={15} /> : <RefreshCw size={15} />}{props.isPending(`icloud:sync:${account.id}`) ? "正在同步…" : "同步邮箱"}</button>
               <button className="button secondary compact" disabled={props.isPending(`icloud:sync:${account.id}`) || props.isPending(`icloud:clear:${account.id}`) || props.isPending(`icloud:clear-data:${account.id}`) || props.isPending(`icloud:disconnect:${account.id}`)} onClick={() => props.onUpdateCredentials(account)}><ShieldCheck size={15} />更新密码</button>
@@ -1286,8 +1325,8 @@ function SettingsView(props: {
               <button className="button destructive compact" disabled={props.isPending(`icloud:sync:${account.id}`) || props.isPending(`icloud:clear:${account.id}`) || props.isPending(`icloud:clear-data:${account.id}`) || props.isPending(`icloud:disconnect:${account.id}`)} onClick={() => props.onClearAliasData(account)}>{props.isPending(`icloud:clear-data:${account.id}`) ? <LoaderCircle className="spin" size={15} /> : <DatabaseX size={15} />}{props.isPending(`icloud:clear-data:${account.id}`) ? "正在清除…" : "清空所有数据"}</button>
               <button className="button destructive compact" disabled={props.isPending(`icloud:sync:${account.id}`) || props.isPending(`icloud:clear:${account.id}`) || props.isPending(`icloud:clear-data:${account.id}`) || props.isPending(`icloud:disconnect:${account.id}`)} onClick={() => props.onDisconnect(account)}>{props.isPending(`icloud:disconnect:${account.id}`) ? <LoaderCircle className="spin" size={15} /> : <Unplug size={15} />}{props.isPending(`icloud:disconnect:${account.id}`) ? "正在断开…" : "断开连接"}</button>
             </div>
-          </div>
-        ))}
+          </div>;
+        })}
         {props.accounts.length > 0 && <div className="form-hint"><ShieldCheck size={18} /><p>隐藏邮件地址不会从邮件内容中推测。请在 iCloud+ 地址清单页运行“Mailbox Studio iCloud 地址同步助手”，同步账号中的使用中地址。</p></div>}
       </section>
 

@@ -193,6 +193,13 @@ button:active:not(:disabled), a.button:active:not([aria-disabled="true"]) { opac
 .connection-row strong, .connection-row span { display: block; }
 .connection-row strong { overflow: hidden; color: var(--color-body-strong); font-size: 13px; font-weight: 500; text-overflow: ellipsis; white-space: nowrap; }
 .connection-row > div > span { margin-top: 3px; color: var(--color-muted); font-size: 10px; line-height: 16px; }
+.connection-sync-progress { grid-column: 1 / -1; display: grid; gap: 5px; padding: 8px 10px; background: var(--color-canvas); border: 1px solid var(--color-hairline); border-radius: var(--radius-control); }
+.connection-sync-progress-copy { display: flex; align-items: baseline; justify-content: space-between; gap: var(--space-sm); }
+.connection-sync-progress-copy > span { margin: 0; color: var(--color-body); font-size: 11px; line-height: 16px; }
+.connection-sync-progress-copy > strong { flex: none; color: var(--color-muted); font-family: var(--font-mono); font-size: 10px; line-height: 16px; font-weight: 500; }
+.connection-sync-progress-track { height: 5px; overflow: hidden; background: var(--color-hairline-strong); border-radius: 999px; }
+.connection-sync-progress-track > span { width: 0; height: 100%; margin: 0; background: var(--color-success); border-radius: inherit; transition: width .2s ease-out; }
+.connection-sync-progress p { margin: 0; color: var(--color-muted); font-size: 10px; line-height: 16px; }
 .connection-actions { grid-column: 1 / -1; display: flex; align-items: center; gap: var(--space-xs); flex-wrap: wrap; }
 .danger-text { color: var(--color-danger); }
 .security-list { margin-top: var(--space-lg); display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-sm); }
