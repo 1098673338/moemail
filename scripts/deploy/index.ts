@@ -2,7 +2,7 @@ import { execFileSync } from "node:child_process";
 import { existsSync, mkdirSync, readFileSync, unlinkSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 
-const required = ["CLOUDFLARE_API_TOKEN", "CLOUDFLARE_ACCOUNT_ID", "WORKER_NAME", "DATABASE_NAME", "DATABASE_ID", "KV_NAMESPACE_ID", "CREDENTIAL_ENCRYPTION_KEY", "ICLOUD_BRIDGE_TOKEN"] as const;
+const required = ["CLOUDFLARE_API_TOKEN", "CLOUDFLARE_ACCOUNT_ID", "DATABASE_NAME", "DATABASE_ID", "KV_NAMESPACE_ID", "CREDENTIAL_ENCRYPTION_KEY", "ICLOUD_BRIDGE_TOKEN"] as const;
 const failPreflight = (title: string, message: string): never => {
   // Render the actual cause in GitHub Actions' annotations, rather than only
   // the generic exit-code annotation that GitHub emits for a failed shell step.
@@ -10,6 +10,10 @@ const failPreflight = (title: string, message: string): never => {
   throw new Error(message);
 };
 for (const key of required) if (!process.env[key]) failPreflight("Missing GitHub Secret", `Required GitHub Secret ${key} is empty or unavailable.`);
+
+// Main Workers service name. "moemail" is the project's original service name;
+// allow a repository secret to override it without making that secret mandatory.
+const mainWorkerName = process.env.WORKER_NAME?.trim() || "moemail";
 
 // These are the legacy Worker service names already targeted by Email Routing
 // and the existing cleanup cron. They must be deployed in place, never renamed
@@ -47,7 +51,7 @@ await requireExistingWorker(emailReceiverWorkerName);
 await requireExistingWorker(cleanupWorkerName);
 
 mkdirSync("artifacts/d1-backup", { recursive: true });
-replace("wrangler.jsonc", "wrangler.release.jsonc", process.env.WORKER_NAME!);
+replace("wrangler.jsonc", "wrangler.release.jsonc", mainWorkerName);
 replace("wrangler.email.example.json", "wrangler.email.release.json", emailReceiverWorkerName);
 replace("wrangler.cleanup.example.json", "wrangler.cleanup.release.json", cleanupWorkerName);
 

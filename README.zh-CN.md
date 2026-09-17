@@ -34,11 +34,12 @@ pnpm exec wrangler kv key put EMAIL_DOMAINS 'example.test' --binding SITE_CONFIG
 在仓库 Secrets 配置以下值后手动执行 **Deploy**：
 
 - `CLOUDFLARE_API_TOKEN`、`CLOUDFLARE_ACCOUNT_ID`
-- `WORKER_NAME`、`DATABASE_NAME`、`DATABASE_ID`、`KV_NAMESPACE_ID`
+- `DATABASE_NAME`、`DATABASE_ID`、`KV_NAMESPACE_ID`
 - `CREDENTIAL_ENCRYPTION_KEY`、`ICLOUD_BRIDGE_TOKEN`
 
 如果既有 Worker 并非 `email-receiver-worker` 与 `cleanup-worker`，再额外配置
 `EMAIL_RECEIVER_WORKER_NAME` 和 `CLEANUP_WORKER_NAME`；否则无需配置。
+主应用默认 Worker 名称为 `moemail`，只有需要改名时才配置 `WORKER_NAME`。
 
 工作流会先导出远端 D1，再执行迁移；它要求既有的邮件接收和清理 Worker 已存在，
 并构建和部署三个 Worker。任一资源、

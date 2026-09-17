@@ -37,11 +37,12 @@ pnpm exec wrangler kv key put EMAIL_DOMAINS 'example.test' --binding SITE_CONFIG
 Run the **Deploy** workflow manually after adding these repository secrets:
 
 - `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID`
-- `WORKER_NAME`, `DATABASE_NAME`, `DATABASE_ID`, `KV_NAMESPACE_ID`
+- `DATABASE_NAME`, `DATABASE_ID`, `KV_NAMESPACE_ID`
 - `CREDENTIAL_ENCRYPTION_KEY`, `ICLOUD_BRIDGE_TOKEN`
 
 Optional: set `EMAIL_RECEIVER_WORKER_NAME` and `CLEANUP_WORKER_NAME` only if
 your existing Workers are not named `email-receiver-worker` and `cleanup-worker`.
+Set `WORKER_NAME` only to override the default main Worker name, `moemail`.
 
 The workflow exports remote D1 before migrations, verifies the existing email
 receiver and cleanup Workers, builds the main Worker, and deploys all three
