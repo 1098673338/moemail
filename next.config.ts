@@ -5,7 +5,7 @@ if (process.env.NODE_ENV === "development") {
 }
 
 const nextConfig = {
-  serverExternalPackages: ["imapflow", "sanitize-html"],
+  serverExternalPackages: ["sanitize-html"],
 };
 
 export default nextConfig;
