@@ -35,8 +35,7 @@ jobs:
           KV_NAMESPACE_ID: ${{ secrets.KV_NAMESPACE_ID }}
           EMAIL_RECEIVER_WORKER_NAME: ${{ secrets.EMAIL_RECEIVER_WORKER_NAME }}
           CLEANUP_WORKER_NAME: ${{ secrets.CLEANUP_WORKER_NAME }}
-          CREDENTIAL_ENCRYPTION_KEY: ${{ secrets.CREDENTIAL_ENCRYPTION_KEY }}
-          ICLOUD_BRIDGE_TOKEN: ${{ secrets.ICLOUD_BRIDGE_TOKEN }}
+          EXTERNAL_MAIL_SECRET: ${{ secrets.EXTERNAL_MAIL_SECRET }}
         run: pnpm exec tsx scripts/deploy/index.ts
 
       - name: Preserve pre-migration D1 export

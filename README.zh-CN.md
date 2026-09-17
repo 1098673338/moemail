@@ -35,7 +35,7 @@ pnpm exec wrangler kv key put EMAIL_DOMAINS 'example.test' --binding SITE_CONFIG
 
 - `CLOUDFLARE_API_TOKEN`、`CLOUDFLARE_ACCOUNT_ID`
 - `DATABASE_NAME`、`DATABASE_ID`、`KV_NAMESPACE_ID`
-- `CREDENTIAL_ENCRYPTION_KEY`、`ICLOUD_BRIDGE_TOKEN`
+- 现有的 `EXTERNAL_MAIL_SECRET`
 
 如果既有 Worker 并非 `email-receiver-worker` 与 `cleanup-worker`，再额外配置
 `EMAIL_RECEIVER_WORKER_NAME` 和 `CLEANUP_WORKER_NAME`；否则无需配置。

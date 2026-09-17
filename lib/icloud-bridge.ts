@@ -19,10 +19,12 @@ export function withBridgeCors(response: NextResponse) {
 }
 
 export function authorizeIcloudBridge(request: Request) {
-  const configuredToken = getEnv().ICLOUD_BRIDGE_TOKEN;
+  // Reuse MoeMail's existing deployment secret. The Chrome bridge is deferred,
+  // so this keeps the endpoint compatible without introducing a new secret.
+  const configuredToken = getEnv().EXTERNAL_MAIL_SECRET;
   if (!configuredToken || configuredToken.length < 32) {
     return NextResponse.json(
-      { error: "本地同步助手未配置 ICLOUD_BRIDGE_TOKEN" },
+      { error: "本地同步助手未配置 EXTERNAL_MAIL_SECRET" },
       { status: 503 },
     );
   }

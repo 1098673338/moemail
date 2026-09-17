@@ -2,9 +2,9 @@ import crypto from "node:crypto";
 import { getEnv } from "@/lib/env";
 
 function getKey() {
-  const secret = getEnv().CREDENTIAL_ENCRYPTION_KEY;
+  const secret = getEnv().EXTERNAL_MAIL_SECRET;
   if (!secret || secret.length < 32) {
-    throw new Error("请先配置至少 32 个字符的 CREDENTIAL_ENCRYPTION_KEY Secret");
+    throw new Error("请先配置至少 32 个字符的 EXTERNAL_MAIL_SECRET Secret");
   }
   return crypto.createHash("sha256").update(secret, "utf8").digest();
 }
