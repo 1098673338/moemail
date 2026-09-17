@@ -10,6 +10,5 @@
     "database_name": "moemail",
     "database_id": "00000000-0000-0000-0000-000000000000",
     "migrations_dir": "drizzle"
-  }],
-  "kv_namespaces": [{ "binding": "SITE_CONFIG", "id": "00000000000000000000000000000000" }]
+  }]
 }

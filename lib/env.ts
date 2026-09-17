@@ -2,7 +2,6 @@ import { getCloudflareContext } from "@opennextjs/cloudflare";
 
 export type RuntimeEnv = {
   DB: D1Database;
-  SITE_CONFIG: KVNamespace;
   EXTERNAL_MAIL_SECRET: string;
 };
 

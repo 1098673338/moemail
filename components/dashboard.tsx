@@ -34,9 +34,8 @@ import { formatDistanceToNow } from "date-fns";
 import { zhCN } from "date-fns/locale";
 import type { ICloudAccountDto, MailAddressDto, MailMessageDto } from "@/lib/types";
 import { messageSummary } from "@/lib/message-content";
-import { TemporaryMailboxView } from "./temporary-mailbox/temporary-mailbox-view";
 
-type View = "icloud" | "temporary" | "settings";
+type View = "icloud" | "settings";
 type AddressSortKey = "addedAt" | "receivedAt" | "tag";
 type AddressSort = { key: AddressSortKey; direction: "asc" | "desc" };
 type ContentFilter = "all" | "empty" | "filled";
@@ -564,9 +563,6 @@ export function Dashboard() {
           <button className={view === "icloud" ? "active" : ""} onClick={() => { setView("icloud"); setMobileNavOpen(false); }}>
             <Cloud size={19} /><span>iCloud 邮箱</span><em>{addresses.filter((address) => address.type === "icloud_hide").length}</em>
           </button>
-          <button className={view === "temporary" ? "active" : ""} onClick={() => { setView("temporary"); setMobileNavOpen(false); }}>
-            <Mail size={19} /><span>临时邮箱</span>
-          </button>
           <button className={view === "settings" ? "active" : ""} onClick={() => { setView("settings"); setMobileNavOpen(false); }}>
             <Settings size={19} /><span>账号设置</span>
           </button>
@@ -574,7 +570,7 @@ export function Dashboard() {
       </aside>
 
       <section className="main-area">
-        {view === "temporary" ? <TemporaryMailboxView /> : loading ? <LoadingState /> : view === "icloud" ? (
+        {loading ? <LoadingState /> : view === "icloud" ? (
           <AddressView
             addresses={addresses}
             messages={messages}

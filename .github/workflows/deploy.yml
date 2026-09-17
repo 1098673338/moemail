@@ -32,9 +32,6 @@ jobs:
           WORKER_NAME: ${{ secrets.WORKER_NAME }}
           DATABASE_NAME: ${{ secrets.DATABASE_NAME }}
           DATABASE_ID: ${{ secrets.DATABASE_ID }}
-          KV_NAMESPACE_ID: ${{ secrets.KV_NAMESPACE_ID }}
-          EMAIL_RECEIVER_WORKER_NAME: ${{ secrets.EMAIL_RECEIVER_WORKER_NAME }}
-          CLEANUP_WORKER_NAME: ${{ secrets.CLEANUP_WORKER_NAME }}
           EXTERNAL_MAIL_SECRET: ${{ secrets.EXTERNAL_MAIL_SECRET }}
         run: pnpm exec tsx scripts/deploy/index.ts
 

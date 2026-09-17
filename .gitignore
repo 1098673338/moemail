@@ -45,13 +45,5 @@ next-env.d.ts
 .release-secrets.json
 artifacts/
 wrangler.toml
-wrangler.email.toml
-wrangler.cleanup.toml
-
-public/workbox-*.js
-public/sw.js
 
 wrangler.json
-wrangler.cleanup.json
-wrangler.email.json
-.agents/skills/moemail/SKILL.md

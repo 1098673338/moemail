@@ -13,12 +13,7 @@
     "preview:worker": "opennextjs-cloudflare build && opennextjs-cloudflare preview",
     "deploy:worker": "opennextjs-cloudflare deploy",
     "cf-typegen": "wrangler types --env-interface CloudflareEnv cloudflare-env.d.ts",
-    "db:migrate-local": "wrangler d1 migrations apply moemail --local --config wrangler.jsonc",
-    "dev:cleanup": "wrangler dev --config wrangler.cleanup.json --test-scheduled",
-    "test:cleanup": "curl http://localhost:8787/__scheduled",
-    "deploy:email": "wrangler deploy --config wrangler.email.json",
-    "deploy:cleanup": "wrangler deploy --config wrangler.cleanup.json",
-    "test:workers": "tsx --test workers/**/*.test.ts"
+    "db:migrate-local": "wrangler d1 migrations apply moemail --local --config wrangler.jsonc"
   },
   "type": "module",
   "dependencies": {
