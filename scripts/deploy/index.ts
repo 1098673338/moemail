@@ -32,10 +32,25 @@ const replace = (file: string, target: string, name: string) => {
 };
 const run = (label: string, command: string, args: string[]) => {
   try {
-    execFileSync(command, args, { stdio: "inherit", env: process.env });
+    // Capture build output so a Linux-only bundling failure is visible as an
+    // Actions annotation. Other commands retain streaming output and never
+    // risk printing the temporary secret payload.
+    if (label === "Workers build") {
+      const output = execFileSync(command, args, { encoding: "utf8", env: process.env, maxBuffer: 10 * 1024 * 1024 });
+      process.stdout.write(output);
+    } else {
+      execFileSync(command, args, { stdio: "inherit", env: process.env });
+    }
   } catch (error) {
-    const status = typeof error === "object" && error && "status" in error ? String(error.status ?? "unknown") : "unknown";
-    failPreflight("Deployment command failed", `${label} failed (exit ${status}). Open the ${label} output in the Run deploy script step for Cloudflare's detailed error.`);
+    const processError = error as { status?: number | null; stdout?: Buffer | string; stderr?: Buffer | string };
+    const status = String(processError.status ?? "unknown");
+    const output = [processError.stdout, processError.stderr]
+      .filter((value): value is Buffer | string => Boolean(value))
+      .map((value) => value.toString())
+      .join("\n")
+      .slice(-1_500)
+      .replace(/[%\r\n]/g, " ");
+    failPreflight("Deployment command failed", `${label} failed (exit ${status}).${output ? ` Build output: ${output}` : ` Open the ${label} output in the Run deploy script step for Cloudflare's detailed error.`}`);
   }
 };
 
@@ -63,9 +78,11 @@ replace("wrangler.email.example.json", "wrangler.email.release.json", emailRecei
 replace("wrangler.cleanup.example.json", "wrangler.cleanup.release.json", cleanupWorkerName);
 
 const config = "wrangler.release.jsonc";
+// Build before making any remote D1 change. A bad Linux/Workers bundle must
+// never leave the production database migrated without a matching deployment.
+run("Workers build", "pnpm", ["run", "build:worker"]);
 run("D1 backup export", "pnpm", ["exec", "wrangler", "d1", "export", process.env.DATABASE_NAME!, "--remote", "--skip-confirmation", "--output", resolve("artifacts/d1-backup", `${process.env.DATABASE_NAME}-before-migration.sql`), "--config", config]);
 run("D1 migrations", "pnpm", ["exec", "wrangler", "d1", "migrations", "apply", process.env.DATABASE_NAME!, "--remote", "--config", config]);
-run("Workers build", "pnpm", ["run", "build:worker"]);
 const secretFile = ".release-secrets.json";
 writeFileSync(secretFile, JSON.stringify({ EXTERNAL_MAIL_SECRET: process.env.EXTERNAL_MAIL_SECRET }));
 run("Main Worker secret update", "pnpm", ["exec", "wrangler", "secret", "bulk", secretFile, "--config", config]);
