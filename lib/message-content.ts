@@ -4,7 +4,10 @@ type MessageContent = {
   htmlBody?: string | null;
 };
 
-export const OPENAI_ACCESS_DEACTIVATED_PREFIX = "OpenAI - Access Deactivated";
+export const OPENAI_ACCESS_DEACTIVATED_PREFIXES = [
+  "OpenAI - Access Deactivated",
+  "OpenAI - アクセスが無効になりました",
+] as const;
 
 function normalizeMessageText(value: string) {
   return value
@@ -24,6 +27,7 @@ export function messageSummary(message: Pick<MessageContent, "textBody" | "htmlB
 }
 
 export function isOpenAiAccessDeactivatedMessage(message: MessageContent) {
-  return normalizeMessageText(message.subject).startsWith(OPENAI_ACCESS_DEACTIVATED_PREFIX)
-    || messageSummary(message).startsWith(OPENAI_ACCESS_DEACTIVATED_PREFIX);
+  const subject = normalizeMessageText(message.subject);
+  const summary = messageSummary(message);
+  return OPENAI_ACCESS_DEACTIVATED_PREFIXES.some((prefix) => subject.startsWith(prefix) || summary.startsWith(prefix));
 }
