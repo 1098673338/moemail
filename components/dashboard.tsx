@@ -1343,12 +1343,6 @@ function SettingsView(props: {
             </div>
           </div>;
         })}
-        {props.accounts.length > 0 && <div className="form-hint"><ShieldCheck size={18} /><p>隐藏邮件地址不会从邮件内容中推测。请在 iCloud+ 地址清单页运行“Mailbox Studio iCloud 地址同步助手”，同步账号中的使用中地址。</p></div>}
-      </section>
-
-      <section className="settings-card panel full">
-        <div className="settings-card-head"><div className="settings-icon shield"><ShieldCheck size={20} /></div><div><h2>数据与凭据</h2><p>邮箱数据和连接凭据保存在当前设备。</p></div></div>
-        <div className="security-list"><span><Check size={16} />iCloud App 专用密码经过 AES-256-GCM 加密后保存</span><span><Check size={16} />iCloud 隐藏邮件地址需要先停用，才能删除本地记录</span><span><Check size={16} />邮件 HTML 内容经过白名单清理后保存</span></div>
       </section>
     </div>
   );
