@@ -42,7 +42,7 @@ type ContentFilter = "all" | "empty" | "filled";
 type TagFilter = string;
 type AddressTag = { name: string; color: string };
 type TagEditorState = { addressId: string; top: number; left: number; trigger: HTMLButtonElement };
-type IcloudSyncResponse = { imported: number; removed: number; synced: number };
+type IcloudSyncResponse = { imported: number; removed: number; synced: number; remaining?: number };
 type Modal = "edit_address" | "icloud" | "icloud_password" | null;
 type Notice = { tone: "success" | "error"; text: string };
 const ADDRESS_PAGE_SIZE = 20;
@@ -649,8 +649,10 @@ export function Dashboard() {
             onConnectIcloud={() => setModal("icloud")}
             onUpdateCredentials={(account) => { setCredentialAccountId(account.id); setModal("icloud_password"); }}
             onSync={(id) => void runAction(`icloud:sync:${id}`, async () => {
-              const result = await requestJson<{ imported: number; removed: number; synced: number }>(`/api/icloud/accounts/${id}/sync`, { method: "POST" }, 75_000);
-              return `iCloud 邮箱已同步全部 ${result.synced} 封邮件，新增 ${result.imported} 封，移除 ${result.removed} 封远端已删除邮件`;
+              const result = await requestJson<IcloudSyncResponse>(`/api/icloud/accounts/${id}/sync`, { method: "POST" }, 75_000);
+              return result.remaining
+                ? `本次已同步 ${result.synced} 封邮件，新增 ${result.imported} 封；剩余 ${result.remaining} 封将继续同步`
+                : `iCloud 邮箱已同步全部 ${result.synced} 封邮件，新增 ${result.imported} 封，移除 ${result.removed} 封远端已删除邮件`;
             }, "iCloud 邮箱已同步")}
             onClearAliases={(account) => setConfirmation({
               title: "清空所有 iCloud 邮箱",

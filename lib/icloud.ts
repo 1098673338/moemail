@@ -7,6 +7,7 @@ import { IcloudImapClient } from "@/lib/icloud-imap";
 
 const domains = new Set(["icloud.com", "me.com", "mac.com"]);
 const aliasDomains = new Set(["icloud.com", "me.com", "mac.com", "privaterelay.appleid.com", "icloudprivaterelay.com"]);
+const ICLOUD_SYNC_BATCH_SIZE = 20;
 type Account = { id:string; email_address:string; username:string; encrypted_password:string; status:"active"|"disabled"|"sync_error"; uid_validity:string|null; last_uid:number };
 const normalize=(value:string)=>value.trim().toLowerCase();
 const stamp=()=>Date.now();
@@ -96,9 +97,11 @@ export async function syncIcloudAccount(accountId:string) {
     const remoteList=await active.client.searchUids();
     removed=await reconcileIcloudMessages(accountId,mailboxPath,new Set(remoteList));
     const fetch=uidValidityChanged || !state || state.last_uid===0 ? remoteList : remoteList.filter(uid=>uid>state.last_uid);
+    const batchToImport=fetch.slice(0,ICLOUD_SYNC_BATCH_SIZE);
+    const remaining=Math.max(fetch.length-batchToImport.length,0);
     maxUid=uidValidityChanged ? 0 : state?.last_uid || 0;
-    for(const uid of fetch){
-      const item=await active.client.fetchMessage(uid); if(!item) continue;
+    const fetchedMessages=await active.client.fetchMessages(batchToImport);
+    for(const item of fetchedMessages){
       maxUid=Math.max(maxUid,item.uid);
       const parsed=await PostalMime.parse(item.source);
       const delivered=recipients(parsed); const addressIds=await matchingIds(accountId,account.email_address,delivered);
@@ -110,7 +113,7 @@ export async function syncIcloudAccount(accountId:string) {
     await run("INSERT INTO icloud_mailbox_state (account_id,mailbox_path,uid_validity,last_uid,last_sync_at,created_at,updated_at) VALUES (?,?,?,?,?,?,?) ON CONFLICT(account_id,mailbox_path) DO UPDATE SET uid_validity=excluded.uid_validity,last_uid=excluded.last_uid,last_sync_at=excluded.last_sync_at,updated_at=excluded.updated_at",accountId,mailboxPath,validity,maxUid,current,current,current);
     await run("UPDATE mail_account SET uid_validity=?,last_uid=?,last_sync_at=?,sync_error=NULL,status='active',updated_at=? WHERE id=?",validity,maxUid,current,current,accountId);
     const automatic=await scanPendingAutomaticTags({accountId});
-    return {imported,removed,synced,lastUid:maxUid,uidValidity:validity,uidValidityChanged,mailboxes:1,automaticTagScanned:automatic.scanned,automaticTagApplied:automatic.tagged};
+    return {imported,removed,synced,lastUid:maxUid,uidValidity:validity,uidValidityChanged,mailboxes:1,remaining,automaticTagScanned:automatic.scanned,automaticTagApplied:automatic.tagged};
   } catch(error) { const message=error instanceof Error ? error.message : "iCloud 同步失败"; await run("UPDATE mail_account SET status='sync_error',sync_error=?,updated_at=? WHERE id=?",message,stamp(),accountId); throw error; }
   finally { await active?.client.logout(); }
 }

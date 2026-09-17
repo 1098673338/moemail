@@ -104,23 +104,43 @@ export class IcloudImapClient {
   }
 
   async searchUids() {
-    const response = decoder.decode(await this.command("UID SEARCH ALL"));
+    const response = decoder.decode(await this.command("UID SEARCH NOT DELETED"));
     const list = response.match(/^\* SEARCH(?:\s+(.*))?$/mi)?.[1] || "";
     return list.split(/\s+/).map(Number).filter((value) => Number.isSafeInteger(value) && value > 0);
   }
 
   async fetchMessage(uid: number): Promise<IcloudImapMessage | null> {
-    const response = await this.command(`UID FETCH ${uid} (UID INTERNALDATE BODY.PEEK[])`);
-    const firstLineEnd = indexOf(response, CRLF);
-    if (firstLineEnd < 0) return null;
-    const firstLine = decoder.decode(response.slice(0, firstLineEnd));
-    const match = firstLine.match(/^\* \d+ FETCH \(UID (\d+) INTERNALDATE "([^"]+)" BODY\.PEEK\[\] \{(\d+)\}$/i);
-    if (!match) return null;
-    const sourceStart = firstLineEnd + CRLF.length;
-    const size = Number(match[3]);
-    if (!Number.isSafeInteger(size) || size < 0 || response.length < sourceStart + size) throw new Error("iCloud IMAP 返回了不完整的邮件内容");
-    const internalDate = new Date(match[2]);
-    return { uid: Number(match[1]), internalDate: Number.isNaN(internalDate.getTime()) ? null : internalDate, source: response.slice(sourceStart, sourceStart + size) };
+    return (await this.fetchMessages([uid]))[0] || null;
+  }
+
+  async fetchMessages(uids: number[]): Promise<IcloudImapMessage[]> {
+    if (!uids.length) return [];
+    const request = uids.filter((uid) => Number.isSafeInteger(uid) && uid > 0);
+    if (!request.length) return [];
+    const response = await this.command(`UID FETCH ${request.join(",")} (UID INTERNALDATE BODY.PEEK[])`);
+    const messages: IcloudImapMessage[] = [];
+    let cursor = 0;
+    while (cursor < response.length) {
+      const lineEnd = indexOf(response, CRLF, cursor);
+      if (lineEnd < 0) break;
+      const line = decoder.decode(response.slice(cursor, lineEnd));
+      const match = line.match(/^\* \d+ FETCH \(UID (\d+) INTERNALDATE "([^"]+)" BODY(?:\.PEEK)?\[\] \{(\d+)\}$/i);
+      if (!match) {
+        cursor = lineEnd + CRLF.length;
+        continue;
+      }
+      const sourceStart = lineEnd + CRLF.length;
+      const size = Number(match[3]);
+      if (!Number.isSafeInteger(size) || size < 0 || response.length < sourceStart + size) throw new Error("iCloud IMAP 返回了不完整的邮件内容");
+      const internalDate = new Date(match[2]);
+      messages.push({
+        uid: Number(match[1]),
+        internalDate: Number.isNaN(internalDate.getTime()) ? null : internalDate,
+        source: response.slice(sourceStart, sourceStart + size),
+      });
+      cursor = sourceStart + size;
+    }
+    return messages;
   }
 
   async deleteMessage(uid: number) {
