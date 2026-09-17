@@ -3,7 +3,13 @@ import { existsSync, mkdirSync, readFileSync, unlinkSync, writeFileSync } from "
 import { resolve } from "node:path";
 
 const required = ["CLOUDFLARE_API_TOKEN", "CLOUDFLARE_ACCOUNT_ID", "WORKER_NAME", "DATABASE_NAME", "DATABASE_ID", "KV_NAMESPACE_ID", "CREDENTIAL_ENCRYPTION_KEY", "ICLOUD_BRIDGE_TOKEN"] as const;
-for (const key of required) if (!process.env[key]) throw new Error(`Missing required GitHub Secret: ${key}`);
+const failPreflight = (title: string, message: string): never => {
+  // Render the actual cause in GitHub Actions' annotations, rather than only
+  // the generic exit-code annotation that GitHub emits for a failed shell step.
+  console.error(`::error title=${title}::${message}`);
+  throw new Error(message);
+};
+for (const key of required) if (!process.env[key]) failPreflight("Missing GitHub Secret", `Required GitHub Secret ${key} is empty or unavailable.`);
 
 // These are the legacy Worker service names already targeted by Email Routing
 // and the existing cleanup cron. They must be deployed in place, never renamed
@@ -26,7 +32,12 @@ async function requireExistingWorker(name: string) {
   const response = await fetch(`https://api.cloudflare.com/client/v4/accounts/${process.env.CLOUDFLARE_ACCOUNT_ID}/workers/services/${name}`, {
     headers: { Authorization: `Bearer ${process.env.CLOUDFLARE_API_TOKEN}` },
   });
-  if (!response.ok) throw new Error(`Required existing Worker ${name} was not found; deployment will not create it.`);
+  if (!response.ok) {
+    failPreflight(
+      "Cloudflare Worker preflight failed",
+      `Required existing Worker ${name} was not found or cannot be read (HTTP ${response.status}). Check its name and that CLOUDFLARE_API_TOKEN has Workers Scripts:Read permission.`,
+    );
+  }
 }
 
 // The main application Worker is the approved replacement for Pages and may be
