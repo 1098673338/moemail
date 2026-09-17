@@ -9,7 +9,7 @@
       "binding": "DB",
       "migrations_dir": "drizzle",
       "database_name": "moemail",
-      "database_id": "${DATABASE_ID}"
+      "database_id": "00000000-0000-0000-0000-000000000000"
     }
   ]
 }

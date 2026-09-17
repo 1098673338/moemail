@@ -20,20 +20,21 @@ const main = {
         return
       }
 
-      const result = await env.DB
-        .prepare(`
-          DELETE FROM email 
-          WHERE expires_at < ?
-          LIMIT ?
-        `)
+      const expired = await env.DB
+        .prepare(`SELECT id FROM email WHERE expires_at < ? ORDER BY expires_at ASC LIMIT ?`)
         .bind(now, CLEANUP_CONFIG.BATCH_SIZE)
-        .run()
+        .all<{ id: string }>()
+      const ids = expired.results.map((row: { id: string }) => row.id)
+      if (ids.length === 0) return
 
-      if (result.success) {
-        console.log(`Deleted ${result?.meta?.changes ?? 0} expired emails and their associated messages`)
-      } else {
-        console.error('Failed to delete expired emails')
-      }
+      const placeholders = ids.map(() => '?').join(', ')
+      const result = await env.DB.batch([
+        env.DB.prepare(`DELETE FROM message WHERE source = 'temporary' AND "emailId" IN (${placeholders})`).bind(...ids),
+        env.DB.prepare(`DELETE FROM email WHERE id IN (${placeholders})`).bind(...ids),
+      ])
+
+      const deleteResult = result[1]
+      console.log(`Deleted ${deleteResult?.meta?.changes ?? 0} expired temporary mailboxes and their associated messages`)
     } catch (error) {
       console.error('Failed to cleanup:', error)
       throw error

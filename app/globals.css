@@ -1,104 +1,58 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
-
-@layer base {
-  html,
-  body {
-    min-width: 1920px;
-  }
-
-  :root {
-    --background: 0 0% 100%;
-    --foreground: 240 10% 3.9%;
-    --card: 0 0% 100%;
-    --card-foreground: 240 10% 3.9%;
-    --popover: 0 0% 100%;
-    --popover-foreground: 240 10% 3.9%;
-    --primary: 255 65% 52%;  /* #826DD9 */
-    --primary-foreground: 0 0% 98%;
-    --secondary: 240 4.8% 95.9%;
-    --secondary-foreground: 240 5.9% 10%;
-    --muted: 240 4.8% 95.9%;
-    --muted-foreground: 240 3.8% 46.1%;
-    --accent: 240 4.8% 95.9%;
-    --accent-foreground: 240 5.9% 10%;
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 0 0% 98%;
-    --border: 240 5.9% 90%;
-    --input: 240 5.9% 90%;
-    --ring: 255 65% 52%;  /* #826DD9 */
-    --radius: 0.75rem;
-  }
-
+:root {
+  color-scheme: light;
+  --color-canvas: #f7f4ed;
+  --color-surface-soft: #f7f4ed;
+  --color-surface-card: rgb(28 28 28 / 4%);
+  --color-surface-elevated: #fcfbf8;
+  --color-carbon: #1c1c1c;
+  --color-hairline: #eceae4;
+  --color-hairline-strong: rgb(28 28 28 / 6%);
+  --color-interactive-border: rgb(28 28 28 / 40%);
+  --color-focus-border: rgb(28 28 28 / 18%);
+  --color-ink: #1c1c1c;
+  --color-body-strong: rgb(28 28 28 / 83%);
+  --color-body: rgb(28 28 28 / 82%);
+  --color-muted: #5f5f5d;
+  --color-faint: rgb(28 28 28 / 40%);
+  --color-link: #1c1c1c;
+  --color-link-pressed: rgb(28 28 28 / 80%);
+  --color-link-soft: rgb(28 28 28 / 4%);
+  --color-focus: rgb(59 130 246 / 50%);
+  --color-warning: #835c2d;
+  --color-warning-soft: #efe3c9;
+  --color-success: #41675d;
+  --color-danger: #994848;
+  --color-danger-pressed: #783737;
+  --space-xxs: 4px;
+  --space-xs: 8px;
+  --space-sm: 12px;
+  --space-md: 16px;
+  --space-lg: 24px;
+  --space-xl: 40px;
+  --space-xxl: 64px;
+  --control-height: 40px;
+  --sidebar-width: 224px;
+  --radius-control: 6px;
+  --radius-card: 12px;
+  --radius-large: 16px;
+  --shadow-card: none;
+  --shadow-button: none;
+  --shadow-focus: none;
+  --shadow-floating: none;
+  --font-ui: "Camera Plain Variable", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+  --font-mono: "Camera Plain Variable", ui-sans-serif, system-ui, sans-serif;
 }
 
-@layer base {
-  * {
-    @apply border-border;
-  }
-
-  :where(
-    button,
-    a,
-    select,
-    input[type="button"],
-    input[type="submit"],
-    input[type="reset"],
-    [role="button"],
-    [role="tab"],
-    [role="menuitem"],
-    [role="option"],
-    [role="checkbox"],
-    [role="radio"],
-    [role="switch"],
-    [tabindex]:not([tabindex="-1"])
-  ):not(input:not([type="button"]):not([type="submit"]):not([type="reset"])):not(textarea):focus,
-  :where(
-    button,
-    a,
-    select,
-    input[type="button"],
-    input[type="submit"],
-    input[type="reset"],
-    [role="button"],
-    [role="tab"],
-    [role="menuitem"],
-    [role="option"],
-    [role="checkbox"],
-    [role="radio"],
-    [role="switch"],
-    [tabindex]:not([tabindex="-1"])
-  ):not(input:not([type="button"]):not([type="submit"]):not([type="reset"])):not(textarea):focus-visible {
-    outline: none !important;
-    box-shadow: none !important;
-  }
-
-  :where(button, [role="button"], input[type="button"], input[type="submit"], input[type="reset"]) {
-    box-shadow: none !important;
-  }
-
-  body {
-    @apply bg-background text-foreground;
-  }
-}
-
-@layer utilities {
-  .bg-grid-primary {
-    background-image: linear-gradient(var(--primary) 1px, transparent 1px),
-      linear-gradient(90deg, var(--primary) 1px, transparent 1px);
-    background-size: 20px 20px;
-  }
-
-  /* 隐藏滚动条，保留滚动能力 */
-  * {
-    -ms-overflow-style: none;
-    scrollbar-width: none;
-  }
-
-  *::-webkit-scrollbar {
-    display: none;
-    width: 0;
-    height: 0;
-  }
-}
+* { box-sizing: border-box; }
+html, body { margin: 0; min-height: 100%; background: var(--color-canvas); color: var(--color-ink); font-family: var(--font-ui); }
+body { font-weight: 400; -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility; }
+button, input, textarea, select { font: inherit; }
+button, a { -webkit-tap-highlight-color: transparent; }
+button, a, select { cursor: pointer; }
+button:disabled, select:disabled { cursor: not-allowed; }
+button:focus-visible, a:focus-visible { outline: 2px solid var(--color-focus); outline-offset: 1px; }
+input:focus-visible, textarea:focus-visible, select:focus-visible { outline: 2px solid var(--color-focus); outline-offset: 1px; }
+::selection { color: var(--color-ink); background: var(--color-link-soft); }
+/* Keep scrolling available while removing visible scrollbar chrome. */
+*, *::before, *::after { scrollbar-width: none; }
+*::-webkit-scrollbar { width: 0; height: 0; display: none; }

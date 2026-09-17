@@ -1,10 +1,6 @@
-import { Env } from '../types'
-import { drizzle } from 'drizzle-orm/d1'
-import { messages, emails, webhooks } from '../app/lib/schema'
-import { eq, sql } from 'drizzle-orm'
 import PostalMime, { type Attachment } from 'postal-mime'
-import { WEBHOOK_CONFIG } from '../app/config/webhook'
-import { EmailMessage } from '../app/lib/webhook'
+
+interface Env { DB: D1Database }
 
 const MAX_EMAIL_BYTES = 2 * 1024 * 1024
 const MAX_INLINE_IMAGE_BYTES = 256 * 1024
@@ -52,7 +48,9 @@ const inlineCidImages = (html: string, attachments: Attachment[]) => {
       continue
     }
 
-    const byteLength = attachment.content.byteLength
+    if (typeof attachment.content === 'string') continue
+    const content = attachment.content instanceof Uint8Array ? new Uint8Array(attachment.content).buffer : attachment.content
+    const byteLength = content.byteLength
     if (
       byteLength > MAX_INLINE_IMAGE_BYTES ||
       inlinedBytes + byteLength > MAX_TOTAL_INLINE_IMAGE_BYTES
@@ -61,7 +59,7 @@ const inlineCidImages = (html: string, attachments: Attachment[]) => {
     }
 
     const dataUrl = `data:${attachment.mimeType};base64,${arrayBufferToBase64(
-      attachment.content
+      content
     )}`
     inlinedBytes += byteLength
     const cidVariants = Array.from(new Set([
@@ -85,71 +83,39 @@ const inlineCidImages = (html: string, attachments: Attachment[]) => {
 }
 
 const handleEmail = async (message: ForwardableEmailMessage, env: Env) => {
-  const db = drizzle(env.DB, { schema: { messages, emails, webhooks } })
-
   if (message.rawSize > MAX_EMAIL_BYTES) {
     message.setReject('Email exceeds the supported size limit')
     console.warn(`Rejected oversized email: ${message.rawSize} bytes`)
     return
   }
 
-  const parsedMessage = await PostalMime.parse(message.raw)
-  const html = inlineCidImages(parsedMessage.html || '', parsedMessage.attachments)
-
   try {
-    const targetEmail = await db.query.emails.findFirst({
-      where: eq(sql`LOWER(${emails.address})`, message.to.toLowerCase())
-    })
+    const targetEmail = await env.DB.prepare(
+      "SELECT id,address FROM email WHERE lower(address)=? AND expires_at>? LIMIT 1",
+    ).bind(message.to.toLowerCase(), Date.now()).first<{ id: string; address: string }>()
 
     if (!targetEmail) {
-      console.error(`Email not found: ${message.to}`)
+      console.error(`Active temporary mailbox not found: ${message.to}`)
       return
     }
 
-    if (targetEmail.isCustom) {
-      console.log(`Ignored custom email: ${message.to}`)
-      return
-    }
-
-    const savedMessage = await db.insert(messages).values({
-      emailId: targetEmail.id,
-      fromAddress: message.from,
-      toAddress: targetEmail.address,
-      subject: parsedMessage.subject || '(无主题)',
-      content: parsedMessage.text || '',
-      html,
-      type: 'received',
-    }).returning().get()
-
-    const webhook = await db.query.webhooks.findFirst({
-      where: eq(webhooks.userId, targetEmail!.userId!)
-    })
-
-    if (webhook?.enabled) {
-      try {
-        await fetch(webhook.url, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'X-Webhook-Event': WEBHOOK_CONFIG.EVENTS.NEW_MESSAGE
-          },
-          body: JSON.stringify({
-            emailId: targetEmail.id,
-            messageId: savedMessage.id,
-            fromAddress: savedMessage.fromAddress,
-            subject: savedMessage.subject,
-            content: savedMessage.content,
-            html: savedMessage.html,
-            receivedAt: savedMessage.receivedAt.toISOString(),
-            toAddress: targetEmail.address
-          } as EmailMessage)
-        })
-      } catch (error) {
-        console.error('Failed to send webhook:', error)
-      }
-    }
-
-    console.log(`Email processed: ${parsedMessage.subject}`)
+    // `message.raw` is a one-shot stream. Cache it before parsing so future
+    // processing can never accidentally consume it twice.
+    const raw = await new Response(message.raw).arrayBuffer()
+    const parsedMessage = await PostalMime.parse(raw)
+    const html = inlineCidImages(parsedMessage.html || '', parsedMessage.attachments)
+    const now = Date.now()
+    const id = crypto.randomUUID()
+    await env.DB.prepare(`INSERT INTO message (
+      id,source,account_id,provider_uid,provider_mailbox,provider_message_id,sender_address,sender_name,
+      recipients_json,subject,text_body,html_body,raw_object_key,received_at,is_read,automatic_tag_scanned_at,
+      deleted_at,created_at,updated_at,emailId,from_address,to_address,content,html,type,sent_at
+    ) VALUES (?,'temporary',NULL,NULL,NULL,NULL,?,NULL,?,?,?,?,NULL,?,0,NULL,NULL,?,?,?,?,?,'received',?)`).bind(
+      id, message.from, JSON.stringify([targetEmail.address]), parsedMessage.subject || '(无主题)',
+      parsedMessage.text || '', html, now, now, now, targetEmail.id, message.from,
+      targetEmail.address, parsedMessage.text || '', html, now,
+    ).run()
+    console.log(`Temporary email processed: ${id}`)
   } catch (error) {
     console.error('Failed to process email:', error)
   }

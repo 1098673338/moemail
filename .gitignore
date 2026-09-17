@@ -41,6 +41,9 @@ yarn-error.log*
 next-env.d.ts
 
 .wrangler
+.open-next
+.release-secrets.json
+artifacts/
 wrangler.toml
 wrangler.email.toml
 wrangler.cleanup.toml

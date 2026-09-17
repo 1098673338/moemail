@@ -1,0 +1,6 @@
+.temporary-mailbox { padding: 32px; color: #1f2937; }
+.temporary-mailbox header, .temporary-create, .temporary-title { display:flex; align-items:center; gap:12px; justify-content:space-between; }
+.temporary-mailbox h1 { margin:0; font-size:24px; }.temporary-mailbox p { color:#6b7280; }
+.temporary-mailbox input, .temporary-mailbox select, .temporary-mailbox button { min-height:36px; border:1px solid #d1d5db; border-radius:7px; background:#fff; padding:0 10px; }
+.temporary-mailbox button { display:inline-flex; align-items:center; gap:6px; cursor:pointer; }.temporary-create { margin:24px 0; justify-content:flex-start; }
+.temporary-columns { display:grid; grid-template-columns:260px 320px minmax(0,1fr); border:1px solid #e5e7eb; min-height:480px; }.temporary-columns > * { min-width:0; padding:12px; border-right:1px solid #e5e7eb; }.temporary-columns > article { border-right:0; }.temporary-columns aside button,.temporary-columns section > button { width:100%; text-align:left; margin-bottom:6px; }.temporary-columns .selected { background:#eef4ff; border-color:#93c5fd; }.temporary-columns span { display:block; overflow:hidden; text-overflow:ellipsis; }.temporary-columns pre { white-space:pre-wrap; font:14px/1.6 ui-monospace,monospace; }.temporary-notice { margin-top:12px; color:#b91c1c; }
