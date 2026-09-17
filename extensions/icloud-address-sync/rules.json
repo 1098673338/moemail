@@ -16,5 +16,23 @@
       { "header": "Referer", "operation": "set", "value": "https://www.icloud.com/" }
     ] },
     "condition": { "urlFilter": "||setup.icloud.com/" }
+  },
+  {
+    "id": 3,
+    "priority": 1,
+    "action": { "type": "modifyHeaders", "requestHeaders": [
+      { "header": "Origin", "operation": "set", "value": "https://www.icloud.com.cn" },
+      { "header": "Referer", "operation": "set", "value": "https://www.icloud.com.cn/icloudplus/" }
+    ] },
+    "condition": { "urlFilter": "icloud.com.cn/v" }
+  },
+  {
+    "id": 4,
+    "priority": 1,
+    "action": { "type": "modifyHeaders", "requestHeaders": [
+      { "header": "Origin", "operation": "set", "value": "https://www.icloud.com" },
+      { "header": "Referer", "operation": "set", "value": "https://www.icloud.com/" }
+    ] },
+    "condition": { "urlFilter": "icloud.com/v" }
   }
 ]

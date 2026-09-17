@@ -47,3 +47,4 @@ artifacts/
 wrangler.toml
 
 wrangler.json
+extensions/**/_metadata/
