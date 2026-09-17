@@ -47,7 +47,7 @@ type Modal = "edit_address" | "icloud" | null;
 type Notice = { tone: "success" | "error"; text: string };
 const ADDRESS_PAGE_SIZE = 20;
 const DEFAULT_ADDRESS_SORT: AddressSort = { key: "receivedAt", direction: "desc" };
-const ICLOUD_SYNC_INTERVAL = 1_000;
+const ICLOUD_SYNC_INTERVAL = 30_000;
 const DEFAULT_TAG_COLOR = "#6b7280";
 const ICLOUD_BRIDGE_VERSION = 1;
 const TAG_COLOR_OPTIONS = [
@@ -373,7 +373,10 @@ export function Dashboard() {
 
   const syncIcloudAccounts = useCallback(async () => {
     if (icloudSyncInFlightRef.current) return icloudSyncInFlightRef.current;
-    const syncableAccounts = accountsRef.current.filter((account) => account.status !== "disabled");
+    // A failed IMAP login is persisted as sync_error by the API. It requires a
+    // new App-specific password, so retrying it in the background only creates
+    // repeated requests and repeated error toasts.
+    const syncableAccounts = accountsRef.current.filter((account) => account.status === "active");
     if (syncableAccounts.length === 0) return null;
 
     const requestId = ++icloudSyncRequestIdRef.current;
@@ -398,10 +401,18 @@ export function Dashboard() {
   }, [refreshData]);
 
   const notifyBackgroundSyncError = useCallback((error: unknown) => {
+    const message = error instanceof Error ? error.message : "自动同步失败，请稍后重试";
+    if (/\bauthentication failed\b|authenticationfailed|app 专用密码|用户名或 app/i.test(message)) {
+      setNotice({
+        tone: "error",
+        text: "iCloud 身份验证失败，自动同步已暂停。请在“账号设置”中断开当前账号，再使用新的 Apple App 专用密码重新连接。",
+      });
+      return;
+    }
     const now = Date.now();
     if (now - backgroundSyncNoticeAtRef.current < 15_000) return;
     backgroundSyncNoticeAtRef.current = now;
-    setNotice({ tone: "error", text: error instanceof Error ? error.message : "自动同步失败，请稍后重试" });
+    setNotice({ tone: "error", text: message });
   }, []);
 
   useEffect(() => {
@@ -423,7 +434,7 @@ export function Dashboard() {
       }
     };
 
-    if (accountsRef.current.some((account) => account.status !== "disabled")) {
+    if (accountsRef.current.some((account) => account.status === "active")) {
       void tick();
     } else {
       scheduleNext();
