@@ -22,9 +22,51 @@ export async function testIcloudConnection(input:{username:string;appPassword:st
 export async function connectIcloudAccount(input:{emailAddress:string;username:string;appPassword:string}){ const emailAddress=normalize(input.emailAddress); assertIcloud(emailAddress); if(await one("SELECT id FROM mail_account WHERE email_address=? COLLATE NOCASE",emailAddress)) throw new MailStoreError("这个 iCloud 邮箱已经连接","conflict"); const encrypted=encryptCredential(input.appPassword); await testIcloudConnection(input); const id=crypto.randomUUID(); const now=stamp(); await run("INSERT INTO mail_account (id,provider,email_address,username,encrypted_password,status,last_uid,created_at,updated_at) VALUES (?,'icloud',?,?,?,'active',0,?,?)",id,emailAddress,input.username.trim(),encrypted,now,now); try { await createAddress({address:emailAddress,type:"icloud_primary",accountId:id,label:"iCloud 主邮箱",note:"通过 IMAP 接入，用于同步隐藏邮件地址收到的邮件。"}); } catch(error) { await run("DELETE FROM mail_account WHERE id=?",id); throw error; } return id; }
 
 export type IcloudAliasSnapshotItem={address:string;providerId:string;status:"active"|"disabled";providerLabel?:string|null;providerOrigin?:string|null;providerCreatedAt?:string|null};
-export async function syncIcloudAliasSnapshot(accountId:string,aliases:IcloudAliasSnapshotItem[],authoritative:boolean,scope:"all"|"active"="all") { const account=await one<Account>("SELECT * FROM mail_account WHERE id=?",accountId); if(!account) throw new MailStoreError("iCloud 账号不存在","not_found"); let created=0,updated=0; const ids:string[]=[]; for(const alias of aliases){ if(scope==="active" && alias.status!=="active") throw new MailStoreError("使用中地址快照不能包含已停用记录","conflict"); const address=normalize(alias.address); if(!aliasDomains.has(address.split("@")[1] || "") || address===account.email_address) throw new MailStoreError(`地址 ${address} 不是受支持的 iCloud 隐藏地址`,"conflict"); let existing=await one<{id:string;type:string;account_id:string|null}>("SELECT id,type,account_id FROM mail_address WHERE (provider='icloud' AND provider_id=?) OR address=? COLLATE NOCASE LIMIT 1",alias.providerId,address); if(existing && existing.type!=="icloud_hide") throw new MailStoreError(`地址 ${address} 已被其他邮箱类型占用`,"conflict"); if(existing?.account_id && existing.account_id!==accountId) throw new MailStoreError(`地址 ${address} 已属于另一个 iCloud 账号`,"conflict"); if(!existing){ const item=await createAddress({address,type:"icloud_hide",accountId,note:"从 iCloud+ 账号地址清单同步。",providerCreatedAt:alias.providerCreatedAt ? new Date(alias.providerCreatedAt) : null,addedAt:null}); existing={id:item.id,type:item.type,account_id:accountId}; created++; } else updated++; const now=stamp(); await run("UPDATE mail_address SET account_id=?,provider='icloud',provider_id=?,provider_label=COALESCE(?,provider_label),provider_origin=?,provider_created_at=COALESCE(?,provider_created_at),status=?,disabled_at=CASE WHEN ?='disabled' THEN COALESCE(disabled_at,?) ELSE NULL END,deleted_at=NULL,updated_at=? WHERE id=?",accountId,alias.providerId,alias.providerLabel || null,alias.providerOrigin || null,alias.providerCreatedAt ? new Date(alias.providerCreatedAt).getTime() : null,alias.status,alias.status,now,now,existing.id); ids.push(existing.id); }
-  let removed=0; if(authoritative){ const placeholders=ids.map(()=>"?").join(","); const omitted=ids.length ? ` AND id NOT IN (${placeholders})` : ""; const action=await run(`UPDATE mail_address SET status='deleted',deleted_at=COALESCE(deleted_at,?),updated_at=? WHERE account_id=? AND type='icloud_hide' AND status<>'deleted'${omitted}`,stamp(),stamp(),accountId,...ids); removed=Number(action.meta.changes || 0); }
-  const count=await one<{active_count:number;inactive_count:number}>("SELECT SUM(CASE WHEN status='active' THEN 1 ELSE 0 END) active_count,SUM(CASE WHEN status='disabled' THEN 1 ELSE 0 END) inactive_count FROM mail_address WHERE account_id=? AND type='icloud_hide'",accountId); const now=stamp(); await run("UPDATE mail_account SET aliases_last_sync_at=?,aliases_active_count=?,aliases_inactive_count=?,updated_at=? WHERE id=?",now,Number(count?.active_count || 0),Number(count?.inactive_count || 0),now,accountId); return {created,updated,removed,disabled:0,activeCount:Number(count?.active_count || 0),inactiveCount:Number(count?.inactive_count || 0),linkedMessages:0}; }
+const D1_MUTATION_BATCH_SIZE = 50;
+function chunks<T>(values: T[], size = D1_MUTATION_BATCH_SIZE) { const result: T[][] = []; for (let index = 0; index < values.length; index += size) result.push(values.slice(index, index + size)); return result; }
+
+export async function syncIcloudAliasSnapshot(accountId:string,aliases:IcloudAliasSnapshotItem[],authoritative:boolean,scope:"all"|"active"="all") {
+  const account=await one<Account>("SELECT * FROM mail_account WHERE id=?",accountId);
+  if(!account) throw new MailStoreError("iCloud 账号不存在","not_found");
+  let created=0,updated=0;
+  const ids=new Set<string>();
+
+  for(const alias of aliases){
+    if(scope==="active" && alias.status!=="active") throw new MailStoreError("使用中地址快照不能包含已停用记录","conflict");
+    const address=normalize(alias.address);
+    if(!aliasDomains.has(address.split("@")[1] || "") || address===account.email_address) throw new MailStoreError(`地址 ${address} 不是受支持的 iCloud 隐藏地址`,"conflict");
+    let existing=await one<{id:string;type:string;account_id:string|null}>("SELECT id,type,account_id FROM mail_address WHERE (provider='icloud' AND provider_id=?) OR address=? COLLATE NOCASE LIMIT 1",alias.providerId,address);
+    if(existing && existing.type!=="icloud_hide") throw new MailStoreError(`地址 ${address} 已被其他邮箱类型占用`,"conflict");
+    if(existing?.account_id && existing.account_id!==accountId) throw new MailStoreError(`地址 ${address} 已属于另一个 iCloud 账号`,"conflict");
+    if(!existing){
+      const item=await createAddress({address,type:"icloud_hide",accountId,note:"从 iCloud+ 账号地址清单同步。",providerCreatedAt:alias.providerCreatedAt ? new Date(alias.providerCreatedAt) : null,addedAt:null});
+      existing={id:item.id,type:item.type,account_id:accountId};
+      created++;
+    } else updated++;
+    const now=stamp();
+    await run("UPDATE mail_address SET account_id=?,provider='icloud',provider_id=?,provider_label=COALESCE(?,provider_label),provider_origin=?,provider_created_at=COALESCE(?,provider_created_at),status=?,disabled_at=CASE WHEN ?='disabled' THEN COALESCE(disabled_at,?) ELSE NULL END,deleted_at=NULL,updated_at=? WHERE id=?",accountId,alias.providerId,alias.providerLabel || null,alias.providerOrigin || null,alias.providerCreatedAt ? new Date(alias.providerCreatedAt).getTime() : null,alias.status,alias.status,now,now,existing.id);
+    ids.add(existing.id);
+  }
+
+  let removed=0;
+  if(authoritative){
+    // D1/SQLite rejects a large NOT IN (?, ?, ...) list. Fetch the small ID-only
+    // local set and mark omissions in bounded batches instead, with the same
+    // authoritative snapshot semantics and no schema change.
+    const current=await all<{id:string}>("SELECT id FROM mail_address WHERE account_id=? AND type='icloud_hide' AND status<>'deleted'",accountId);
+    const omitted=current.map(row=>row.id).filter(id=>!ids.has(id));
+    const now=stamp();
+    for(const group of chunks(omitted)){
+      const results=await batch(group.map(id=>({ query:"UPDATE mail_address SET status='deleted',deleted_at=COALESCE(deleted_at,?),updated_at=? WHERE id=? AND status<>'deleted'", params:[now,now,id] })));
+      removed+=results.reduce((total,result)=>total+Number(result.meta.changes || 0),0);
+    }
+  }
+
+  const count=await one<{active_count:number;inactive_count:number}>("SELECT SUM(CASE WHEN status='active' THEN 1 ELSE 0 END) active_count,SUM(CASE WHEN status='disabled' THEN 1 ELSE 0 END) inactive_count FROM mail_address WHERE account_id=? AND type='icloud_hide'",accountId);
+  const now=stamp();
+  await run("UPDATE mail_account SET aliases_last_sync_at=?,aliases_active_count=?,aliases_inactive_count=?,updated_at=? WHERE id=?",now,Number(count?.active_count || 0),Number(count?.inactive_count || 0),now,accountId);
+  return {created,updated,removed,disabled:0,activeCount:Number(count?.active_count || 0),inactiveCount:Number(count?.inactive_count || 0),linkedMessages:0};
+}
 
 export async function clearIcloudAliases(accountId:string){ if(!await one("SELECT id FROM mail_account WHERE id=?",accountId)) throw new MailStoreError("iCloud 账号不存在","not_found"); const now=stamp(); const result=await run("UPDATE mail_address SET status='deleted',deleted_at=COALESCE(deleted_at,?),updated_at=? WHERE account_id=? AND type='icloud_hide' AND status<>'deleted'",now,now,accountId); await run("UPDATE mail_account SET aliases_active_count=0,aliases_inactive_count=0,updated_at=? WHERE id=?",now,accountId); return {removed:Number(result.meta.changes || 0)}; }
 export async function purgeIcloudAliasData(accountId:string){ if(!await one("SELECT id FROM mail_account WHERE id=?",accountId)) throw new MailStoreError("iCloud 账号不存在","not_found"); const result=await run("DELETE FROM mail_address WHERE account_id=? AND type='icloud_hide'",accountId); await run("UPDATE mail_account SET aliases_last_sync_at=NULL,aliases_active_count=0,aliases_inactive_count=0,updated_at=? WHERE id=?",stamp(),accountId); return {removed:Number(result.meta.changes || 0)}; }
