@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>MoeMail iCloud 地址同步</title>
+    <title>iCloud 地址同步侧边栏</title>
     <link rel="stylesheet" href="popup.css">
   </head>
   <body>
@@ -21,20 +21,31 @@
         <span>同步密钥</span>
         <input id="token" type="password" autocomplete="off" placeholder="EXTERNAL_MAIL_SECRET 的值">
       </label>
-      <p class="hint">仅保存到此 Chrome 配置文件。请填写 Workers 预览地址或已绑定的正式域名。</p>
       <button id="connect" class="button secondary" type="button">连接云端项目</button>
 
       <section class="apple-controls">
         <div id="accountSection" hidden>
-          <button id="sync" class="button primary" type="button">同步隐藏地址</button>
+          <button id="sync" class="button primary" type="button">同步地址</button>
         </div>
-        <div class="apple-actions">
-          <button id="createAliases" class="button primary" type="button">创建隐私邮箱</button>
-          <button id="deleteDisabled" class="button destructive" type="button">删除停用地址</button>
+
+        <div id="appleSection">
+          <div class="apple-actions">
+            <button id="createAliases" class="button primary" type="button">创建隐私邮箱</button>
+            <button id="deleteDisabled" class="button destructive" type="button">删除停用地址</button>
+          </div>
         </div>
       </section>
 
-      <div id="status" role="status" aria-live="polite"></div>
+      <div class="toast-stack" aria-label="操作提示">
+        <div id="createProgress" class="create-progress" role="status" aria-live="polite" hidden>
+          <div class="create-progress-row">
+            <span id="createProgressText">正在准备创建…</span>
+            <strong id="createProgressCount">已创建 0</strong>
+          </div>
+          <progress id="createProgressBar" aria-label="批量创建进度"></progress>
+        </div>
+        <div id="status" role="status" aria-live="polite"></div>
+      </div>
     </main>
     <script src="popup.js"></script>
   </body>

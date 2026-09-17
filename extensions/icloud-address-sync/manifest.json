@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "MoeMail iCloud 地址同步助手",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "复用 Chrome 中已登录的 iCloud 会话，同步、创建、修改和停用隐藏邮件地址。",
   "permissions": ["activeTab", "scripting", "storage", "cookies", "sidePanel", "declarativeNetRequestWithHostAccess"],
   "host_permissions": [
