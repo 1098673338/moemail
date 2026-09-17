@@ -8,6 +8,7 @@
 
   const previousBridge = window[bridgeStateKey];
   if (previousBridge?.handler) window.removeEventListener("message", previousBridge.handler);
+  if (previousBridge?.runtimeHandler) chrome.runtime.onMessage.removeListener(previousBridge.runtimeHandler);
 
   const postResult = (resultType, requestId, response) => {
     window.postMessage({
@@ -47,6 +48,17 @@
     }
   };
 
-  window[bridgeStateKey] = { version: bridgeVersion, handler };
+  const runtimeHandler = (message, _sender, sendResponse) => {
+    if (message?.type !== "MOEMAIL_ALIAS_SNAPSHOT_SYNCED") return;
+    window.postMessage({
+      type: "MOEMAIL_ALIAS_SNAPSHOT_SYNCED",
+      bridgeVersion,
+      result: message.result || null,
+    }, "*");
+    sendResponse({ ok: true });
+  };
+
+  window[bridgeStateKey] = { version: bridgeVersion, handler, runtimeHandler };
   window.addEventListener("message", handler);
+  chrome.runtime.onMessage.addListener(runtimeHandler);
 })();

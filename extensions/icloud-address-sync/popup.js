@@ -94,20 +94,23 @@ async function cloudRequest(path, options = {}) {
   return data;
 }
 
-async function refreshCloudPages() {
+async function notifyCloudPages(result) {
   const origin = serverOrigin();
   const tabs = await chrome.tabs.query({});
-  let refreshed = 0;
+  let notified = 0;
   await Promise.all(tabs.map(async (tab) => {
     try {
       if (!Number.isInteger(tab.id) || new URL(tab.url || "").origin !== origin) return;
-      await chrome.tabs.reload(tab.id);
-      refreshed += 1;
+      const response = await chrome.tabs.sendMessage(tab.id, {
+        type: "MOEMAIL_ALIAS_SNAPSHOT_SYNCED",
+        result,
+      });
+      if (response?.ok) notified += 1;
     } catch {
-      // The page can close or navigate while the sync is completing.
+      // The project page can close or navigate while the sync is completing.
     }
   }));
-  return refreshed;
+  return notified;
 }
 
 async function ensureAppBridge() {
@@ -246,8 +249,8 @@ async function syncAliases() {
     });
     setStatus(`地址已同步 ${addressResult.activeCount} 个，正在同步邮箱…`);
     const mailResult = await cloudRequest(`/api/icloud/accounts/${connectedAccountId}/sync`, { method: "POST" });
-    const refreshedPages = await refreshCloudPages();
-    const pageStatus = refreshedPages > 0 ? "；项目页面已自动刷新" : "";
+    const updatedPages = await notifyCloudPages(addressResult);
+    const pageStatus = updatedPages > 0 ? "；项目页面已更新" : "";
     setStatus(`同步完成：${addressResult.activeCount} 个地址，${labelCount} 个带标签；邮件新增 ${mailResult.imported || 0} 封，已处理 ${mailResult.synced || 0} 封${pageStatus}。`, "success");
   } catch (error) {
     const message = error instanceof Error ? error.message : "同步失败";

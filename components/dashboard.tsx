@@ -87,6 +87,9 @@ async function requestJson<T>(url: string, init?: RequestInit, timeoutMs = 30_00
     if (error instanceof DOMException && error.name === "AbortError") {
       throw new Error(url.endsWith("/sync") ? "同步请求超时，请检查 iCloud 连接后重试" : "请求超时，请稍后重试");
     }
+    if (error instanceof TypeError && /failed to fetch/i.test(error.message)) {
+      throw new Error("无法连接云端接口，请检查网络后刷新页面重试");
+    }
     throw error;
   } finally {
     window.clearTimeout(timeout);
@@ -356,6 +359,19 @@ export function Dashboard() {
     dataRefreshInFlightRef.current = request;
     return request;
   }, [fetchData]);
+
+  useEffect(() => {
+    const handleAliasSnapshot = (event: MessageEvent) => {
+      if (event.source !== window || event.data?.type !== "MOEMAIL_ALIAS_SNAPSHOT_SYNCED" || event.data.bridgeVersion !== ICLOUD_BRIDGE_VERSION) return;
+      void refreshData().then(() => {
+        setNotice({ tone: "success", text: "iCloud 隐藏地址已同步，项目列表已更新" });
+      }).catch((error) => {
+        setNotice({ tone: "error", text: error instanceof Error ? error.message : "地址已同步，但项目列表刷新失败" });
+      });
+    };
+    window.addEventListener("message", handleAliasSnapshot);
+    return () => window.removeEventListener("message", handleAliasSnapshot);
+  }, [refreshData]);
 
   const loadData = useCallback(async () => {
     try {
