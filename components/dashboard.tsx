@@ -49,7 +49,7 @@ const ADDRESS_PAGE_SIZE = 20;
 const DEFAULT_ADDRESS_SORT: AddressSort = { key: "receivedAt", direction: "desc" };
 const ICLOUD_SYNC_INTERVAL = 1_000;
 const DEFAULT_TAG_COLOR = "#6b7280";
-const ICLOUD_BRIDGE_VERSION = 2;
+const ICLOUD_BRIDGE_VERSION = 1;
 const TAG_COLOR_OPTIONS = [
   "#6b7280", "#dc2626", "#ea580c", "#ca8a04", "#16a34a", "#2563eb", "#7c3aed", "#db2777",
   "#111827", "#9f1239", "#9a3412", "#4d7c0f", "#0f766e", "#0e7490", "#4338ca", "#a21caf",
@@ -202,10 +202,10 @@ function requestAppleLabelUpdate(address: MailAddressDto, label: string) {
     const requestId = crypto.randomUUID();
     const timeout = window.setTimeout(() => {
       window.removeEventListener("message", handleMessage);
-      reject(new Error("未检测到同步助手，请重新加载插件并刷新当前 Mailbox Studio 页面"));
+      reject(new Error("未检测到同步助手，请重新加载插件并刷新当前 MoeMail 页面"));
     }, 15_000);
     const handleMessage = (event: MessageEvent) => {
-      if (event.source !== window || event.data?.type !== "MAILBOX_STUDIO_UPDATE_APPLE_LABEL_RESULT" || event.data.requestId !== requestId || event.data.bridgeVersion !== ICLOUD_BRIDGE_VERSION) return;
+      if (event.source !== window || event.data?.type !== "MOEMAIL_UPDATE_APPLE_LABEL_RESULT" || event.data.requestId !== requestId || event.data.bridgeVersion !== ICLOUD_BRIDGE_VERSION) return;
       window.clearTimeout(timeout);
       window.removeEventListener("message", handleMessage);
       if (event.data.ok) resolve();
@@ -213,7 +213,7 @@ function requestAppleLabelUpdate(address: MailAddressDto, label: string) {
     };
     window.addEventListener("message", handleMessage);
     window.postMessage({
-      type: "MAILBOX_STUDIO_UPDATE_APPLE_LABEL",
+      type: "MOEMAIL_UPDATE_APPLE_LABEL",
       requestId,
       providerId: address.providerId,
       label,
@@ -230,10 +230,10 @@ function requestAppleAliasDeactivation(address: MailAddressDto) {
     const requestId = crypto.randomUUID();
     const timeout = window.setTimeout(() => {
       window.removeEventListener("message", handleMessage);
-      reject(new Error("未检测到同步助手，请重新加载插件并刷新当前 Mailbox Studio 页面"));
+      reject(new Error("未检测到同步助手，请重新加载插件并刷新当前 MoeMail 页面"));
     }, 30_000);
     const handleMessage = (event: MessageEvent) => {
-      if (event.source !== window || event.data?.type !== "MAILBOX_STUDIO_DEACTIVATE_APPLE_ALIAS_RESULT" || event.data.requestId !== requestId || event.data.bridgeVersion !== ICLOUD_BRIDGE_VERSION) return;
+      if (event.source !== window || event.data?.type !== "MOEMAIL_DEACTIVATE_APPLE_ALIAS_RESULT" || event.data.requestId !== requestId || event.data.bridgeVersion !== ICLOUD_BRIDGE_VERSION) return;
       window.clearTimeout(timeout);
       window.removeEventListener("message", handleMessage);
       if (event.data.ok) resolve();
@@ -241,7 +241,7 @@ function requestAppleAliasDeactivation(address: MailAddressDto) {
     };
     window.addEventListener("message", handleMessage);
     window.postMessage({
-      type: "MAILBOX_STUDIO_DEACTIVATE_APPLE_ALIAS",
+      type: "MOEMAIL_DEACTIVATE_APPLE_ALIAS",
       requestId,
       providerId: address.providerId,
     }, "*");

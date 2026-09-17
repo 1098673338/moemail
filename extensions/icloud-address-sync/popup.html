@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>MoeMail iCloud 地址同步</title>
+    <link rel="stylesheet" href="popup.css">
+  </head>
+  <body>
+    <main>
+      <header>
+        <div class="mark">@</div>
+        <div><strong>iCloud 地址同步</strong><span>MoeMail 云端助手</span></div>
+      </header>
+
+      <label>
+        <span>MoeMail 云端地址</span>
+        <input id="serverUrl" type="url" autocomplete="url" placeholder="https://moemail.你的账号.workers.dev" spellcheck="false">
+      </label>
+      <label>
+        <span>同步密钥</span>
+        <input id="token" type="password" autocomplete="off" placeholder="EXTERNAL_MAIL_SECRET 的值">
+      </label>
+      <p class="hint">仅保存到此 Chrome 配置文件。请填写 Workers 预览地址或已绑定的正式域名。</p>
+      <button id="connect" class="button secondary" type="button">连接云端项目</button>
+
+      <section class="apple-controls">
+        <div id="accountSection" hidden>
+          <button id="sync" class="button primary" type="button">同步隐藏地址</button>
+        </div>
+        <div class="apple-actions">
+          <button id="createAliases" class="button primary" type="button">创建隐私邮箱</button>
+          <button id="deleteDisabled" class="button destructive" type="button">删除停用地址</button>
+        </div>
+      </section>
+
+      <div id="status" role="status" aria-live="polite"></div>
+    </main>
+    <script src="popup.js"></script>
+  </body>
+</html>

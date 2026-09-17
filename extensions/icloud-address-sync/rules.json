@@ -1,0 +1,20 @@
+[
+  {
+    "id": 1,
+    "priority": 1,
+    "action": { "type": "modifyHeaders", "requestHeaders": [
+      { "header": "Origin", "operation": "set", "value": "https://www.icloud.com.cn" },
+      { "header": "Referer", "operation": "set", "value": "https://www.icloud.com.cn/icloudplus/" }
+    ] },
+    "condition": { "urlFilter": "||setup.icloud.com.cn/" }
+  },
+  {
+    "id": 2,
+    "priority": 1,
+    "action": { "type": "modifyHeaders", "requestHeaders": [
+      { "header": "Origin", "operation": "set", "value": "https://www.icloud.com" },
+      { "header": "Referer", "operation": "set", "value": "https://www.icloud.com/" }
+    ] },
+    "condition": { "urlFilter": "||setup.icloud.com/" }
+  }
+]
