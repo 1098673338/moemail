@@ -44,6 +44,7 @@ button:active:not(:disabled), a.button:active:not([aria-disabled="true"]) { opac
 .address-table-panel { min-height: 0; display: flex; flex: 1; flex-direction: column; overflow: hidden; }
 .table-toolbar-controls { min-width: 0; display: flex; align-items: center; gap: var(--space-xs); flex: 1; overflow-x: auto; scrollbar-width: none; }
 .table-toolbar-controls::-webkit-scrollbar { display: none; }
+.manual-mail-sync { flex: none; white-space: nowrap; }
 .address-search { width: 320px; min-height: 40px; margin-left: auto; padding: 0 8px 0 11px; display: flex; align-items: center; gap: 7px; flex: none; color: var(--color-muted); background: var(--color-canvas); border: 1px solid var(--color-hairline); border-radius: 8px; }
 .address-search:focus-within { color: var(--color-body-strong); border-color: var(--color-focus-border); }
 .address-search input { min-width: 0; height: 38px; padding: 0; flex: 1; color: var(--color-ink); background: transparent; border: 0; outline: 0; font-size: 12px; }

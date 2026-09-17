@@ -42,13 +42,13 @@ type ContentFilter = "all" | "empty" | "filled";
 type TagFilter = string;
 type AddressTag = { name: string; color: string };
 type TagEditorState = { addressId: string; top: number; left: number; trigger: HTMLButtonElement };
-type IcloudSyncResponse = { imported: number; removed: number; synced: number; remaining?: number };
+type IcloudSyncResponse = { imported: number; removed: number; synced: number; remaining?: number; automaticTagApplied?: number };
 type IcloudSyncProgress = { accountId: string; completed: number; total: number; remaining: number };
 type Modal = "edit_address" | "icloud" | "icloud_password" | null;
 type Notice = { tone: "success" | "error"; text: string };
 const ADDRESS_PAGE_SIZE = 20;
 const DEFAULT_ADDRESS_SORT: AddressSort = { key: "receivedAt", direction: "desc" };
-const ICLOUD_SYNC_INTERVAL = 30_000;
+const ICLOUD_SYNC_INTERVAL = 5 * 60_000;
 const DEFAULT_TAG_COLOR = "#6b7280";
 const ICLOUD_BRIDGE_VERSION = 1;
 const TAG_COLOR_OPTIONS = [
@@ -433,7 +433,7 @@ export function Dashboard() {
           recordIcloudSyncProgress(account.id, result);
           return result;
         }));
-        await refreshData();
+        if (results.some((result) => result.synced > 0 || result.removed > 0 || result.automaticTagApplied)) await refreshData();
         return results;
       } catch (error) {
         await refreshData().catch(() => undefined);
@@ -474,10 +474,10 @@ export function Dashboard() {
     let timer: number | null = null;
 
     const scheduleNext = () => {
-      if (!cancelled) timer = window.setTimeout(tick, ICLOUD_SYNC_INTERVAL);
+      if (!cancelled && document.visibilityState === "visible") timer = window.setTimeout(tick, ICLOUD_SYNC_INTERVAL);
     };
     const tick = async () => {
-      if (cancelled) return;
+      if (cancelled || document.visibilityState !== "visible") return;
       try {
         await syncIcloudAccounts();
       } catch (error) {
@@ -487,14 +487,24 @@ export function Dashboard() {
       }
     };
 
-    if (accountsRef.current.some((account) => account.status === "active")) {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState !== "visible") {
+        if (timer !== null) window.clearTimeout(timer);
+        timer = null;
+        return;
+      }
+      if (!icloudSyncInFlightRef.current && accountsRef.current.some((account) => account.status === "active")) void tick();
+    };
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    if (document.visibilityState === "visible" && accountsRef.current.some((account) => account.status === "active")) {
       void tick();
-    } else {
+    } else if (document.visibilityState === "visible") {
       scheduleNext();
     }
     return () => {
       cancelled = true;
       if (timer !== null) window.clearTimeout(timer);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
     };
   }, [view, accounts.length, icloudSyncProgress, refreshData, syncIcloudAccounts, notifyBackgroundSyncError]);
 
@@ -640,6 +650,19 @@ export function Dashboard() {
             messages={messages}
             sort={addressSort}
             onSortChange={setAddressSort}
+            canManualSync={accounts.some((account) => account.status === "active")}
+            manualSyncing={isPending("icloud:manual-sync")}
+            onManualSync={() => void runAction("icloud:manual-sync", async () => {
+              const results = await syncIcloudAccounts();
+              if (!results?.length) return "没有可同步的 iCloud 账号";
+              const imported = results.reduce((total, result) => total + result.imported, 0);
+              const removed = results.reduce((total, result) => total + result.removed, 0);
+              const remaining = results.reduce((total, result) => total + (result.remaining || 0), 0);
+              if (remaining) return `本次已同步邮件，新增 ${imported} 封；剩余 ${remaining} 封将继续同步`;
+              return imported || removed
+                ? `邮件同步完成：新增 ${imported} 封，移除 ${removed} 封远端已删除邮件`
+                : "邮件已同步，暂无变化";
+            }, "邮件同步完成")}
             onOpen={openAddressMail}
             onMarkRead={markMessageRead}
             onEdit={(address) => { setEditingAddressId(address.id); setModal("edit_address"); }}
@@ -694,13 +717,6 @@ export function Dashboard() {
             syncProgress={icloudSyncProgress}
             onConnectIcloud={() => setModal("icloud")}
             onUpdateCredentials={(account) => { setCredentialAccountId(account.id); setModal("icloud_password"); }}
-            onSync={(id) => void runAction(`icloud:sync:${id}`, async () => {
-              const result = await requestJson<IcloudSyncResponse>(`/api/icloud/accounts/${id}/sync`, { method: "POST" }, 75_000);
-              recordIcloudSyncProgress(id, result);
-              return result.remaining
-                ? `本次已同步 ${result.synced} 封邮件，新增 ${result.imported} 封；剩余 ${result.remaining} 封将继续同步`
-                : `iCloud 邮箱已同步全部 ${result.synced} 封邮件，新增 ${result.imported} 封，移除 ${result.removed} 封远端已删除邮件`;
-            }, "iCloud 邮箱已同步")}
             onClearAliases={(account) => setConfirmation({
               title: "清空所有 iCloud 邮箱",
               description: "将删除当前项目中的全部 iCloud 隐藏邮箱，只保留主邮箱。邮件会保留，之后可以重新同步地址。",
@@ -810,6 +826,9 @@ function AddressView(props: {
   messages: MailMessageDto[];
   sort: AddressSort;
   onSortChange: (sort: AddressSort) => void;
+  canManualSync: boolean;
+  manualSyncing: boolean;
+  onManualSync: () => void;
   onOpen: (address: MailAddressDto) => void;
   onMarkRead: (message: MailMessageDto) => Promise<void>;
   onEdit: (address: MailAddressDto) => void;
@@ -942,7 +961,12 @@ function AddressView(props: {
   return (
     <section className="address-table-section">
       <div className="address-table-toolbar">
-        {visibleAddresses.length > 0 && <div className="table-toolbar-controls">
+        {(props.canManualSync || visibleAddresses.length > 0) && <div className="table-toolbar-controls">
+          {props.canManualSync && <button className="button secondary compact manual-mail-sync" type="button" disabled={props.manualSyncing} onClick={props.onManualSync}>
+            {props.manualSyncing ? <LoaderCircle className="spin" size={15} /> : <RefreshCw size={15} />}
+            {props.manualSyncing ? "正在同步…" : "手动同步邮件"}
+          </button>}
+          {visibleAddresses.length > 0 && <>
           <div className="content-filter" role="group" aria-label="按邮件内容筛选">
             {filterOptions.map((option) => <button key={option.value} type="button" aria-pressed={contentFilter === option.value} className={contentFilter === option.value ? "active" : ""} onClick={() => {
               setFilledAtEmptyFilterStart(option.value === "empty"
@@ -970,6 +994,7 @@ function AddressView(props: {
             <input id="address-search-input" type="search" value={addressQuery} placeholder="搜索" autoComplete="off" onChange={(event) => updateAddressQuery(event.target.value)} />
             {addressQuery && <button type="button" aria-label="清除邮箱地址或备注搜索" onClick={() => updateAddressQuery("")}><X size={14} aria-hidden="true" /></button>}
           </div>
+          </>}
         </div>}
       </div>
       {visibleAddresses.length === 0 ? (
@@ -1311,7 +1336,6 @@ function SettingsView(props: {
   syncProgress: IcloudSyncProgress | null;
   onConnectIcloud: () => void;
   onUpdateCredentials: (account: ICloudAccountDto) => void;
-  onSync: (id: string) => void;
   onClearAliases: (account: ICloudAccountDto) => void;
   onClearAliasData: (account: ICloudAccountDto) => void;
   onDisconnect: (account: ICloudAccountDto) => void;
@@ -1326,6 +1350,7 @@ function SettingsView(props: {
         ) : props.accounts.map((account) => {
           const syncProgress = props.syncProgress?.accountId === account.id ? props.syncProgress : null;
           const syncPercent = syncProgress ? Math.round((syncProgress.completed / Math.max(syncProgress.total, 1)) * 100) : 0;
+          const accountBusy = props.isPending("icloud:manual-sync") || props.isPending(`icloud:clear:${account.id}`) || props.isPending(`icloud:clear-data:${account.id}`) || props.isPending(`icloud:disconnect:${account.id}`);
           return <div className="connection-row" key={account.id}>
             <div><strong>{account.emailAddress}</strong><span>{account.syncError || `邮件上次同步：${relativeTime(account.lastSyncAt)} · 地址：${account.aliasesActiveCount} 个使用中 · 地址清单更新于 ${relativeTime(account.aliasesLastSyncAt)}`}</span></div>
             <span className={`status-pill ${account.status}`}>{account.status === "active" ? "已连接" : account.status === "sync_error" ? "需要检查" : "已停用"}</span>
@@ -1335,11 +1360,10 @@ function SettingsView(props: {
               <p>本次已同步 {syncProgress.completed} 封，剩余 {syncProgress.remaining} 封将继续同步。</p>
             </div>}
             <div className="connection-actions">
-              <button className="button secondary compact" disabled={props.isPending(`icloud:sync:${account.id}`) || props.isPending(`icloud:clear:${account.id}`) || props.isPending(`icloud:clear-data:${account.id}`) || props.isPending(`icloud:disconnect:${account.id}`)} onClick={() => props.onSync(account.id)}>{props.isPending(`icloud:sync:${account.id}`) ? <LoaderCircle className="spin" size={15} /> : <RefreshCw size={15} />}{props.isPending(`icloud:sync:${account.id}`) ? "正在同步…" : "同步邮箱"}</button>
-              <button className="button secondary compact" disabled={props.isPending(`icloud:sync:${account.id}`) || props.isPending(`icloud:clear:${account.id}`) || props.isPending(`icloud:clear-data:${account.id}`) || props.isPending(`icloud:disconnect:${account.id}`)} onClick={() => props.onUpdateCredentials(account)}><ShieldCheck size={15} />更新密码</button>
-              <button className="button destructive compact" disabled={props.isPending(`icloud:sync:${account.id}`) || props.isPending(`icloud:clear:${account.id}`) || props.isPending(`icloud:clear-data:${account.id}`) || props.isPending(`icloud:disconnect:${account.id}`)} onClick={() => props.onClearAliases(account)}>{props.isPending(`icloud:clear:${account.id}`) ? <LoaderCircle className="spin" size={15} /> : <Trash2 size={15} />}{props.isPending(`icloud:clear:${account.id}`) ? "正在清空…" : "清空所有邮箱"}</button>
-              <button className="button destructive compact" disabled={props.isPending(`icloud:sync:${account.id}`) || props.isPending(`icloud:clear:${account.id}`) || props.isPending(`icloud:clear-data:${account.id}`) || props.isPending(`icloud:disconnect:${account.id}`)} onClick={() => props.onClearAliasData(account)}>{props.isPending(`icloud:clear-data:${account.id}`) ? <LoaderCircle className="spin" size={15} /> : <DatabaseX size={15} />}{props.isPending(`icloud:clear-data:${account.id}`) ? "正在清除…" : "清空所有数据"}</button>
-              <button className="button destructive compact" disabled={props.isPending(`icloud:sync:${account.id}`) || props.isPending(`icloud:clear:${account.id}`) || props.isPending(`icloud:clear-data:${account.id}`) || props.isPending(`icloud:disconnect:${account.id}`)} onClick={() => props.onDisconnect(account)}>{props.isPending(`icloud:disconnect:${account.id}`) ? <LoaderCircle className="spin" size={15} /> : <Unplug size={15} />}{props.isPending(`icloud:disconnect:${account.id}`) ? "正在断开…" : "断开连接"}</button>
+              <button className="button secondary compact" disabled={accountBusy} onClick={() => props.onUpdateCredentials(account)}><ShieldCheck size={15} />更新密码</button>
+              <button className="button destructive compact" disabled={accountBusy} onClick={() => props.onClearAliases(account)}>{props.isPending(`icloud:clear:${account.id}`) ? <LoaderCircle className="spin" size={15} /> : <Trash2 size={15} />}{props.isPending(`icloud:clear:${account.id}`) ? "正在清空…" : "清空所有邮箱"}</button>
+              <button className="button destructive compact" disabled={accountBusy} onClick={() => props.onClearAliasData(account)}>{props.isPending(`icloud:clear-data:${account.id}`) ? <LoaderCircle className="spin" size={15} /> : <DatabaseX size={15} />}{props.isPending(`icloud:clear-data:${account.id}`) ? "正在清除…" : "清空所有数据"}</button>
+              <button className="button destructive compact" disabled={accountBusy} onClick={() => props.onDisconnect(account)}>{props.isPending(`icloud:disconnect:${account.id}`) ? <LoaderCircle className="spin" size={15} /> : <Unplug size={15} />}{props.isPending(`icloud:disconnect:${account.id}`) ? "正在断开…" : "断开连接"}</button>
             </div>
           </div>;
         })}

@@ -110,7 +110,16 @@ export async function syncIcloudAliasSnapshot(accountId:string,aliases:IcloudAli
 export async function clearIcloudAliases(accountId:string){ if(!await one("SELECT id FROM mail_account WHERE id=?",accountId)) throw new MailStoreError("iCloud 账号不存在","not_found"); const now=stamp(); const result=await run("UPDATE mail_address SET status='deleted',deleted_at=COALESCE(deleted_at,?),updated_at=? WHERE account_id=? AND type='icloud_hide' AND status<>'deleted'",now,now,accountId); await run("UPDATE mail_account SET aliases_active_count=0,aliases_inactive_count=0,updated_at=? WHERE id=?",now,accountId); return {removed:Number(result.meta.changes || 0)}; }
 export async function purgeIcloudAliasData(accountId:string){ if(!await one("SELECT id FROM mail_account WHERE id=?",accountId)) throw new MailStoreError("iCloud 账号不存在","not_found"); const result=await run("DELETE FROM mail_address WHERE account_id=? AND type='icloud_hide'",accountId); await run("UPDATE mail_account SET aliases_last_sync_at=NULL,aliases_active_count=0,aliases_inactive_count=0,updated_at=? WHERE id=?",stamp(),accountId); return {removed:Number(result.meta.changes || 0)}; }
 
-async function matchingIds(accountId:string,primary:string,list:string[]){ const rows=await all<{id:string;address:string;type:string}>("SELECT id,address,type FROM mail_address WHERE status='active' AND ((type='icloud_primary' AND account_id=?) OR (type='icloud_hide' AND account_id=?))",accountId,accountId); const values=new Set(list.map(normalize)); return rows.filter(row=>row.type==="icloud_primary" || values.has(normalize(row.address)) || normalize(row.address)===normalize(primary)).map(row=>row.id); }
+type ActiveIcloudAddress = { id: string; address: string; type: "icloud_primary" | "icloud_hide" };
+
+async function listActiveIcloudAddresses(accountId: string) {
+  return all<ActiveIcloudAddress>("SELECT id,address,type FROM mail_address WHERE status='active' AND ((type='icloud_primary' AND account_id=?) OR (type='icloud_hide' AND account_id=?))", accountId, accountId);
+}
+
+function matchingIds(addresses: ActiveIcloudAddress[], primary: string, list: string[]) {
+  const values = new Set(list.map(normalize));
+  return addresses.filter((row) => row.type === "icloud_primary" || values.has(normalize(row.address)) || normalize(row.address) === normalize(primary)).map((row) => row.id);
+}
 
 export async function syncIcloudAccount(accountId:string) {
   const account=await one<Account>("SELECT * FROM mail_account WHERE id=?",accountId);
@@ -131,14 +140,14 @@ export async function syncIcloudAccount(accountId:string) {
     const batchToImport=fetch.slice(0,ICLOUD_SYNC_BATCH_SIZE);
     const remaining=Math.max(fetch.length-batchToImport.length,0);
     maxUid=uidValidityChanged ? 0 : state?.last_uid || 0;
+    const activeAddresses = batchToImport.length ? await listActiveIcloudAddresses(accountId) : [];
     const fetchedMessages=await active.client.fetchMessages(batchToImport);
     for(const item of fetchedMessages){
       maxUid=Math.max(maxUid,item.uid);
       const parsed=await PostalMime.parse(item.source);
-      const delivered=recipients(parsed); const addressIds=await matchingIds(accountId,account.email_address,delivered);
-      const known=await one("SELECT id FROM message WHERE source='icloud' AND account_id=? AND provider_mailbox=? AND provider_uid=?",accountId,mailboxPath,item.uid);
-      await ingestMessage({source:"icloud",accountId,providerUid:item.uid,providerMailbox:mailboxPath,providerMessageId:parsed.messageId || `uid:${mailboxPath}:${item.uid}`,senderAddress:parsed.from?.address || "unknown@invalid.local",senderName:parsed.from?.name || null,recipients:delivered.length ? delivered : [account.email_address],subject:parsed.subject || "（无主题）",textBody:parsed.text || "",htmlBody:sanitizeEmailHtml(parsed.html),addressIds,receivedAt:parsed.date ? new Date(parsed.date) : item.internalDate || new Date()});
-      if(!known) imported++; synced++;
+      const delivered=recipients(parsed); const addressIds=matchingIds(activeAddresses,account.email_address,delivered);
+      const stored=await ingestMessage({source:"icloud",accountId,providerUid:item.uid,providerMailbox:mailboxPath,providerMessageId:parsed.messageId || `uid:${mailboxPath}:${item.uid}`,senderAddress:parsed.from?.address || "unknown@invalid.local",senderName:parsed.from?.name || null,recipients:delivered.length ? delivered : [account.email_address],subject:parsed.subject || "（无主题）",textBody:parsed.text || "",htmlBody:sanitizeEmailHtml(parsed.html),addressIds,receivedAt:parsed.date ? new Date(parsed.date) : item.internalDate || new Date()});
+      if(stored.created) imported++; synced++;
     }
     const current=stamp();
     await run("INSERT INTO icloud_mailbox_state (account_id,mailbox_path,uid_validity,last_uid,last_sync_at,created_at,updated_at) VALUES (?,?,?,?,?,?,?) ON CONFLICT(account_id,mailbox_path) DO UPDATE SET uid_validity=excluded.uid_validity,last_uid=excluded.last_uid,last_sync_at=excluded.last_sync_at,updated_at=excluded.updated_at",accountId,mailboxPath,validity,maxUid,current,current,current);

@@ -23,7 +23,18 @@ function messageDto(row: MessageRow): MailMessageDto {
 }
 
 export async function listAddresses(includeDeleted = false) {
-  const rows = await all<AddressRow>(`SELECT a.*, (SELECT COUNT(*) FROM message_recipient mr JOIN message m ON m.id=mr.message_id WHERE mr.address_id=a.id AND m.source='icloud' AND m.deleted_at IS NULL) message_count FROM mail_address a WHERE a.type IN ('icloud_primary','icloud_hide') ${includeDeleted ? "" : "AND a.status <> 'deleted'"} ORDER BY a.added_at DESC, a.created_at DESC`);
+  const rows = await all<AddressRow>(`WITH message_counts AS (
+    SELECT mr.address_id, COUNT(*) AS message_count
+    FROM message_recipient mr
+    JOIN message m ON m.id = mr.message_id
+    WHERE m.source = 'icloud' AND m.deleted_at IS NULL
+    GROUP BY mr.address_id
+  )
+  SELECT a.*, COALESCE(message_counts.message_count, 0) AS message_count
+  FROM mail_address a
+  LEFT JOIN message_counts ON message_counts.address_id = a.id
+  WHERE a.type IN ('icloud_primary','icloud_hide') ${includeDeleted ? "" : "AND a.status <> 'deleted'"}
+  ORDER BY a.added_at DESC, a.created_at DESC`);
   return rows.map(addressDto);
 }
 
@@ -61,7 +72,29 @@ export async function deleteIcloudAddressAfterAppleDeactivation(id: string) {
   const removed = await run(`DELETE FROM message WHERE id IN (SELECT message_id FROM message_recipient WHERE address_id=?) AND NOT EXISTS (SELECT 1 FROM message_recipient mr WHERE mr.message_id=message.id AND mr.address_id<>?)`,id,id); await run("DELETE FROM mail_address WHERE id=?",id); if (current.accountId && current.status === "active") await run("UPDATE mail_account SET aliases_active_count=MAX(aliases_active_count-1,0),updated_at=? WHERE id=?",now(),current.accountId); return { id, removedMessages: Number(removed.meta.changes || 0) };
 }
 
-export async function listMessages(addressId?: string | null) { const rows = await all<MessageRow>(`SELECT m.*,GROUP_CONCAT(mr.address_id) address_ids FROM message m JOIN message_recipient mr ON mr.message_id=m.id WHERE m.source='icloud' AND m.deleted_at IS NULL ${addressId ? "AND mr.address_id=?" : ""} GROUP BY m.id ORDER BY m.received_at DESC ${addressId ? "" : "LIMIT 200"}`, ...(addressId ? [addressId] : [])); return rows.map(messageDto); }
+export async function listMessages(addressId?: string | null) {
+  const rows = addressId
+    ? await all<MessageRow>(`SELECT m.*, GROUP_CONCAT(mr.address_id) address_ids
+      FROM message_recipient selected
+      JOIN message m ON m.id = selected.message_id
+      JOIN message_recipient mr ON mr.message_id = m.id
+      WHERE selected.address_id = ? AND m.source = 'icloud' AND m.deleted_at IS NULL
+      GROUP BY m.id
+      ORDER BY m.received_at DESC`, addressId)
+    : await all<MessageRow>(`WITH recent_messages AS (
+        SELECT *
+        FROM message
+        WHERE source = 'icloud' AND deleted_at IS NULL
+        ORDER BY received_at DESC
+        LIMIT 200
+      )
+      SELECT m.*, GROUP_CONCAT(mr.address_id) address_ids
+      FROM recent_messages m
+      JOIN message_recipient mr ON mr.message_id = m.id
+      GROUP BY m.id
+      ORDER BY m.received_at DESC`);
+  return rows.map(messageDto);
+}
 export async function getMessage(id: string) { const row=await one<MessageRow>("SELECT m.*,GROUP_CONCAT(mr.address_id) address_ids FROM message m JOIN message_recipient mr ON mr.message_id=m.id WHERE m.id=? AND m.source='icloud' GROUP BY m.id",id); return row ? messageDto(row) : null; }
 
 export async function ingestMessage(input: { source: "icloud"; accountId?: string | null; providerUid?: number | null; providerMailbox?: string | null; providerMessageId?: string | null; senderAddress: string; senderName?: string | null; recipients: string[]; subject: string; textBody: string; htmlBody?: string | null; addressIds?: string[]; receivedAt: Date }) {
@@ -70,7 +103,7 @@ export async function ingestMessage(input: { source: "icloud"; accountId?: strin
   ids=Array.from(new Set(ids)); if (!ids.length) throw new MailStoreError("没有找到可接收这封邮件的启用地址", "address_not_found");
   const existing=await one<{id:string}>("SELECT id FROM message WHERE source='icloud' AND account_id=? AND provider_mailbox=? AND (provider_uid=? OR provider_message_id=?) LIMIT 1",input.accountId || null,input.providerMailbox || "INBOX",input.providerUid || null,input.providerMessageId || null); const id=existing?.id || crypto.randomUUID(); const timestamp=now(); const received=input.receivedAt.getTime();
   const statements=[{query: existing ? "UPDATE message SET provider_uid=?,provider_mailbox=?,provider_message_id=?,sender_address=?,sender_name=?,recipients_json=?,subject=?,text_body=?,html_body=?,received_at=?,deleted_at=NULL,updated_at=? WHERE id=?" : "INSERT INTO message (id,source,account_id,provider_uid,provider_mailbox,provider_message_id,sender_address,sender_name,recipients_json,subject,text_body,html_body,received_at,sent_at,is_read,created_at,updated_at) VALUES (?,'icloud',?,?,?,?,?,?,?,?,?,?,?,?,0,?,?)",params: existing ? [input.providerUid || null,input.providerMailbox || "INBOX",input.providerMessageId || null,input.senderAddress,input.senderName || null,JSON.stringify(recipients),input.subject || "（无主题）",input.textBody,input.htmlBody || null,received,timestamp,id] : [id,input.accountId || null,input.providerUid || null,input.providerMailbox || "INBOX",input.providerMessageId || null,input.senderAddress,input.senderName || null,JSON.stringify(recipients),input.subject || "（无主题）",input.textBody,input.htmlBody || null,received,received,timestamp,timestamp]},{query:"DELETE FROM message_recipient WHERE message_id=?",params:[id]}];
-  for (const addressId of ids) { statements.push({query:"INSERT OR IGNORE INTO message_recipient (message_id,address_id,recipient_type,created_at) VALUES (?,?,'to',?)",params:[id,addressId,timestamp]},{query:"UPDATE mail_address SET last_received_at=?,updated_at=? WHERE id=?",params:[received,timestamp,addressId]}); } await batch(statements); return (await getMessage(id))!;
+  for (const addressId of ids) { statements.push({query:"INSERT OR IGNORE INTO message_recipient (message_id,address_id,recipient_type,created_at) VALUES (?,?,'to',?)",params:[id,addressId,timestamp]},{query:"UPDATE mail_address SET last_received_at=?,updated_at=? WHERE id=?",params:[received,timestamp,addressId]}); } await batch(statements); return { id, created: !existing };
 }
 
 export async function setMessageRead(id:string,isRead:boolean){ const result=await run("UPDATE message SET is_read=?,updated_at=? WHERE id=? AND source='icloud' AND deleted_at IS NULL",isRead?1:0,now(),id); if(!result.meta.changes) throw new MailStoreError("邮件不存在","not_found"); return (await getMessage(id))!; }
