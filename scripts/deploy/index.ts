@@ -63,7 +63,7 @@ replace("wrangler.email.example.json", "wrangler.email.release.json", emailRecei
 replace("wrangler.cleanup.example.json", "wrangler.cleanup.release.json", cleanupWorkerName);
 
 const config = "wrangler.release.jsonc";
-run("D1 backup export", "pnpm", ["exec", "wrangler", "d1", "export", process.env.DATABASE_NAME!, "--remote", "--output", resolve("artifacts/d1-backup", `${process.env.DATABASE_NAME}-before-migration.sql`), "--config", config]);
+run("D1 backup export", "pnpm", ["exec", "wrangler", "d1", "export", process.env.DATABASE_NAME!, "--remote", "--skip-confirmation", "--output", resolve("artifacts/d1-backup", `${process.env.DATABASE_NAME}-before-migration.sql`), "--config", config]);
 run("D1 migrations", "pnpm", ["exec", "wrangler", "d1", "migrations", "apply", process.env.DATABASE_NAME!, "--remote", "--config", config]);
 run("Workers build", "pnpm", ["run", "build:worker"]);
 const secretFile = ".release-secrets.json";
