@@ -33,6 +33,30 @@ export type IcloudAliasSnapshotItem={address:string;providerId:string;status:"ac
 const D1_MUTATION_BATCH_SIZE = 50;
 function chunks<T>(values: T[], size = D1_MUTATION_BATCH_SIZE) { const result: T[][] = []; for (let index = 0; index < values.length; index += size) result.push(values.slice(index, index + size)); return result; }
 
+async function linkExistingMessagesToAliases(accountId: string) {
+  const aliases = await all<{ id: string; address: string }>("SELECT id,address FROM mail_address WHERE account_id=? AND type='icloud_hide' AND status='active'", accountId);
+  if (!aliases.length) return 0;
+  const aliasIds = new Map(aliases.map((alias) => [normalize(alias.address), alias.id]));
+  const messages = await all<{ id: string; recipients_json: string }>("SELECT id,recipients_json FROM message WHERE source='icloud' AND account_id=? AND deleted_at IS NULL", accountId);
+  const timestamp = stamp();
+  const statements: Array<{ query: string; params: unknown[] }> = [];
+  for (const message of messages) {
+    let recipients: unknown = [];
+    try { recipients = JSON.parse(message.recipients_json); } catch { continue; }
+    if (!Array.isArray(recipients)) continue;
+    for (const recipient of recipients) {
+      const addressId = aliasIds.get(normalize(String(recipient || "")));
+      if (addressId) statements.push({ query: "INSERT OR IGNORE INTO message_recipient (message_id,address_id,recipient_type,created_at) VALUES (?,?,'to',?)", params: [message.id, addressId, timestamp] });
+    }
+  }
+  let linkedMessages = 0;
+  for (const group of chunks(statements)) {
+    const results = await batch(group);
+    linkedMessages += results.reduce((total, result) => total + Number(result.meta.changes || 0), 0);
+  }
+  return linkedMessages;
+}
+
 export async function syncIcloudAliasSnapshot(accountId:string,aliases:IcloudAliasSnapshotItem[],authoritative:boolean,scope:"all"|"active"="all") {
   const account=await one<Account>("SELECT * FROM mail_account WHERE id=?",accountId);
   if(!account) throw new MailStoreError("iCloud 账号不存在","not_found");
@@ -71,9 +95,10 @@ export async function syncIcloudAliasSnapshot(accountId:string,aliases:IcloudAli
   }
 
   const count=await one<{active_count:number;inactive_count:number}>("SELECT SUM(CASE WHEN status='active' THEN 1 ELSE 0 END) active_count,SUM(CASE WHEN status='disabled' THEN 1 ELSE 0 END) inactive_count FROM mail_address WHERE account_id=? AND type='icloud_hide'",accountId);
+  const linkedMessages=await linkExistingMessagesToAliases(accountId);
   const now=stamp();
   await run("UPDATE mail_account SET aliases_last_sync_at=?,aliases_active_count=?,aliases_inactive_count=?,updated_at=? WHERE id=?",now,Number(count?.active_count || 0),Number(count?.inactive_count || 0),now,accountId);
-  return {created,updated,removed,disabled:0,activeCount:Number(count?.active_count || 0),inactiveCount:Number(count?.inactive_count || 0),linkedMessages:0};
+  return {created,updated,removed,disabled:0,activeCount:Number(count?.active_count || 0),inactiveCount:Number(count?.inactive_count || 0),linkedMessages};
 }
 
 export async function clearIcloudAliases(accountId:string){ if(!await one("SELECT id FROM mail_account WHERE id=?",accountId)) throw new MailStoreError("iCloud 账号不存在","not_found"); const now=stamp(); const result=await run("UPDATE mail_address SET status='deleted',deleted_at=COALESCE(deleted_at,?),updated_at=? WHERE account_id=? AND type='icloud_hide' AND status<>'deleted'",now,now,accountId); await run("UPDATE mail_account SET aliases_active_count=0,aliases_inactive_count=0,updated_at=? WHERE id=?",now,accountId); return {removed:Number(result.meta.changes || 0)}; }
