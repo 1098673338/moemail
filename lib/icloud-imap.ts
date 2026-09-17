@@ -1,3 +1,4 @@
+import { connect, type TLSSocket } from "node:tls";
 
 const encoder = new TextEncoder();
 const decoder = new TextDecoder();
@@ -45,27 +46,53 @@ function timeout<T>(promise: Promise<T>, milliseconds: number, label: string): P
 }
 
 /**
- * Minimal IMAP-over-TLS client for the Workers runtime. It deliberately uses
- * `cloudflare:sockets` instead of a Node IMAP package, whose net/tls streams do
- * not provide a reliable Workers transport contract.
+ * Minimal IMAP-over-TLS client for the Workers runtime. Cloudflare supports
+ * node:tls with nodejs_compat, which lets OpenNext bundle this as a normal
+ * static Node module instead of generating an unsupported dynamic require for
+ * cloudflare:sockets.
  */
 export class IcloudImapClient {
-  private socket: Socket | null = null;
-  private reader: ReadableStreamDefaultReader<Uint8Array> | null = null;
-  private writer: WritableStreamDefaultWriter<Uint8Array> | null = null;
+  private socket: TLSSocket | null = null;
   private pending = new Uint8Array();
   private sequence = 0;
+  private streamError: Error | null = null;
+  private ended = false;
+  private waiters = new Set<() => void>();
 
   async connect(username: string, password: string) {
-    // Keep the Workers-only module out of Next's Node.js route-metadata pass.
-    // OpenNext resolves this import in the deployed Workers bundle.
-    const workerSocketsModule = "cloudflare:" + "sockets";
-    const { connect } = await import(workerSocketsModule);
-    const socket = connect({ hostname: IMAP_HOST, port: IMAP_PORT }, { secureTransport: "on", allowHalfOpen: false });
+    const socket = connect({ host: IMAP_HOST, port: IMAP_PORT, servername: IMAP_HOST });
     this.socket = socket;
-    await timeout(socket.opened, 15_000, "无法连接 iCloud IMAP 服务器，请稍后重试");
-    this.reader = socket.readable.getReader() as ReadableStreamDefaultReader<Uint8Array>;
-    this.writer = socket.writable.getWriter() as WritableStreamDefaultWriter<Uint8Array>;
+    socket.on("data", (chunk: Uint8Array) => {
+      this.pending = concat(this.pending, new Uint8Array(chunk));
+      this.wakeReaders();
+    });
+    socket.on("error", (error: Error) => {
+      this.streamError = error;
+      this.wakeReaders();
+    });
+    socket.on("end", () => {
+      this.ended = true;
+      this.wakeReaders();
+    });
+    socket.on("close", () => {
+      this.ended = true;
+      this.wakeReaders();
+    });
+
+    await timeout(new Promise<void>((resolve, reject) => {
+      const onSecureConnect = () => { cleanup(); resolve(); };
+      const onError = (error: Error) => { cleanup(); reject(error); };
+      const onClose = () => { cleanup(); reject(new Error("iCloud IMAP 服务器提前关闭了连接")); };
+      const cleanup = () => {
+        socket.off("secureConnect", onSecureConnect);
+        socket.off("error", onError);
+        socket.off("close", onClose);
+      };
+      socket.once("secureConnect", onSecureConnect);
+      socket.once("error", onError);
+      socket.once("close", onClose);
+    }), 15_000, "无法连接 iCloud IMAP 服务器，请稍后重试");
+
     const greeting = decoder.decode(await this.readUntilLine());
     if (!/^\* (OK|PREAUTH)\b/i.test(greeting)) throw new Error("iCloud IMAP 服务器未返回有效问候语");
     if (!/^\* PREAUTH\b/i.test(greeting)) await this.command(`LOGIN ${quote(username)} ${quote(password)}`);
@@ -102,23 +129,29 @@ export class IcloudImapClient {
   }
 
   async logout() {
-    try { if (this.writer) await this.command("LOGOUT"); } catch { /* close below */ }
+    try { if (this.socket) await this.command("LOGOUT"); } catch { /* close below */ }
     await this.close();
   }
 
   async close() {
-    try { await this.reader?.cancel(); } catch { /* socket is already closed */ }
-    try { await this.writer?.close(); } catch { /* socket is already closed */ }
-    try { await this.socket?.close(); } catch { /* socket is already closed */ }
-    this.reader = null;
-    this.writer = null;
+    const socket = this.socket;
     this.socket = null;
+    this.ended = true;
+    this.wakeReaders();
+    if (!socket || socket.destroyed) return;
+    await new Promise<void>((resolve) => {
+      socket.once("close", () => resolve());
+      socket.destroy();
+    });
   }
 
   private async command(command: string) {
-    if (!this.writer) throw new Error("iCloud IMAP 连接未建立");
+    const socket = this.socket;
+    if (!socket || socket.destroyed) throw new Error("iCloud IMAP 连接未建立");
     const tag = `A${String(++this.sequence).padStart(4, "0")}`;
-    await this.writer.write(bytes(`${tag} ${command}\r\n`));
+    await new Promise<void>((resolve, reject) => {
+      socket.write(bytes(`${tag} ${command}\r\n`), (error?: Error | null) => error ? reject(error) : resolve());
+    });
     const response = await timeout(this.readTagged(tag), 20_000, "iCloud IMAP 服务器响应超时，请稍后重试");
     const marker = bytes(`\r\n${tag} `);
     const taggedAt = lastIndexOf(response, marker);
@@ -163,9 +196,15 @@ export class IcloudImapClient {
   }
 
   private async readMore() {
-    if (!this.reader) throw new Error("iCloud IMAP 连接已关闭");
-    const next = await this.reader.read();
-    if (next.done) throw new Error("iCloud IMAP 服务器提前关闭了连接");
-    this.pending = concat(this.pending, next.value);
+    if (this.streamError) throw this.streamError;
+    if (this.ended) throw new Error("iCloud IMAP 服务器提前关闭了连接");
+    await new Promise<void>((resolve) => this.waiters.add(resolve));
+    if (this.streamError) throw this.streamError;
+    if (this.ended && this.pending.length === 0) throw new Error("iCloud IMAP 服务器提前关闭了连接");
+  }
+
+  private wakeReaders() {
+    for (const resolve of this.waiters) resolve();
+    this.waiters.clear();
   }
 }
