@@ -182,7 +182,7 @@ const calendarMonthFormatter = new Intl.DateTimeFormat("zh-CN", { year: "numeric
 const calendarDateFormatter = new Intl.DateTimeFormat("zh-CN", { year: "numeric", month: "long", day: "numeric", weekday: "long" });
 
 function addressRemark(address: MailAddressDto) {
-  return address.providerLabel;
+  return address.type === "icloud_primary" ? "主号" : address.providerLabel;
 }
 
 function addressTag(address: MailAddressDto): AddressTag | null {
@@ -826,13 +826,17 @@ export function Dashboard() {
           onClose={() => { setModal(null); setEditingAddressId(null); setCredentialAccountId(null); }}
         >
           {modal === "edit_address" && editingAddress && <EditAddressForm address={editingAddress} onDone={() => { setModal(null); setEditingAddressId(null); }} onSave={async (input) => {
-            const nextLabel = input.providerLabel || "";
-            const currentLabel = editingAddress.providerLabel || "";
-            if (nextLabel !== currentLabel) await requestAppleLabelUpdate(editingAddress, nextLabel);
+            const isHiddenAddress = editingAddress.type === "icloud_hide";
+            if (isHiddenAddress && input.remark !== (editingAddress.providerLabel || "")) await requestAppleLabelUpdate(editingAddress, input.remark);
             await requestJson(`/api/addresses/${editingAddress.id}`, {
               method: "PATCH",
               headers: { "content-type": "application/json" },
-              body: JSON.stringify(input),
+              body: JSON.stringify({
+                addedAt: input.addedAt,
+                phoneNumber: input.phoneNumber,
+                phoneUrl: input.phoneUrl,
+                ...(isHiddenAddress ? { providerLabel: input.remark } : {}),
+              }),
             });
             await loadData();
             setNotice({ tone: "success", text: "邮箱资料已保存" });
@@ -1147,7 +1151,7 @@ function AddressView(props: {
                       {message ? code ? <div className="verification-inline"><strong>{code.display}</strong><button className="button outline compact" type="button" aria-label={`复制验证码 ${code.display}`} onClick={(event) => { event.stopPropagation(); void props.onCopyCode(code.value); }}><Copy size={14} />复制</button></div> : <span title={`${message.subject} · ${messageSummary(message)}`}>{messageSummary(message)}</span> : "-"}
                     </td>
                     <td className="time-value">{message ? formatTableReceivedAt(message.receivedAt) : "-"}</td>
-                    <td className="address-actions-cell">
+                    <td className={`address-actions-cell${address.type === "icloud_primary" ? " primary-only" : ""}`}>
                       <button type="button" className="icon-button address-table-action" title="编辑邮箱资料" aria-label={`编辑 ${address.address} 的邮箱资料`} onClick={(event) => { event.stopPropagation(); props.onEdit(address); }} onKeyDown={(event) => event.stopPropagation()}><PencilLine size={14} aria-hidden="true" /></button>
                       {address.type === "icloud_hide" && <button type="button" className="icon-button address-table-action address-delete-button" title="删除邮箱" aria-label={`删除邮箱 ${address.address}`} onClick={(event) => { event.stopPropagation(); props.onDelete(address); }} onKeyDown={(event) => event.stopPropagation()}><Trash2 size={14} aria-hidden="true" /></button>}
                     </td>
@@ -1623,7 +1627,7 @@ function EditAddressForm({ address, onDone, onSave }: {
   address: MailAddressDto;
   onDone: () => void;
   onSave: (input: {
-    providerLabel?: string | null;
+    remark: string;
     addedAt: string | null;
     phoneNumber: string | null;
     phoneUrl: string | null;
@@ -1633,10 +1637,11 @@ function EditAddressForm({ address, onDone, onSave }: {
   const [formError, setFormError] = useState<string | null>(null);
   const [addedAt, setAddedAt] = useState(() => dateInputValue(address.addedAt));
   const [remark, setRemark] = useState(() => addressRemark(address) || "");
+  const requiresRemark = address.type === "icloud_hide";
   const remarkIsEmpty = !remark.trim();
   const submit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    if (remarkIsEmpty) {
+    if (requiresRemark && remarkIsEmpty) {
       setFormError(null);
       return;
     }
@@ -1652,7 +1657,7 @@ function EditAddressForm({ address, onDone, onSave }: {
         ? address.addedAt
         : addedAtValue ? localDateIso(addedAtValue) : null;
       await onSave({
-        providerLabel: normalizedRemark,
+        remark: normalizedRemark,
         addedAt,
         phoneNumber: phoneNumber || null,
         phoneUrl: phoneUrl || null,
@@ -1671,10 +1676,10 @@ function EditAddressForm({ address, onDone, onSave }: {
         <label>手机号<input name="phoneNumber" type="tel" maxLength={50} defaultValue={address.phoneNumber || ""} /></label>
         <label>链接<input name="phoneUrl" type="url" maxLength={2048} defaultValue={address.phoneUrl || ""} /></label>
       </div>
-      <label>备注（iCloud 标签）<textarea name="remark" rows={5} maxLength={500} required value={remark} onChange={(event) => { setRemark(event.target.value); if (formError) setFormError(null); }} /></label>
+      {requiresRemark && <label>备注（iCloud 标签）<textarea name="remark" rows={5} maxLength={500} required value={remark} onChange={(event) => { setRemark(event.target.value); if (formError) setFormError(null); }} /></label>}
       <FormError message={formError} />
     </div>
-    <div className="modal-form-footer"><button className="button ghost" type="button" disabled={saving} onClick={onDone}>取消</button><button className="button primary" disabled={saving || remarkIsEmpty}>{saving && <LoaderCircle className="spin" size={17} />}{saving ? "正在保存…" : "保存"}</button></div>
+    <div className="modal-form-footer"><button className="button ghost" type="button" disabled={saving} onClick={onDone}>取消</button><button className="button primary" disabled={saving || (requiresRemark && remarkIsEmpty)}>{saving && <LoaderCircle className="spin" size={17} />}{saving ? "正在保存…" : "保存"}</button></div>
   </form>;
 }
 

@@ -84,6 +84,7 @@ button:active:not(:disabled), a.button:active:not([aria-disabled="true"]) { opac
 .address-table tbody tr.unread .address-value, .address-table tbody tr.unread .mail-summary-cell { color: var(--color-ink) !important; font-weight: 600; }
 .address-table tbody tr.unread .time-value { color: var(--color-body-strong) !important; font-weight: 500; }
 .address-actions-cell { padding: 10px var(--space-xs) !important; display: flex; align-items: center; justify-content: center; gap: 2px; }
+.address-actions-cell.primary-only::after { content: ""; width: 28px; height: 28px; flex: none; }
 .icon-button { width: 32px; height: 32px; display: inline-grid; place-items: center; color: var(--color-body); background: transparent; border: 1px solid transparent; border-radius: var(--radius-control); }
 .icon-button:hover { color: var(--color-ink); background: var(--color-canvas); border-color: var(--color-hairline); }
 .address-table-action { width: 28px; height: 28px; }
