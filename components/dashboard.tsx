@@ -488,14 +488,14 @@ export function Dashboard() {
     if (/当前同步密钥解密/.test(message)) {
       setNotice({
         tone: "error",
-        text: "已保存的 App 专用密码无法解密，自动同步已暂停。请在“账号设置”中更新 App 专用密码。",
+        text: "已保存的 App 专用密码无法解密，自动同步已暂停。请在“设置”中更新 App 专用密码。",
       });
       return;
     }
     if (/\bauthentication failed\b|authenticationfailed|app 专用密码|用户名或 app/i.test(message)) {
       setNotice({
         tone: "error",
-        text: "iCloud 身份验证失败，自动同步已暂停。请在“账号设置”中断开当前账号，再使用新的 Apple App 专用密码重新连接。",
+        text: "iCloud 身份验证失败，自动同步已暂停。请在“设置”中断开当前账号，再使用新的 Apple App 专用密码重新连接。",
       });
       return;
     }
@@ -727,9 +727,9 @@ export function Dashboard() {
             <Cloud size={19} /><span>iCloud 邮箱</span><em>{addresses.length}</em>
           </button>
         </nav>
-        <nav className="main-nav sidebar-footer" aria-label="账号设置">
+        <nav className="main-nav sidebar-footer" aria-label="设置">
           <button type="button" onClick={() => { setModal("settings"); setMobileNavOpen(false); }}>
-            <Settings size={19} /><span>账号设置</span>
+            <Settings size={19} /><span>设置</span>
           </button>
         </nav>
       </aside>
@@ -824,7 +824,7 @@ export function Dashboard() {
 
       {modal && (
         <ModalShell
-          title={{ edit_address: "编辑邮箱", icloud: "连接 iCloud", icloud_password: "更新 App 专用密码", settings: "账号设置" }[modal]}
+          title={{ edit_address: "编辑邮箱", icloud: "连接 iCloud", icloud_password: "更新 App 专用密码", settings: "设置" }[modal]}
           subtitle={modal === "edit_address" ? editingAddress?.address : undefined}
           variant={modal === "settings" ? "settings" : "form"}
           onClose={() => { setModal(null); setEditingAddressId(null); setCredentialAccountId(null); }}
@@ -1107,7 +1107,7 @@ function AddressView(props: {
             <Search size={15} aria-hidden="true" />
             <label className="sr-only" htmlFor="address-search-input">搜索邮箱地址或备注</label>
             <input id="address-search-input" type="search" value={addressQuery} placeholder="搜索" autoComplete="off" onChange={(event) => updateAddressQuery(event.target.value)} />
-            {addressQuery && <button type="button" aria-label="清除邮箱地址或备注搜索" onClick={() => updateAddressQuery("")}><X size={14} aria-hidden="true" /></button>}
+            {addressQuery && <button type="button" aria-label="清除邮箱地址或备注搜索" onClick={() => updateAddressQuery("")}><X size={15} aria-hidden="true" /></button>}
           </div>
           </>}
         </div>}
@@ -1550,10 +1550,10 @@ function SettingsView(props: {
 }) {
   return (
     <div className="settings-dialog-body">
-      <section className="settings-card panel">
-        <div className="settings-card-head"><div className="settings-icon apple">●</div><div><h2>iCloud 账号</h2><p>IMAP 用于同步邮件，浏览器同步助手用于读取账号中的完整隐藏邮件地址清单。</p></div><button className="button primary" onClick={props.onConnectIcloud}><Plus size={16} />连接 iCloud</button></div>
+      <section className="settings-content">
+        <div className="settings-toolbar"><button className="button primary" type="button" onClick={props.onConnectIcloud}><Plus size={16} />连接 iCloud</button></div>
         {props.accounts.length === 0 ? (
-          <div className="empty-inline"><div><Mail size={22} /></div><p><strong>还没有连接 iCloud 账号</strong><span>连接后，可以同步邮件和账号中的隐藏邮件地址。</span></p></div>
+          <div className="empty-inline"><p><strong>还没有连接 iCloud 账号</strong></p></div>
         ) : props.accounts.map((account) => {
           const syncProgress = props.syncProgress?.accountId === account.id ? props.syncProgress : null;
           const syncPercent = syncProgress ? Math.round((syncProgress.completed / Math.max(syncProgress.total, 1)) * 100) : 0;
@@ -1617,7 +1617,7 @@ function ModalShell({ title, subtitle, variant = "form", onClose, children }: { 
       previousFocus?.focus();
     };
   }, []);
-  return <div className="modal-backdrop"><div ref={dialogRef} className={`modal-card ${variant === "confirm" ? "confirm-dialog" : ""} ${variant === "settings" ? "settings-dialog" : ""}`} role="dialog" aria-modal="true" aria-labelledby="modal-title" aria-describedby={subtitle ? "modal-subtitle" : undefined}><div className="modal-head"><div><h2 id="modal-title">{title}</h2>{subtitle && <p id="modal-subtitle">{subtitle}</p>}</div><button type="button" aria-label={`关闭“${title}”`} onClick={onClose}><X size={18} /></button></div>{children}</div></div>;
+  return <div className="modal-backdrop" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose(); }}><div ref={dialogRef} className={`modal-card ${variant === "confirm" ? "confirm-dialog" : ""} ${variant === "settings" ? "settings-dialog" : ""}`} role="dialog" aria-modal="true" aria-labelledby="modal-title" aria-describedby={subtitle ? "modal-subtitle" : undefined}><div className="modal-head"><div><h2 id="modal-title">{title}</h2>{subtitle && <p id="modal-subtitle">{subtitle}</p>}</div><button type="button" aria-label={`关闭“${title}”`} onClick={onClose}><X size={18} /></button></div>{children}</div></div>;
 }
 
 function ConfirmDialog({ confirmation, pending, onCancel, onConfirm }: { confirmation: Confirmation; pending: boolean; onCancel: () => void; onConfirm: () => Promise<void> }) {
