@@ -54,12 +54,12 @@ const ICLOUD_SYNC_INTERVAL = 5 * 60_000;
 const DEFAULT_TAG_COLOR = "#475569";
 const ICLOUD_BRIDGE_VERSION = 1;
 const TAG_COLOR_OPTIONS = [
-  "#475569", "#dc2626", "#eab308", "#15803d", "#2563eb", "#db2777", "#111827",
+  "#475569", "#dc2626", "#eab308", "#00a63e", "#2563eb",
 ];
 const LEGACY_TAG_COLOR_ALIASES: Record<string, string> = {
   "#6b7280": "#475569", "#9f1239": "#dc2626", "#9a3412": "#eab308", "#ea580c": "#eab308",
-  "#a16207": "#eab308", "#ca8a04": "#eab308", "#4d7c0f": "#15803d", "#16a34a": "#15803d", "#0f766e": "#15803d",
-  "#0e7490": "#2563eb", "#4338ca": "#db2777", "#6d28d9": "#db2777", "#7c3aed": "#db2777", "#a21caf": "#db2777",
+  "#a16207": "#eab308", "#ca8a04": "#eab308", "#4d7c0f": "#00a63e", "#16a34a": "#00a63e", "#15803d": "#00a63e", "#0f766e": "#00a63e",
+  "#0e7490": "#2563eb", "#4338ca": "#2563eb", "#6d28d9": "#2563eb", "#7c3aed": "#2563eb", "#a21caf": "#dc2626", "#db2777": "#dc2626", "#111827": "#475569",
 };
 type Confirmation = {
   title: string;
