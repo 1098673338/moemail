@@ -1519,7 +1519,7 @@ function MailReadingPane({ message, onDismissVerificationCode, onCopyCode }: { m
   return <>
     <div className="drawer-message-meta"><div><h3>{message.subject}</h3><p>{message.senderName || message.senderAddress} · {message.senderAddress}</p><p>收件人 · {message.recipients.join("、") || "未提供"}</p></div></div>
     <div className="reader-scroll">
-      {code && <div className="drawer-code"><div><strong>{code.display}</strong></div><div className="drawer-code-actions"><button className="button secondary compact" type="button" onClick={() => void onCopyCode(code.value)}><Copy size={15} />复制验证码</button><button className="button secondary compact" type="button" onClick={() => void onDismissVerificationCode(message)}>非验证码</button></div></div>}
+      {code && <div className="drawer-code"><div><strong>{code.display}</strong></div><div className="drawer-code-actions"><button className="button secondary subtle compact" type="button" onClick={() => void onCopyCode(code.value)}><Copy size={15} />复制验证码</button><button className="button secondary subtle compact" type="button" onClick={() => void onDismissVerificationCode(message)}>非验证码</button></div></div>}
       <article className="drawer-mail-content">
         <iframe
           className="mail-html-frame"
@@ -1565,7 +1565,7 @@ function SettingsView(props: {
               <p>本次已同步 {syncProgress.completed} 封，剩余 {syncProgress.remaining} 封将继续同步。</p>
             </div>}
             <div className="connection-actions">
-              <button className="button secondary compact" disabled={accountBusy} onClick={() => props.onUpdateCredentials(account)}><ShieldCheck size={15} />更新密码</button>
+              <button className="button secondary subtle compact" disabled={accountBusy} onClick={() => props.onUpdateCredentials(account)}><ShieldCheck size={15} />更新密码</button>
               <button className="button destructive compact" disabled={accountBusy} onClick={() => props.onClearAliases(account)}>{props.isPending(`icloud:clear:${account.id}`) ? <LoaderCircle className="spin" size={15} /> : <Trash2 size={15} />}{props.isPending(`icloud:clear:${account.id}`) ? "正在清空…" : "清空所有邮箱"}</button>
               <button className="button destructive compact" disabled={accountBusy} onClick={() => props.onClearAliasData(account)}>{props.isPending(`icloud:clear-data:${account.id}`) ? <LoaderCircle className="spin" size={15} /> : <DatabaseX size={15} />}{props.isPending(`icloud:clear-data:${account.id}`) ? "正在清除…" : "清空所有数据"}</button>
               <button className="button destructive compact" disabled={accountBusy} onClick={() => props.onDisconnect(account)}>{props.isPending(`icloud:disconnect:${account.id}`) ? <LoaderCircle className="spin" size={15} /> : <Unplug size={15} />}{props.isPending(`icloud:disconnect:${account.id}`) ? "正在断开…" : "断开连接"}</button>

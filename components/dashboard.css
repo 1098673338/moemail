@@ -248,8 +248,6 @@ button:active:not(:disabled), a.button:active:not([aria-disabled="true"]) { opac
 .drawer-code { margin-top: var(--space-lg); padding: var(--space-md); display: flex; align-items: center; justify-content: space-between; gap: var(--space-md); color: var(--color-surface-elevated); background: var(--color-ink); border: 1px solid var(--color-ink); border-radius: var(--radius-card); }
 .drawer-code::selection, .drawer-code *::selection { color: var(--color-surface-elevated); background: color-mix(in srgb, var(--color-surface-elevated) 24%, var(--color-ink)); }
 .drawer-code strong { display: block; font-size: 30px; line-height: 36px; font-weight: 600; letter-spacing: 1.5px; }
-.drawer-code .button.secondary { color: var(--color-ink); background: var(--color-surface-elevated); border-color: var(--color-surface-elevated); }
-.drawer-code .button.secondary:hover:not(:disabled) { color: var(--color-ink); background: #fff; border-color: #fff; }
 .drawer-code-actions { display: flex; align-items: center; gap: var(--space-xs); flex: none; }
 .drawer-mail-content { max-width: 900px; min-height: 240px; margin: var(--space-lg) auto 0; padding: var(--space-lg); color: var(--color-body-strong); background: #fff; }
 .mail-html-frame { display: block; width: 100%; min-height: 240px; border: 0; background: #fff; }
