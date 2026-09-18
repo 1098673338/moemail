@@ -27,9 +27,8 @@ export const updateAddressSchema = z.object({
 
 export const connectIcloudSchema = z.object({
   emailAddress: z.email().transform((value) => value.trim().toLowerCase()),
-  username: z.string().trim().min(1).max(320),
   appPassword: z.string().min(8).max(128),
-});
+}).transform(({ emailAddress, appPassword }) => ({ emailAddress, username: emailAddress, appPassword }));
 
 export const updateIcloudAppPasswordSchema = z.object({
   appPassword: z.string().min(8).max(128),
