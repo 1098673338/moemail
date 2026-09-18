@@ -146,10 +146,6 @@ async function appleRequest(target, method, path, body) {
   return response.payload?.success === true ? response.payload.result : response.payload;
 }
 
-function applePathsAllowed(path) {
-  return /^\/v[12]\/hme\/(generate|reserve|list|updateMetaData|delete|deactivate)$/.test(path);
-}
-
 async function readAppleAliases() {
   const target = await locateAppleTarget();
   const payload = await appleRequest(target, "GET", "/v2/hme/list");
@@ -180,9 +176,49 @@ async function deactivateAppleAlias(providerId) {
   await appleRequest(target, "POST", "/v1/hme/deactivate", { anonymousId: providerId });
 }
 
+async function createAppleAlias(label) {
+  if (!/^[A-Za-z0-9]{8}$/.test(String(label || ""))) throw new Error("隐藏邮箱标签格式无效");
+  const target = await locateAppleTarget();
+  try {
+    const generated = await appleRequest(target, "POST", "/v1/hme/generate", { langCode: target.region === "china" ? "zh-cn" : "en-us" });
+    const hme = typeof generated?.hme === "string" ? generated.hme.trim() : "";
+    if (!hme) throw new Error("Apple 没有返回待创建的地址");
+    await appleRequest(target, "POST", "/v1/hme/reserve", { hme, label, note: "" });
+    return { created: true, limitReached: false };
+  } catch (error) {
+    if (error?.code === "-41015") return { created: false, limitReached: true };
+    throw error;
+  }
+}
+
+async function deleteDisabledAppleAliases() {
+  const target = await locateAppleTarget();
+  const payload = await appleRequest(target, "GET", "/v2/hme/list");
+  const aliases = Array.isArray(payload?.hmeEmails) ? payload.hmeEmails : Array.isArray(payload?.items) ? payload.items : Array.isArray(payload) ? payload : null;
+  if (!aliases) throw new Error("Apple 地址清单格式无法识别");
+  const providerIds = aliases.filter((alias) => alias?.isActive === false).map((alias) => String(alias?.anonymousId || alias?.id || "").trim());
+  if (providerIds.some((providerId) => !providerId)) throw new Error("有已停用地址缺少 Apple 标识");
+  if (new Set(providerIds).size !== providerIds.length) throw new Error("Apple 已停用地址清单包含重复记录");
+  let deleted = 0;
+  const failures = [];
+  for (const [index, anonymousId] of providerIds.entries()) {
+    try {
+      await appleRequest(target, "POST", "/v1/hme/delete", { anonymousId });
+      deleted += 1;
+    } catch (error) {
+      failures.push({ index: index + 1, message: error instanceof Error ? error.message : "未知错误" });
+    }
+  }
+  return { total: providerIds.length, deleted, failures };
+}
+
 async function senderIsConfiguredApp(sender) {
   const origin = await getConfiguredOrigin();
   try { return Boolean(origin && new URL(sender.url || "").origin === origin); } catch { return false; }
+}
+
+function senderIsExtension(sender) {
+  return sender.id === chrome.runtime.id && String(sender.url || "").startsWith(`chrome-extension://${chrome.runtime.id}/`);
 }
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
@@ -191,17 +227,17 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     return true;
   };
   if (message?.type === "MOEMAIL_ENSURE_APP_BRIDGE") return respond(ensureAppBridge);
-  if (message?.type === "MOEMAIL_APPLE_TARGET") return respond(async () => ({ target: await locateAppleTarget() }));
   if (message?.type === "MOEMAIL_READ_APPLE_ALIASES") return respond(async () => ({ aliases: await readAppleAliases() }));
-  if (message?.type === "MOEMAIL_APPLE_REQUEST") {
-    if (!applePathsAllowed(message.path) || !["GET", "POST"].includes(message.method)) { sendResponse({ ok: false, error: "不允许调用这个 Apple 地址接口" }); return; }
-    return respond(async () => ({ payload: await appleRequest(message.target || await locateAppleTarget(), message.method, message.path, message.body) }));
-  }
-  if (!["MOEMAIL_UPDATE_APPLE_LABEL", "MOEMAIL_DEACTIVATE_APPLE_ALIAS"].includes(message?.type)) return;
+  if (!["MOEMAIL_UPDATE_APPLE_LABEL", "MOEMAIL_DEACTIVATE_APPLE_ALIAS", "MOEMAIL_CREATE_APPLE_ALIAS", "MOEMAIL_DELETE_DISABLED_APPLE_ALIASES"].includes(message?.type)) return;
   return respond(async () => {
-    if (!await senderIsConfiguredApp(sender)) throw new Error("只允许从已连接的 MoeMail 云端页面发起 Apple 地址操作");
-    if (message.type === "MOEMAIL_UPDATE_APPLE_LABEL") await updateAppleLabel(String(message.providerId || ""), message.label);
-    else await deactivateAppleAlias(String(message.providerId || ""));
-    return {};
+    if (["MOEMAIL_UPDATE_APPLE_LABEL", "MOEMAIL_DEACTIVATE_APPLE_ALIAS"].includes(message.type)) {
+      if (!await senderIsConfiguredApp(sender)) throw new Error("只允许从已连接的 MoeMail 页面发起 Apple 地址操作");
+      if (message.type === "MOEMAIL_UPDATE_APPLE_LABEL") await updateAppleLabel(String(message.providerId || ""), message.label);
+      else await deactivateAppleAlias(String(message.providerId || ""));
+      return {};
+    }
+    if (!senderIsExtension(sender)) throw new Error("只允许从 MoeMail 同步助手发起 Apple 地址操作");
+    if (message.type === "MOEMAIL_CREATE_APPLE_ALIAS") return createAppleAlias(message.label);
+    return deleteDisabledAppleAliases();
   });
 });

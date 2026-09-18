@@ -53,16 +53,13 @@ function setCreateProgress({ visible = true, state = "running", message = "正�
   createProgress.dataset.state = state;
   createProgressText.textContent = message;
   createProgressCount.textContent = state === "running" ? `已创建 ${created}` : `本次创建 ${created}`;
-  if (state === "running") {
-    createProgressBar.removeAttribute("value");
-  } else {
+  if (state === "running") createProgressBar.removeAttribute("value");
+  else {
     createProgressBar.max = 1;
     createProgressBar.value = 1;
   }
   if (state !== "running") {
-    createProgressTimer = setTimeout(() => {
-      createProgress.hidden = true;
-    }, state === "error" ? 5000 : 3200);
+    createProgressTimer = setTimeout(() => { createProgress.hidden = true; }, state === "error" ? 5000 : 3200);
   }
 }
 
@@ -165,76 +162,6 @@ async function readIcloudAliases() {
   return aliases;
 }
 
-async function locateAppleHmeTarget() {
-  const response = await chrome.runtime.sendMessage({ type: "MOEMAIL_APPLE_TARGET" });
-  if (!response?.ok || !response.target) throw new Error(response?.error || "无法连接 Apple iCloud");
-  return response.target;
-}
-
-async function appleRequest(target, method, path, body) {
-  const response = await chrome.runtime.sendMessage({
-    type: "MOEMAIL_APPLE_REQUEST",
-    target,
-    method,
-    path,
-    body: body ?? null,
-  });
-  if (!response?.ok) {
-    const error = new Error(response?.error || "Apple 请求失败");
-    error.code = String(response?.code || "");
-    throw error;
-  }
-  return response.payload;
-}
-
-async function inspectAppleDisabledAliases() {
-  const target = await locateAppleHmeTarget();
-  const data = await appleRequest(target, "GET", "/v2/hme/list");
-  const aliases = Array.isArray(data?.hmeEmails) ? data.hmeEmails
-    : Array.isArray(data?.items) ? data.items
-      : Array.isArray(data) ? data
-        : null;
-  if (!aliases) throw new Error("Apple 地址清单格式无法识别");
-  const providerIds = aliases
-    .filter((alias) => alias?.isActive === false)
-    .map((alias) => String(alias?.anonymousId || "").trim());
-  if (providerIds.some((providerId) => !providerId)) throw new Error("有已停用地址缺少 Apple 标识");
-  if (new Set(providerIds).size !== providerIds.length) throw new Error("Apple 已停用地址清单包含重复记录");
-  return { target, providerIds };
-}
-
-function randomAlphanumericLabel(usedLabels) {
-  const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
-  const maxAcceptedByte = 256 - (256 % alphabet.length);
-  let value = "";
-  do {
-    value = "";
-    while (value.length < 8) {
-      for (const byte of crypto.getRandomValues(new Uint8Array((8 - value.length) * 2))) {
-        if (byte >= maxAcceptedByte) continue;
-        value += alphabet[byte % alphabet.length];
-        if (value.length === 8) break;
-      }
-    }
-  } while (usedLabels.has(value));
-  usedLabels.add(value);
-  return value;
-}
-
-async function createOneAppleAlias(target, label) {
-  try {
-    const langCode = target.region === "china" ? "zh-cn" : "en-us";
-    const generated = await appleRequest(target, "POST", "/v1/hme/generate", { langCode });
-    const hme = typeof generated?.hme === "string" ? generated.hme.trim() : "";
-    if (!hme) throw new Error("Apple 没有返回待创建的地址");
-    await appleRequest(target, "POST", "/v1/hme/reserve", { hme, label, note: "" });
-    return { created: true };
-  } catch (error) {
-    if (error?.code === "-41015") return { created: false, limitReached: true };
-    return { created: false, limitReached: false, error: error instanceof Error ? error.message : "未知错误" };
-  }
-}
-
 async function syncAliases() {
   if (!connectedAccountId) return setStatus("请先连接云端项目", "error");
   setAccountActionsDisabled(true);
@@ -260,6 +187,24 @@ async function syncAliases() {
   }
 }
 
+function randomAlphanumericLabel(usedLabels) {
+  const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+  const maxAcceptedByte = 256 - (256 % alphabet.length);
+  let label = "";
+  do {
+    label = "";
+    while (label.length < 8) {
+      for (const byte of crypto.getRandomValues(new Uint8Array((8 - label.length) * 2))) {
+        if (byte >= maxAcceptedByte) continue;
+        label += alphabet[byte % alphabet.length];
+        if (label.length === 8) break;
+      }
+    }
+  } while (usedLabels.has(label));
+  usedLabels.add(label);
+  return label;
+}
+
 async function batchCreateAliases() {
   setAccountActionsDisabled(true);
   const originalButtonText = createButton.textContent;
@@ -267,24 +212,20 @@ async function batchCreateAliases() {
   createButton.textContent = "正在创建…";
   setCreateProgress({ visible: false });
   try {
-    const target = await locateAppleHmeTarget();
-    setStatus("创建进行中，请保持侧边栏打开。插件会在后台完成 Apple 操作，达到账号上限时自动停止。", "", 0);
+    setStatus("创建进行中，请保持侧边栏打开。达到账号上限时自动停止。", "", 0);
     const usedLabels = new Set();
     while (true) {
       const index = created + 1;
       const label = randomAlphanumericLabel(usedLabels);
       setCreateProgress({ message: `正在创建第 ${index} 个地址…`, created });
-      const result = await createOneAppleAlias(target, label);
+      const result = await chrome.runtime.sendMessage({ type: "MOEMAIL_CREATE_APPLE_ALIAS", label });
+      if (!result?.ok && !result?.limitReached) throw new Error(result?.error || "创建失败");
       if (result.limitReached) {
         setCreateProgress({ state: "success", message: "已达到 Apple 账号上限，创建已停止", created });
         setStatus(`已达到 Apple 账号可创建上限并停止；本次成功创建 ${created} 个隐藏邮件地址。`, "success");
         return;
       }
-      if (!result.created) {
-        setCreateProgress({ state: "error", message: `第 ${index} 个创建失败，已停止`, created });
-        setStatus(`创建已停止：成功 ${created} 个；第 ${index} 个（标签 ${label}）失败：${result.error || "未知错误"}`, "error");
-        return;
-      }
+      if (!result.created) throw new Error(`第 ${index} 个创建失败`);
       created += 1;
       setCreateProgress({ message: `第 ${created} 个已创建，正在继续…`, created });
     }
@@ -299,29 +240,14 @@ async function batchCreateAliases() {
 
 async function deleteDisabledAliases() {
   setAccountActionsDisabled(true);
-  setStatus("正在读取 Apple 账号中的已停用地址…");
+  setStatus("正在读取 Apple 账号中的已停用地址…", "", 0);
   try {
-    const { target, providerIds } = await inspectAppleDisabledAliases();
-    if (providerIds.length === 0) {
-      setStatus("Apple 账号中没有已停用的隐藏邮件地址。", "success");
-      return;
+    const result = await chrome.runtime.sendMessage({ type: "MOEMAIL_DELETE_DISABLED_APPLE_ALIASES" });
+    if (!result?.ok) throw new Error(result?.error || "删除失败");
+    if (result.failures?.length) {
+      throw new Error(`已删除 ${result.deleted} 个；${result.failures.length} 个失败。第 ${result.failures[0].index} 个：${result.failures[0].message}`);
     }
-    setStatus(`正在从 Apple 账号永久删除 ${providerIds.length} 个已停用地址…`);
-    let deleted = 0;
-    const failures = [];
-    for (const [index, anonymousId] of providerIds.entries()) {
-      try {
-        await appleRequest(target, "POST", "/v1/hme/delete", { anonymousId });
-        deleted += 1;
-      } catch (error) {
-        failures.push({ index: index + 1, message: error instanceof Error ? error.message : "未知错误" });
-      }
-    }
-    if (failures.length) {
-      setStatus(`已删除 ${deleted} 个；${failures.length} 个失败。第 ${failures[0].index} 个：${failures[0].message}`, "error");
-      return;
-    }
-    setStatus(`已从 Apple 账号永久删除 ${deleted} 个已停用地址。`, "success");
+    setStatus(result.total ? `已从 Apple 账号永久删除 ${result.deleted} 个已停用地址。` : "Apple 账号中没有已停用的隐藏邮件地址。", "success");
   } catch (error) {
     setStatus(error instanceof Error ? error.message : "删除失败", "error");
   } finally {
