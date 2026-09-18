@@ -22,6 +22,10 @@ const emailAllowedAttributes = {
     "valign",
     "width",
   ],
+  a: [
+    ...(sanitizeHtml.defaults.allowedAttributes.a || []),
+    "rel",
+  ],
   meta: ["charset", "content", "http-equiv", "name"],
   font: ["face", "size"],
   img: ["src", "srcset", "alt", "title", "width", "height", "loading"],
@@ -51,5 +55,14 @@ export function sanitizeEmailHtml(value?: string | null) {
     allowedSchemes: ["http", "https", "mailto", "cid"],
     allowedSchemesAppliedToAttributes: ["background", "cite", "href", "src"],
     allowProtocolRelative: false,
+    transformTags: {
+      a: (tagName, attribs) => {
+        if (!/^https?:\/\//i.test(attribs.href || "")) return { tagName, attribs };
+        return {
+          tagName,
+          attribs: { ...attribs, target: "_blank", rel: "noopener noreferrer" },
+        };
+      },
+    },
   });
 }

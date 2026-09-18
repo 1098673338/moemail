@@ -1524,12 +1524,17 @@ function MailReadingPane({ message, onDismissVerificationCode, onCopyCode }: { m
         <iframe
           className="mail-html-frame"
           title="邮件 HTML 正文"
-          sandbox="allow-same-origin"
+          sandbox="allow-same-origin allow-popups allow-popups-to-escape-sandbox"
           srcDoc={emailHtml}
           onLoad={(event) => {
             const frame = event.currentTarget;
             const document = frame.contentDocument;
             if (!document) return;
+            for (const link of document.querySelectorAll<HTMLAnchorElement>("a[href]")) {
+              if (!/^https?:\/\//i.test(link.getAttribute("href") || "")) continue;
+              link.target = "_blank";
+              link.rel = "noopener noreferrer";
+            }
             frame.style.height = `${Math.max(240, document.documentElement.scrollHeight, document.body?.scrollHeight || 0)}px`;
           }}
         />
