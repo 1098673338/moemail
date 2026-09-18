@@ -16,7 +16,7 @@ button { transition: opacity .12s ease; }
 button:active:not(:disabled), a.button:active:not([aria-disabled="true"]) { opacity: .62; }
 .main-area { height: 100dvh; min-width: 0; padding: 0 var(--space-lg) var(--space-lg); display: flex; flex-direction: column; overflow: auto; background: var(--color-canvas); }
 .main-area::before { display: none; }
-.button { min-height: var(--control-height); padding: 0 var(--space-md); display: inline-flex; align-items: center; justify-content: center; gap: var(--space-xs); color: var(--color-ink); background: transparent; border: 1px solid var(--color-interactive-border); border-radius: var(--radius-control); text-decoration: none; font-size: 14px; font-weight: 400; line-height: 20px; letter-spacing: 0; transition: opacity .16s ease, background-color .16s ease, border-color .16s ease; }
+.button { min-height: var(--button-height); padding: 0 var(--space-md); display: inline-flex; align-items: center; justify-content: center; gap: var(--space-xs); color: var(--color-ink); background: transparent; border: 1px solid var(--color-interactive-border); border-radius: var(--radius-control); text-decoration: none; font-size: 14px; font-weight: 400; line-height: 20px; letter-spacing: 0; transition: opacity .16s ease, background-color .16s ease, border-color .16s ease; }
 .button:hover:not(:disabled) { background: var(--color-surface-card); }
 .button:disabled { opacity: .45; cursor: not-allowed; }
 .button.primary { color: #fcfbf8; background: var(--color-ink); border-color: var(--color-ink); }
@@ -29,9 +29,9 @@ button:active:not(:disabled), a.button:active:not([aria-disabled="true"]) { opac
 .button.ghost:hover:not(:disabled) { color: var(--color-ink); background: var(--color-surface-card); border-color: transparent; }
 .button.destructive { color: var(--color-danger); background: transparent; border-color: color-mix(in srgb, var(--color-danger) 40%, var(--color-hairline)); }
 .button.destructive:hover:not(:disabled) { color: #fcfbf8; background: var(--color-danger); border-color: var(--color-danger); }
-.button.icon-only { width: var(--control-height); padding: 0; flex: none; }
+.button.icon-only { width: var(--button-height); padding: 0; flex: none; }
 .button.wide { width: 100%; }
-.button.compact { min-height: 34px; padding: 0 var(--space-sm); font-size: 12px; line-height: 16px; }
+.button.compact { min-height: var(--button-height); padding: 0 var(--space-sm); font-size: 12px; line-height: 16px; }
 .toast { position: fixed; z-index: 100; bottom: calc(var(--space-lg) + env(safe-area-inset-bottom)); left: 50%; width: fit-content; max-width: min(400px, calc(100vw - 32px)); min-height: 40px; padding: var(--space-xs) var(--space-sm); display: flex; align-items: center; gap: var(--space-xs); color: var(--color-surface-elevated); background: var(--color-ink); border: 0; border-left: 3px solid transparent; border-radius: 8px; box-shadow: var(--shadow-floating); font-size: 13px; line-height: 18px; transform: translateX(-50%); animation: toast-in .2s ease-out; }
 .toast.success { border-left-color: var(--color-success); }
 .toast.error { border-left-color: var(--color-danger); }
@@ -40,25 +40,25 @@ button:active:not(:disabled), a.button:active:not([aria-disabled="true"]) { opac
 
 .panel { background: var(--color-surface-soft); border: 1px solid var(--color-hairline); border-radius: var(--radius-card); }
 .address-table-section { min-height: 0; margin-top: var(--space-lg); display: flex; flex: 1; flex-direction: column; overflow: hidden; }
-.address-table-toolbar { min-height: 40px; margin-bottom: var(--space-sm); display: flex; align-items: center; justify-content: flex-end; gap: var(--space-md); }
+.address-table-toolbar { min-height: 32px; margin-bottom: var(--space-sm); display: flex; align-items: center; justify-content: flex-end; gap: var(--space-md); }
 .address-table-panel { min-height: 0; display: flex; flex: 1; flex-direction: column; overflow: hidden; }
 .table-toolbar-controls { min-width: 0; display: flex; align-items: center; gap: var(--space-xs); flex: 1; overflow-x: auto; scrollbar-width: none; }
 .table-toolbar-controls::-webkit-scrollbar { display: none; }
-.button.manual-mail-sync { min-height: 40px; flex: none; white-space: nowrap; }
-.address-search { width: 320px; min-height: 40px; margin-left: auto; padding: 0 8px 0 11px; display: flex; align-items: center; gap: 7px; flex: none; color: var(--color-muted); background: var(--color-canvas); border: 1px solid var(--color-hairline); border-radius: 8px; }
+.button.manual-mail-sync { flex: none; white-space: nowrap; }
+.address-search { width: 320px; min-height: 32px; margin-left: auto; padding: 0 8px 0 11px; display: flex; align-items: center; gap: 7px; flex: none; color: var(--color-muted); background: var(--color-canvas); border: 1px solid var(--color-hairline); border-radius: 8px; }
 .address-search:focus-within { color: var(--color-body-strong); border-color: var(--color-focus-border); }
-.address-search input { min-width: 0; height: 38px; padding: 0; flex: 1; color: var(--color-ink); background: transparent; border: 0; outline: 0; font-size: 12px; }
+.address-search input { min-width: 0; height: 30px; padding: 0; flex: 1; color: var(--color-ink); background: transparent; border: 0; outline: 0; font-size: 12px; }
 .address-search input::placeholder { color: var(--color-muted); }
 .address-search input::-webkit-search-cancel-button { display: none; }
 .address-search button { width: 26px; height: 26px; flex: none; display: grid; place-items: center; color: var(--color-muted); background: transparent; border: 0; border-radius: var(--radius-control); }
 .address-search button:hover { color: var(--color-ink); background: var(--color-surface-card); }
-.content-filter { padding: 3px; display: inline-flex; align-items: center; gap: 3px; background: var(--color-surface-card); border: 1px solid var(--color-hairline); border-radius: 8px; }
-.content-filter button { width: auto; min-height: 32px; padding: 0 var(--space-sm); display: inline-flex; align-items: center; justify-content: center; flex: none; color: var(--color-muted); background: transparent; border: 0; border-radius: var(--radius-control); font-size: 12px; white-space: nowrap; }
+.content-filter { height: 32px; padding: 2px; display: inline-flex; align-items: center; gap: 2px; background: var(--color-surface-card); border: 1px solid var(--color-hairline); border-radius: 8px; }
+.content-filter button { width: auto; min-height: 26px; padding: 0 var(--space-sm); display: inline-flex; align-items: center; justify-content: center; flex: none; color: var(--color-muted); background: transparent; border: 0; border-radius: var(--radius-control); font-size: 12px; white-space: nowrap; }
 .content-filter button:hover { color: var(--color-ink); }
 .content-filter button.active { color: var(--color-ink); background: var(--color-canvas); }
-.tag-filter { min-height: 40px; padding: 0 10px; display: inline-flex; align-items: center; gap: 6px; flex: none; color: var(--color-muted); background: var(--color-canvas); border: 1px solid var(--color-hairline); border-radius: 8px; }
+.tag-filter { min-height: 32px; padding: 0 10px; display: inline-flex; align-items: center; gap: 6px; flex: none; color: var(--color-muted); background: var(--color-canvas); border: 1px solid var(--color-hairline); border-radius: 8px; }
 .tag-filter:focus-within { color: var(--color-body-strong); border-color: var(--color-focus-border); }
-.tag-filter select { min-width: 92px; height: 38px; padding: 0; color: var(--color-body-strong); background: transparent; border: 0; outline: 0; font-size: 12px; }
+.tag-filter select { min-width: 92px; height: 30px; padding: 0; color: var(--color-body-strong); background: transparent; border: 0; outline: 0; font-size: 12px; }
 .address-table-scroll { width: 100%; min-height: 0; flex: 1; overflow: auto; contain: layout paint; }
 .address-table { width: 100%; min-width: 1320px; border-collapse: collapse; table-layout: fixed; }
 .address-table th { height: 44px; padding: 0 var(--space-md); color: var(--color-muted); background: rgb(28 28 28 / 3%); border-bottom: 1px solid var(--color-hairline); text-align: left; font-size: 11px; line-height: 16px; font-weight: 500; white-space: nowrap; }
@@ -163,7 +163,7 @@ button:active:not(:disabled), a.button:active:not([aria-disabled="true"]) { opac
 .date-picker-trigger:focus-visible { border-color: var(--color-focus-border); outline: 2px solid var(--color-focus); outline-offset: 1px; }
 .date-picker-trigger:disabled { opacity: .45; cursor: not-allowed; }
 .date-picker-trigger svg { flex: none; color: var(--color-muted); }
-.date-picker-popover { position: fixed; z-index: 70; padding: var(--space-sm); color: var(--color-ink); background: var(--color-surface-elevated); border: 1px solid var(--color-hairline); border-radius: 12px; box-shadow: 0 16px 40px rgb(34 31 27 / 14%); }
+.date-picker-popover { position: fixed; z-index: 70; padding: var(--space-sm); color: var(--color-ink); background: var(--color-canvas); border: 1px solid var(--color-hairline); border-radius: 12px; box-shadow: 0 16px 40px rgb(34 31 27 / 14%); }
 .date-picker-head { min-height: 40px; display: grid; grid-template-columns: 36px minmax(0, 1fr) 36px; align-items: center; }
 .date-picker-head strong { color: var(--color-ink); font-size: 14px; line-height: 20px; font-weight: 600; text-align: center; }
 .date-picker-head button { width: 32px; height: 32px; display: grid; place-items: center; color: var(--color-body); background: transparent; border: 0; border-radius: var(--radius-control); }

@@ -30,7 +30,8 @@
   --space-lg: 24px;
   --space-xl: 40px;
   --space-xxl: 64px;
-  --control-height: 40px;
+  --control-height: 32px;
+  --button-height: 32px;
   --sidebar-width: 224px;
   --radius-control: 6px;
   --radius-card: 12px;

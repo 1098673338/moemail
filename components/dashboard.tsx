@@ -1068,7 +1068,7 @@ function AddressView(props: {
     <section className="address-table-section">
       <div className="address-table-toolbar">
         {(props.canManualSync || visibleAddresses.length > 0) && <div className="table-toolbar-controls">
-          {props.canManualSync && <button className="button primary compact manual-mail-sync" type="button" disabled={props.manualSyncing} onClick={props.onManualSync}>
+          {props.canManualSync && <button className="button secondary compact manual-mail-sync" type="button" disabled={props.manualSyncing} onClick={props.onManualSync}>
             {props.manualSyncing ? <LoaderCircle className="spin" size={15} /> : <RefreshCw size={15} />}
             {props.manualSyncing ? "正在同步…" : "手动同步邮件"}
           </button>}
