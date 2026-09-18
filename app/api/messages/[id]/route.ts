@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { apiError } from "@/lib/http";
 import { setMessageRead, setVerificationCodeIgnored } from "@/lib/mail-store";
-import { deleteIcloudMessage } from "@/lib/icloud";
+import { deleteIcloudMessage, refreshIcloudMessageHtml } from "@/lib/icloud";
 
 export const runtime = "nodejs";
 
@@ -9,6 +9,9 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
   try {
     const { id } = await params;
     const body: unknown = await request.json();
+    if (typeof body === "object" && body !== null && "refreshHtml" in body && Boolean((body as { refreshHtml: unknown }).refreshHtml)) {
+      return NextResponse.json({ content: await refreshIcloudMessageHtml(id) });
+    }
     if (typeof body === "object" && body !== null && "verificationCodeIgnored" in body) {
       return NextResponse.json({ message: await setVerificationCodeIgnored(id, Boolean((body as { verificationCodeIgnored: unknown }).verificationCodeIgnored)) });
     }

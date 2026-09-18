@@ -199,4 +199,26 @@ export async function syncIcloudAccount(accountId:string, options:{reconcile?:bo
 }
 
 export async function deleteIcloudMessage(messageId:string) { const local=await one<Account & {provider_uid:number;provider_mailbox:string|null;provider_message_id:string|null;account_status:string}>("SELECT m.*,a.username,a.encrypted_password,a.status account_status FROM message m JOIN mail_account a ON a.id=m.account_id WHERE m.id=? AND m.source='icloud' AND m.deleted_at IS NULL",messageId); if(!local) throw new MailStoreError("iCloud 邮件不存在","not_found"); if(local.account_status==="disabled") throw new Error("iCloud 账号已停用，无法删除远端邮件"); await hideLocalMessage(messageId); const active=client(local); try { await active.client.connect(active.username,active.password); await active.client.examineInbox(); const remote=await active.client.fetchMessage(local.provider_uid); if(remote){ const parsed=await PostalMime.parse(remote.source); if(local.provider_message_id && parsed.messageId && local.provider_message_id!==parsed.messageId) throw new Error("远端邮件身份发生变化，已取消删除"); await active.client.deleteMessage(local.provider_uid); } await purgeLocalMessage(messageId); } catch(error) { await restoreLocalMessage(messageId); throw error; } finally { await active.client.logout(); } }
+export async function refreshIcloudMessageHtml(messageId:string) {
+  const local=await one<Account & {provider_uid:number|null;provider_mailbox:string|null;provider_message_id:string|null;account_status:string}>("SELECT m.*,a.username,a.encrypted_password,a.status account_status FROM message m JOIN mail_account a ON a.id=m.account_id WHERE m.id=? AND m.source='icloud' AND m.deleted_at IS NULL",messageId);
+  if(!local) throw new MailStoreError("iCloud 邮件不存在","not_found");
+  if(local.account_status==="disabled") throw new Error("iCloud 账号已停用，无法读取远端邮件");
+  const providerUid=local.provider_uid;
+  if(typeof providerUid !== "number" || !Number.isSafeInteger(providerUid) || providerUid <= 0 || (local.provider_mailbox && local.provider_mailbox !== "INBOX")) throw new Error("这封邮件缺少可用的 iCloud 同步标识，无法修复格式");
+  const active=client(local);
+  try {
+    await active.client.connect(active.username,active.password);
+    await active.client.examineInbox();
+    const remote=await active.client.fetchMessage(providerUid);
+    if(!remote) throw new Error("iCloud 中找不到这封邮件，无法修复格式");
+    const parsed=await PostalMime.parse(remote.source);
+    if(local.provider_message_id && parsed.messageId && local.provider_message_id!==parsed.messageId) throw new Error("远端邮件身份发生变化，已取消修复格式");
+    const textBody=parsed.text || "";
+    const htmlBody=sanitizeEmailHtml(parsed.html);
+    await run("UPDATE message SET text_body=?,html_body=?,updated_at=? WHERE id=? AND source='icloud' AND deleted_at IS NULL",textBody,htmlBody,stamp(),messageId);
+    return {textBody,htmlBody};
+  } finally {
+    await active.client.logout();
+  }
+}
 export async function disconnectIcloudAccount(accountId:string){ if(!await one("SELECT id FROM mail_account WHERE id=?",accountId)) throw new MailStoreError("iCloud 账号不存在","not_found"); const now=stamp(); await batch([{query:"UPDATE mail_address SET status='deleted',deleted_at=?,updated_at=? WHERE account_id=? AND type='icloud_primary'",params:[now,now,accountId]},{query:"UPDATE mail_address SET account_id=NULL,updated_at=? WHERE account_id=? AND type='icloud_hide'",params:[now,accountId]},{query:"DELETE FROM mail_account WHERE id=?",params:[accountId]}]); }

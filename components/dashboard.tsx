@@ -344,6 +344,7 @@ export function Dashboard() {
   const drawerRequestRef = useRef(0);
   const drawerAddressIdRef = useRef<string | null>(null);
   const readRequestsRef = useRef<Set<string>>(new Set());
+  const htmlRefreshRequestsRef = useRef<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
   const [pendingActions, setPendingActions] = useState<Set<string>>(() => new Set());
   const pendingActionsRef = useRef<Set<string>>(new Set());
@@ -610,6 +611,23 @@ export function Dashboard() {
     }
   };
 
+  const refreshMessageHtml = async (message: MailMessageDto) => {
+    if (!message.htmlBody || /<(?:html|head|body)\b/i.test(message.htmlBody) || htmlRefreshRequestsRef.current.has(message.id)) return;
+    htmlRefreshRequestsRef.current.add(message.id);
+    try {
+      const { content } = await requestJson<{ content: Pick<MailMessageDto, "textBody" | "htmlBody"> }>(`/api/messages/${message.id}`, {
+        method: "PATCH",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ refreshHtml: true }),
+      }, 75_000);
+      const update = (items: MailMessageDto[]) => items.map((item) => item.id === message.id ? { ...item, ...content } : item);
+      setMessages(update);
+      setDrawerMessages(update);
+    } catch {
+      // Keep the locally stored body visible if iCloud is temporarily unavailable.
+    }
+  };
+
   const openAddressMail = async (address: MailAddressDto) => {
     const requestId = ++drawerRequestRef.current;
     const cachedMessages = messages.filter((message) => messageMatchesAddress(message, address));
@@ -618,13 +636,27 @@ export function Dashboard() {
     setDrawerMessages(cachedMessages.map((message) => readRequestsRef.current.has(message.id) ? { ...message, isRead: true } : message));
     setDrawerMessageId(cachedMessages[0]?.id || null);
     setDrawerLoading(true);
-    if (cachedMessages[0]) void markMessageRead(cachedMessages[0]);
+    if (cachedMessages[0]) {
+      void markMessageRead(cachedMessages[0]);
+      void refreshMessageHtml(cachedMessages[0]);
+    }
     try {
       const data = await requestJson<{ messages: MailMessageDto[] }>(`/api/messages?addressId=${encodeURIComponent(address.id)}`);
       if (drawerRequestRef.current !== requestId) return;
-      setDrawerMessages(data.messages.map((message) => readRequestsRef.current.has(message.id) ? { ...message, isRead: true } : message));
+      setDrawerMessages((current) => data.messages.map((message) => {
+        const refreshed = current.find((item) => item.id === message.id);
+        const hasRepairedHtml = refreshed?.htmlBody && /<(?:html|head|body)\b/i.test(refreshed.htmlBody);
+        const incomingHasRepairedHtml = message.htmlBody && /<(?:html|head|body)\b/i.test(message.htmlBody);
+        const body = hasRepairedHtml && !incomingHasRepairedHtml
+          ? { textBody: refreshed.textBody, htmlBody: refreshed.htmlBody }
+          : {};
+        return { ...message, ...body, ...(readRequestsRef.current.has(message.id) ? { isRead: true } : {}) };
+      }));
       setDrawerMessageId((current) => data.messages.some((message) => message.id === current) ? current : data.messages[0]?.id || null);
-      if (data.messages[0] && !cachedMessages.some((message) => message.id === data.messages[0].id)) void markMessageRead(data.messages[0]);
+      if (data.messages[0] && !cachedMessages.some((message) => message.id === data.messages[0].id)) {
+        void markMessageRead(data.messages[0]);
+        void refreshMessageHtml(data.messages[0]);
+      }
     } catch (error) {
       if (drawerRequestRef.current === requestId) setNotice({ tone: "error", text: error instanceof Error ? error.message : "历史邮件加载失败" });
     } finally {
@@ -864,7 +896,7 @@ export function Dashboard() {
           messages={drawerMessages}
           message={drawerMessage}
           loading={drawerLoading}
-          onSelectMessage={(message) => { setDrawerMessageId(message.id); void markMessageRead(message); }}
+          onSelectMessage={(message) => { setDrawerMessageId(message.id); void markMessageRead(message); void refreshMessageHtml(message); }}
           onDeleteMessage={confirmDeleteMessage}
           onClose={closeMailDrawer}
           onDismissVerificationCode={dismissVerificationCode}
