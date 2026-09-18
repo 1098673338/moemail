@@ -612,7 +612,7 @@ export function Dashboard() {
   };
 
   const refreshMessageHtml = async (message: MailMessageDto) => {
-    if (!message.htmlBody || /<(?:html|head|body)\b/i.test(message.htmlBody) || htmlRefreshRequestsRef.current.has(message.id)) return;
+    if (!needsSourceHtmlRepair(message.htmlBody) || htmlRefreshRequestsRef.current.has(message.id)) return;
     htmlRefreshRequestsRef.current.add(message.id);
     try {
       const { content } = await requestJson<{ content: Pick<MailMessageDto, "textBody" | "htmlBody"> }>(`/api/messages/${message.id}`, {
@@ -1404,20 +1404,20 @@ function MailDrawer(props: {
   </div>;
 }
 
-function responsiveEmailDocument(value: string) {
-  const viewport = '<meta name="viewport" content="width=device-width, initial-scale=1" />';
-  // Apple receipts include both a 742px desktop table and a 480px mobile table,
-  // but only switch at 480px. The reading pane can be narrower than 742px while
-  // still being wider than that breakpoint, so activate Apple's own mobile table
-  // before the desktop table can be clipped.
-  const adaptiveStyles = "<style>html,body{margin:0!important;min-width:0!important}img{max-width:100%!important;height:auto!important}@media (max-width:767px){div[class=aapl-mobile-div]{display:block!important;-webkit-text-size-adjust:none!important;height:100%!important;overflow:visible!important;max-height:none!important;min-height:none!important;line-height:normal!important}div[class=aapl-desktop-div]{display:none!important;height:0!important;overflow:hidden!important;max-height:0!important;min-height:0!important;line-height:0!important}}</style>";
-  if (/<head\b[^>]*>/i.test(value)) return `<!doctype html>${value.replace(/<head\b[^>]*>/i, (head) => `${head}${viewport}${adaptiveStyles}`)}`;
-  return `<!doctype html><html><head>${viewport}${adaptiveStyles}</head><body>${value}</body></html>`;
+function needsSourceHtmlRepair(htmlBody: string | null) {
+  if (!htmlBody) return false;
+  const hasDocumentStructure = /<(?:html|head|body)\b/i.test(htmlBody);
+  const isAppleDualLayout = /aapl-desktop-div/i.test(htmlBody) && /aapl-mobile-div/i.test(htmlBody);
+  // Older sanitized Apple receipts lost colspan/rowspan. Those attributes keep
+  // header, content, and footer in the same table row, so re-fetch this narrow
+  // legacy shape once after the sanitizer has been corrected.
+  const lostTableSpans = isAppleDualLayout && !/\b(?:colspan|rowspan)\s*=/i.test(htmlBody);
+  return !hasDocumentStructure || lostTableSpans;
 }
 
 function MailReadingPane({ message, onDismissVerificationCode, onCopyCode }: { message: MailMessageDto; onDismissVerificationCode: (message: MailMessageDto) => Promise<void>; onCopyCode: (value: string) => Promise<void> }) {
   const code = verificationCode(message);
-  const emailHtml = responsiveEmailDocument(message.htmlBody || plainTextEmailHtml(message.textBody));
+  const emailHtml = message.htmlBody || plainTextEmailHtml(message.textBody);
 
   return <>
     <div className="drawer-message-meta"><div><h3>{message.subject}</h3><p>{message.senderName || message.senderAddress} · {message.senderAddress}</p><p>收件人 · {message.recipients.join("、") || "未提供"}</p></div></div>
