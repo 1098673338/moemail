@@ -49,6 +49,7 @@ button:active:not(:disabled), a.button:active:not([aria-disabled="true"]) { opac
 .table-toolbar-controls::-webkit-scrollbar { display: none; }
 .button.manual-mail-sync { flex: none; white-space: nowrap; }
 .address-search { width: 280px; min-height: 32px; margin-left: auto; padding: 0 3px 0 11px; display: flex; align-items: center; gap: 7px; flex: none; color: var(--color-muted); background: var(--color-canvas); border: 1px solid var(--color-hairline); border-radius: 8px; }
+.address-search:hover { border-color: var(--color-interactive-border); }
 .address-search:focus-within { color: var(--color-body-strong); border-color: var(--color-focus-border); }
 .address-search input { min-width: 0; height: 30px; padding: 0; flex: 1; color: var(--color-ink); background: transparent; border: 0; outline: 0; font-size: 12px; }
 .address-search input::placeholder { color: var(--color-muted); }
@@ -62,7 +63,7 @@ button:active:not(:disabled), a.button:active:not([aria-disabled="true"]) { opac
 .content-filter button.active { color: var(--color-ink); background: var(--color-canvas); }
 .tag-filter-trigger { width: fit-content; min-width: 0; min-height: 32px; padding: 0 10px; display: inline-flex; align-items: center; justify-content: space-between; gap: 6px; flex: none; color: var(--color-body-strong); background: var(--color-canvas); border: 1px solid var(--color-hairline); border-radius: 8px; font-size: 12px; white-space: nowrap; }
 .tag-filter-trigger:hover, .tag-filter-trigger[aria-expanded="true"] { border-color: var(--color-interactive-border); }
-.tag-filter-trigger:focus-visible { outline: 2px solid var(--color-focus); outline-offset: 1px; }
+.tag-filter-trigger:focus-visible { border-color: var(--color-focus-border); outline: 2px solid var(--color-focus); outline-offset: 1px; }
 .tag-filter-trigger svg { flex: none; color: var(--color-muted); }
 .tag-filter-menu { position: fixed; z-index: 70; width: max-content; max-width: calc(100vw - 16px); max-height: min(288px, calc(100vh - 16px)); padding: 4px; overflow-y: auto; color: var(--color-body-strong); background: var(--color-canvas); border: 1px solid var(--color-hairline); border-radius: 8px; box-shadow: 0 12px 28px rgb(34 31 27 / 12%); }
 .tag-filter-menu button { width: 100%; min-height: 32px; padding: 0 var(--space-sm); display: flex; align-items: center; color: inherit; background: transparent; border: 0; border-radius: var(--radius-control); font-size: 12px; text-align: left; }
@@ -141,7 +142,8 @@ button:active:not(:disabled), a.button:active:not([aria-disabled="true"]) { opac
 .account-tag-existing-option:disabled { opacity: .55; cursor: wait; }
 .account-tag-name { color: var(--color-body); font-size: 11px; line-height: 16px; }
 .account-tag-name input { width: 100%; min-height: var(--control-height); margin-top: 5px; padding: 0 11px; color: var(--color-ink); background: var(--color-canvas); border: 1px solid var(--color-hairline); border-radius: 8px; outline: 0; font-size: 12px; }
-.account-tag-name input:focus { border-color: var(--color-focus-border); }
+.account-tag-name input:hover { border-color: var(--color-interactive-border); }
+.account-tag-name input:focus { border-color: var(--color-focus-border); outline: 2px solid var(--color-focus); outline-offset: 1px; }
 .account-tag-colors { min-width: 0; padding: 0; border: 0; }
 .account-tag-colors legend { margin-bottom: 6px; color: var(--color-body); font-size: 11px; line-height: 16px; }
 .account-tag-colors > div { display: flex; align-items: center; justify-content: space-between; gap: 6px; flex-wrap: nowrap; }
@@ -163,6 +165,7 @@ button:active:not(:disabled), a.button:active:not([aria-disabled="true"]) { opac
 .form-section label, .modal-form label { color: var(--color-body); font-size: 13px; line-height: 20px; font-weight: 500; letter-spacing: -.26px; }
 .form-section input, .modal-form input, .modal-form select { width: 100%; min-height: var(--control-height); margin-top: var(--space-xs); padding: 5px var(--space-sm); color: var(--color-ink); background: var(--color-canvas); border: 1px solid var(--color-hairline); border-radius: var(--radius-control); outline: 0; font-size: 14px; font-weight: 400; line-height: 20px; text-transform: none; letter-spacing: 0; }
 .form-section textarea, .modal-form textarea { width: 100%; min-height: 120px; margin-top: var(--space-xs); padding: 9px var(--space-sm); color: var(--color-ink); background: var(--color-canvas); border: 1px solid var(--color-hairline); border-radius: var(--radius-control); outline: 0; font-size: 14px; font-weight: 400; line-height: 1.6; text-transform: none; letter-spacing: 0; resize: vertical; }
+.form-section input:hover, .form-section textarea:hover, .modal-form input:hover, .modal-form textarea:hover, .modal-form select:hover { border-color: var(--color-interactive-border); }
 .form-section input:focus, .form-section textarea:focus, .modal-form input:focus, .modal-form textarea:focus, .modal-form select:focus { border-color: var(--color-focus-border); outline: 2px solid var(--color-focus); outline-offset: 1px; }
 .form-section input::placeholder, .form-section textarea::placeholder, .modal-form input::placeholder, .modal-form textarea::placeholder { color: var(--color-muted); }
 .date-picker-field { display: grid; }
