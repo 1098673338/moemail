@@ -54,12 +54,12 @@ const ICLOUD_SYNC_INTERVAL = 5 * 60_000;
 const DEFAULT_TAG_COLOR = "#475569";
 const ICLOUD_BRIDGE_VERSION = 1;
 const TAG_COLOR_OPTIONS = [
-  "#475569", "#dc2626", "#ea580c", "#a16207", "#15803d", "#2563eb", "#6d28d9", "#db2777",
+  "#475569", "#dc2626", "#eab308", "#15803d", "#2563eb", "#db2777", "#111827",
 ];
 const LEGACY_TAG_COLOR_ALIASES: Record<string, string> = {
-  "#6b7280": "#475569", "#111827": "#475569", "#9f1239": "#dc2626", "#9a3412": "#ea580c",
-  "#ca8a04": "#a16207", "#4d7c0f": "#15803d", "#16a34a": "#15803d", "#0f766e": "#15803d",
-  "#0e7490": "#2563eb", "#4338ca": "#6d28d9", "#7c3aed": "#6d28d9", "#a21caf": "#db2777",
+  "#6b7280": "#475569", "#9f1239": "#dc2626", "#9a3412": "#eab308", "#ea580c": "#eab308",
+  "#a16207": "#eab308", "#ca8a04": "#eab308", "#4d7c0f": "#15803d", "#16a34a": "#15803d", "#0f766e": "#15803d",
+  "#0e7490": "#2563eb", "#4338ca": "#db2777", "#6d28d9": "#db2777", "#7c3aed": "#db2777", "#a21caf": "#db2777",
 };
 type Confirmation = {
   title: string;
@@ -1165,7 +1165,7 @@ function AddressView(props: {
 function TagColorPicker({ value, disabled = false, onChange }: { value: string; disabled?: boolean; onChange: (color: string) => void }) {
   return <fieldset className="account-tag-colors" disabled={disabled}>
     <legend>标签颜色</legend>
-    <div>{TAG_COLOR_OPTIONS.map((option) => <button key={option} type="button" aria-label={`选择颜色 ${option}`} aria-pressed={value.toLowerCase() === option} className={value.toLowerCase() === option ? "active" : ""} style={{ backgroundColor: option }} onClick={() => onChange(option)}>{value.toLowerCase() === option && <Check size={13} aria-hidden="true" />}</button>)}</div>
+    <div>{TAG_COLOR_OPTIONS.map((option) => <button key={option} type="button" aria-label={`选择颜色 ${option}`} aria-pressed={value.toLowerCase() === option} className={value.toLowerCase() === option ? "active" : ""} style={{ color: option === "#eab308" ? "#1f2937" : "#fff", backgroundColor: option }} onClick={() => onChange(option)}>{value.toLowerCase() === option && <Check size={13} aria-hidden="true" />}</button>)}</div>
   </fieldset>;
 }
 
