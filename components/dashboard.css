@@ -255,7 +255,6 @@ button:active:not(:disabled), a.button:active:not([aria-disabled="true"]) { opac
 .modal-card { width: min(560px, 100%); max-height: calc(100dvh - 48px); display: grid; grid-template-rows: auto minmax(0, 1fr); overflow: hidden; color: var(--color-ink); background: var(--color-canvas); border: 1px solid var(--color-hairline); border-radius: var(--radius-large); }
 .modal-card.confirm-dialog { width: min(440px, 100%); grid-template-rows: auto auto auto; }
 .modal-card.settings-dialog { width: min(680px, 100%); }
-.modal-card.settings-dialog .modal-head { border-bottom: 0; }
 .modal-head { min-height: 64px; padding: var(--space-md) var(--space-lg); display: flex; align-items: center; justify-content: space-between; gap: var(--space-lg); border-bottom: 1px solid var(--color-hairline); }
 .modal-head h2 { margin: 0; color: var(--color-ink); font-size: 18px; line-height: 24px; font-weight: 600; letter-spacing: -.36px; }
 .modal-head p { margin: 2px 0 0; overflow-wrap: anywhere; color: var(--color-muted); font-size: 12px; line-height: 18px; }
