@@ -1551,7 +1551,7 @@ function SettingsView(props: {
   return (
     <div className="settings-dialog-body">
       <section className="settings-content">
-        <div className="settings-toolbar"><button className="button primary" type="button" onClick={props.onConnectIcloud}><Plus size={16} />连接 iCloud</button></div>
+        <div className="settings-toolbar"><h3>iCloud 账号</h3><button className="button primary" type="button" onClick={props.onConnectIcloud}><Plus size={16} />连接 iCloud</button></div>
         {props.accounts.length === 0 ? (
           <div className="empty-inline"><p><strong>还没有连接 iCloud 账号</strong></p></div>
         ) : props.accounts.map((account) => {
