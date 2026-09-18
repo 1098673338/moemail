@@ -10,6 +10,7 @@ import {
   AtSign,
   CalendarDays,
   Check,
+  ChevronDown,
   ChevronLeft,
   ChevronRight,
   CircleAlert,
@@ -42,6 +43,7 @@ type ContentFilter = "all" | "empty" | "filled";
 type TagFilter = string;
 type AddressTag = { name: string; color: string };
 type TagEditorState = { addressId: string; top: number; left: number; trigger: HTMLButtonElement };
+type TagFilterMenuState = { top: number; left: number; width: number; trigger: HTMLButtonElement };
 type IcloudSyncResponse = { imported: number; removed: number; synced: number; remaining?: number; automaticTagApplied?: number; primaryUnlinkedMessages?: number };
 type IcloudSyncProgress = { accountId: string; completed: number; total: number; remaining: number };
 type Modal = "edit_address" | "icloud" | "icloud_password" | null;
@@ -951,6 +953,7 @@ function AddressView(props: {
   const [addressQuery, setAddressQuery] = useState("");
   const [page, setPage] = useState(1);
   const [tagEditor, setTagEditor] = useState<TagEditorState | null>(null);
+  const [tagFilterMenu, setTagFilterMenu] = useState<TagFilterMenuState | null>(null);
   const tableScrollRef = useRef<HTMLDivElement>(null);
   const visibleAddresses = props.addresses;
   const existingTags = Array.from(props.addresses.reduce((tags, address) => {
@@ -1036,6 +1039,11 @@ function AddressView(props: {
     { value: "empty", label: "无内容" },
     { value: "filled", label: "有内容" },
   ];
+  const tagFilterOptions: Array<{ value: TagFilter; label: string }> = [
+    { value: "all", label: "全部标签" },
+    ...availableTags.map((tag) => ({ value: tag, label: tag })),
+    { value: "untagged", label: "无标签" },
+  ];
   const filteredRows = searchedRows.filter((row) => {
     const matchesContent = contentFilter === "all"
       || (contentFilter === "filled"
@@ -1063,6 +1071,23 @@ function AddressView(props: {
       ? <ArrowUp size={13} aria-hidden="true" />
       : <ArrowDown size={13} aria-hidden="true" />;
   const sortAria = (key: AddressSortKey) => sort.key === key ? sort.direction === "asc" ? "升序" : "降序" : "未排序";
+  const openTagFilterMenu = (event: MouseEvent<HTMLButtonElement>) => {
+    const trigger = event.currentTarget;
+    const rect = trigger.getBoundingClientRect();
+    const width = Math.max(rect.width, 144);
+    const menuHeight = Math.min(288, tagFilterOptions.length * 32 + 8);
+    const gutter = 8;
+    const left = Math.min(Math.max(gutter, rect.left), window.innerWidth - width - gutter);
+    const top = rect.bottom + 6 + menuHeight <= window.innerHeight - gutter
+      ? rect.bottom + 6
+      : Math.max(gutter, rect.top - menuHeight - 6);
+    setTagFilterMenu((current) => current?.trigger === trigger ? null : { top, left, width, trigger });
+  };
+  const updateTagFilter = (nextFilter: TagFilter) => {
+    setTagFilter(nextFilter);
+    setPage(1);
+    resetTableScroll();
+  };
 
   return (
     <section className="address-table-section">
@@ -1083,17 +1108,14 @@ function AddressView(props: {
               resetTableScroll();
             }}>{option.label}</button>)}
           </div>
-          <div className="tag-filter">
-            <select aria-label="按标签筛选" value={activeTagFilter} onChange={(event) => {
-              setTagFilter(event.target.value as TagFilter);
-              setPage(1);
-              resetTableScroll();
-            }}>
-              <option value="all">全部标签</option>
-              {availableTags.map((tag) => <option key={tag} value={tag}>{tag}</option>)}
-              <option value="untagged">无标签</option>
-            </select>
-          </div>
+          <button
+            type="button"
+            className="tag-filter-trigger"
+            aria-label="按标签筛选"
+            aria-haspopup="menu"
+            aria-expanded={Boolean(tagFilterMenu)}
+            onClick={openTagFilterMenu}
+          >{tagFilterOptions.find((option) => option.value === activeTagFilter)?.label || "全部标签"}<ChevronDown size={14} aria-hidden="true" /></button>
           <div className="address-search">
             <Search size={15} aria-hidden="true" />
             <label className="sr-only" htmlFor="address-search-input">搜索邮箱地址或备注</label>
@@ -1239,7 +1261,67 @@ function AddressView(props: {
           }}
         />;
       })()}
+      {tagFilterMenu && <TagFilterMenu
+        value={activeTagFilter}
+        options={tagFilterOptions}
+        position={tagFilterMenu}
+        onClose={(restoreFocus) => {
+          if (restoreFocus) tagFilterMenu.trigger.focus();
+          setTagFilterMenu(null);
+        }}
+        onSelect={(value) => updateTagFilter(value)}
+      />}
     </section>
+  );
+}
+
+function TagFilterMenu({ value, options, position, onClose, onSelect }: {
+  value: TagFilter;
+  options: Array<{ value: TagFilter; label: string }>;
+  position: TagFilterMenuState;
+  onClose: (restoreFocus?: boolean) => void;
+  onSelect: (value: TagFilter) => void;
+}) {
+  const menuRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const handlePointerDown = (event: PointerEvent) => {
+      const target = event.target as Node;
+      if (!menuRef.current?.contains(target) && !position.trigger.contains(target)) onClose();
+    };
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        onClose(true);
+      }
+    };
+    const close = () => onClose();
+    window.addEventListener("pointerdown", handlePointerDown, true);
+    window.addEventListener("keydown", handleKeyDown);
+    window.addEventListener("resize", close);
+    window.addEventListener("scroll", close, true);
+    return () => {
+      window.removeEventListener("pointerdown", handlePointerDown, true);
+      window.removeEventListener("keydown", handleKeyDown);
+      window.removeEventListener("resize", close);
+      window.removeEventListener("scroll", close, true);
+    };
+  }, [onClose, position.trigger]);
+
+  return createPortal(
+    <div ref={menuRef} className="tag-filter-menu" role="menu" aria-label="标签筛选选项" style={{ top: position.top, left: position.left, width: position.width }}>
+      {options.map((option) => <button
+        key={option.value}
+        type="button"
+        className={option.value === value ? "selected" : ""}
+        role="menuitemradio"
+        aria-checked={option.value === value}
+        onClick={() => {
+          onSelect(option.value);
+          onClose(true);
+        }}
+      >{option.label}</button>)}
+    </div>,
+    document.body,
   );
 }
 

@@ -56,9 +56,14 @@ button:active:not(:disabled), a.button:active:not([aria-disabled="true"]) { opac
 .content-filter button { width: auto; min-height: 26px; padding: 0 var(--space-sm); display: inline-flex; align-items: center; justify-content: center; flex: none; color: var(--color-muted); background: transparent; border: 0; border-radius: var(--radius-control); font-size: 12px; white-space: nowrap; }
 .content-filter button:hover { color: var(--color-ink); }
 .content-filter button.active { color: var(--color-ink); background: var(--color-canvas); }
-.tag-filter { min-height: 32px; padding: 0 10px; display: inline-flex; align-items: center; gap: 6px; flex: none; color: var(--color-muted); background: var(--color-canvas); border: 1px solid var(--color-hairline); border-radius: 8px; }
-.tag-filter:focus-within { color: var(--color-body-strong); border-color: var(--color-focus-border); }
-.tag-filter select { min-width: 92px; height: 30px; padding: 0; color: var(--color-body-strong); background: transparent; border: 0; outline: 0; font-size: 12px; }
+.tag-filter-trigger { min-width: 112px; min-height: 32px; padding: 0 10px; display: inline-flex; align-items: center; justify-content: space-between; gap: 6px; flex: none; color: var(--color-body-strong); background: var(--color-canvas); border: 1px solid var(--color-hairline); border-radius: 8px; font-size: 12px; white-space: nowrap; }
+.tag-filter-trigger:hover, .tag-filter-trigger[aria-expanded="true"] { border-color: var(--color-interactive-border); }
+.tag-filter-trigger:focus-visible { outline: 2px solid var(--color-focus); outline-offset: 1px; }
+.tag-filter-trigger svg { flex: none; color: var(--color-muted); }
+.tag-filter-menu { position: fixed; z-index: 70; max-height: min(288px, calc(100vh - 16px)); padding: 4px; overflow-y: auto; color: var(--color-body-strong); background: var(--color-canvas); border: 1px solid var(--color-hairline); border-radius: 8px; box-shadow: 0 12px 28px rgb(34 31 27 / 12%); }
+.tag-filter-menu button { width: 100%; min-height: 32px; padding: 0 var(--space-sm); display: flex; align-items: center; color: inherit; background: transparent; border: 0; border-radius: var(--radius-control); font-size: 12px; text-align: left; }
+.tag-filter-menu button:hover, .tag-filter-menu button.selected { color: var(--color-ink); background: var(--color-surface-card); }
+.tag-filter-menu button:focus-visible { outline: 2px solid var(--color-focus); outline-offset: -1px; }
 .address-table-scroll { width: 100%; min-height: 0; flex: 1; overflow: auto; contain: layout paint; }
 .address-table { width: 100%; min-width: 1320px; border-collapse: collapse; table-layout: fixed; }
 .address-table th { height: 44px; padding: 0 var(--space-md); color: var(--color-muted); background: rgb(28 28 28 / 3%); border-bottom: 1px solid var(--color-hairline); text-align: left; font-size: 11px; line-height: 16px; font-weight: 500; white-space: nowrap; }
