@@ -110,7 +110,7 @@ button:active:not(:disabled), a.button:active:not([aria-disabled="true"]) { opac
 .status-pill.disabled { color: var(--color-warning); }
 .status-pill.sync_error { color: var(--color-danger); }
 .status-pill i { width: 5px; height: 5px; margin-right: 6px; display: inline-block; border-radius: 50%; background: currentColor; }
-.account-tag { width: fit-content; min-height: 24px; padding: 3px 9px; display: inline-flex; align-items: center; color: var(--tag-color, var(--color-muted)); background: color-mix(in srgb, var(--tag-color, var(--color-muted)) 12%, transparent); border: 1px solid color-mix(in srgb, var(--tag-color, var(--color-muted)) 34%, var(--color-hairline)); border-radius: 999px; font-size: 11px; line-height: 16px; font-weight: 500; }
+.account-tag { width: fit-content; min-height: 24px; padding: 3px 9px; display: inline-flex; align-items: center; color: var(--tag-foreground, #fff); background: var(--tag-color, var(--color-muted)); border: 1px solid var(--tag-color, var(--color-muted)); border-radius: 999px; font-size: 11px; line-height: 16px; font-weight: 500; }
 .account-tag-cell { overflow: visible !important; }
 .account-tag-trigger { cursor: pointer; }
 .account-tag-trigger:hover { filter: brightness(.96); }
