@@ -668,7 +668,7 @@ export function Dashboard() {
 
         <nav className="main-nav">
           <button className={view === "icloud" ? "active" : ""} onClick={() => { setView("icloud"); setMobileNavOpen(false); }}>
-            <Cloud size={19} /><span>iCloud 邮箱</span><em>{addresses.filter((address) => address.type === "icloud_hide").length}</em>
+            <Cloud size={19} /><span>iCloud 邮箱</span><em>{addresses.length}</em>
           </button>
           <button className={view === "settings" ? "active" : ""} onClick={() => { setView("settings"); setMobileNavOpen(false); }}>
             <Settings size={19} /><span>账号设置</span>
@@ -880,7 +880,7 @@ function AddressView(props: {
   const [page, setPage] = useState(1);
   const [tagEditor, setTagEditor] = useState<TagEditorState | null>(null);
   const tableScrollRef = useRef<HTMLDivElement>(null);
-  const visibleAddresses = props.addresses.filter((address) => address.type === "icloud_hide");
+  const visibleAddresses = props.addresses;
   const existingTags = Array.from(props.addresses.reduce((tags, address) => {
     const tag = addressTag(address);
     if (tag && !tags.has(tag.name)) tags.set(tag.name, tag);
@@ -1122,7 +1122,7 @@ function AddressView(props: {
                     <td className="time-value">{message ? formatTableReceivedAt(message.receivedAt) : "-"}</td>
                     <td className="address-actions-cell">
                       <button type="button" className="icon-button address-table-action" title="编辑邮箱资料" aria-label={`编辑 ${address.address} 的邮箱资料`} onClick={(event) => { event.stopPropagation(); props.onEdit(address); }} onKeyDown={(event) => event.stopPropagation()}><PencilLine size={14} aria-hidden="true" /></button>
-                      <button type="button" className="icon-button address-table-action address-delete-button" title="删除邮箱" aria-label={`删除邮箱 ${address.address}`} onClick={(event) => { event.stopPropagation(); props.onDelete(address); }} onKeyDown={(event) => event.stopPropagation()}><Trash2 size={14} aria-hidden="true" /></button>
+                      {address.type === "icloud_hide" && <button type="button" className="icon-button address-table-action address-delete-button" title="删除邮箱" aria-label={`删除邮箱 ${address.address}`} onClick={(event) => { event.stopPropagation(); props.onDelete(address); }} onKeyDown={(event) => event.stopPropagation()}><Trash2 size={14} aria-hidden="true" /></button>}
                     </td>
                   </tr>
                 );
