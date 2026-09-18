@@ -48,6 +48,8 @@ type Modal = "edit_address" | "icloud" | "icloud_password" | null;
 type Notice = { tone: "success" | "error"; text: string };
 const ADDRESS_PAGE_SIZE = 20;
 const DEFAULT_ADDRESS_SORT: AddressSort = { key: "receivedAt", direction: "desc" };
+const ICLOUD_FAST_SYNC_INTERVAL = 2_000;
+const ICLOUD_FAST_SYNC_DURATION = 2 * 60_000;
 const ICLOUD_SYNC_INTERVAL = 5 * 60_000;
 const DEFAULT_TAG_COLOR = "#6b7280";
 const ICLOUD_BRIDGE_VERSION = 1;
@@ -328,6 +330,7 @@ export function Dashboard() {
   const accountsRef = useRef<ICloudAccountDto[]>([]);
   const dataRefreshInFlightRef = useRef<Promise<void> | null>(null);
   const icloudSyncInFlightRef = useRef<Promise<IcloudSyncResponse[]> | null>(null);
+  const icloudFastSyncUntilRef = useRef(0);
   const icloudSyncRequestIdRef = useRef(0);
   const backgroundSyncNoticeAtRef = useRef(0);
   const [notice, setNotice] = useState<Notice | null>(null);
@@ -413,8 +416,20 @@ export function Dashboard() {
     });
   }, []);
 
-  const syncIcloudAccounts = useCallback(async () => {
-    if (icloudSyncInFlightRef.current) return icloudSyncInFlightRef.current;
+  const openIcloudFastSyncWindow = useCallback(() => {
+    icloudFastSyncUntilRef.current = Date.now() + ICLOUD_FAST_SYNC_DURATION;
+  }, []);
+
+  useEffect(() => {
+    if (view === "icloud") openIcloudFastSyncWindow();
+  }, [view, openIcloudFastSyncWindow]);
+
+  const syncIcloudAccounts = useCallback(async (options: { reconcile?: boolean } = {}) => {
+    while (icloudSyncInFlightRef.current) {
+      const inFlight = icloudSyncInFlightRef.current;
+      if (!options.reconcile) return inFlight;
+      await inFlight;
+    }
     // A failed IMAP login is persisted as sync_error by the API. It requires a
     // new App-specific password, so retrying it in the background only creates
     // repeated requests and repeated error toasts.
@@ -426,14 +441,14 @@ export function Dashboard() {
       try {
         const results = await Promise.all(syncableAccounts.map(async (account) => {
           const result = await requestJson<IcloudSyncResponse>(
-            `/api/icloud/accounts/${account.id}/sync`,
+            `/api/icloud/accounts/${account.id}/sync${options.reconcile ? "?reconcile=1" : ""}`,
             { method: "POST" },
             75_000,
           );
           recordIcloudSyncProgress(account.id, result);
           return result;
         }));
-        if (results.some((result) => result.synced > 0 || result.removed > 0 || result.automaticTagApplied)) await refreshData();
+        if (results.some((result) => result.imported > 0 || result.removed > 0 || result.automaticTagApplied)) await refreshData();
         return results;
       } catch (error) {
         await refreshData().catch(() => undefined);
@@ -474,7 +489,10 @@ export function Dashboard() {
     let timer: number | null = null;
 
     const scheduleNext = () => {
-      if (!cancelled && document.visibilityState === "visible") timer = window.setTimeout(tick, ICLOUD_SYNC_INTERVAL);
+      if (!cancelled && document.visibilityState === "visible") {
+        const interval = Date.now() < icloudFastSyncUntilRef.current ? ICLOUD_FAST_SYNC_INTERVAL : ICLOUD_SYNC_INTERVAL;
+        timer = window.setTimeout(tick, interval);
+      }
     };
     const tick = async () => {
       if (cancelled || document.visibilityState !== "visible") return;
@@ -493,6 +511,7 @@ export function Dashboard() {
         timer = null;
         return;
       }
+      openIcloudFastSyncWindow();
       if (!icloudSyncInFlightRef.current && accountsRef.current.some((account) => account.status === "active")) void tick();
     };
     document.addEventListener("visibilitychange", handleVisibilityChange);
@@ -506,7 +525,7 @@ export function Dashboard() {
       if (timer !== null) window.clearTimeout(timer);
       document.removeEventListener("visibilitychange", handleVisibilityChange);
     };
-  }, [view, accounts.length, icloudSyncProgress, refreshData, syncIcloudAccounts, notifyBackgroundSyncError]);
+  }, [view, accounts.length, icloudSyncProgress, syncIcloudAccounts, notifyBackgroundSyncError, openIcloudFastSyncWindow]);
 
   const drawerAddress = addresses.find((address) => address.id === drawerAddressId) || null;
   const editingAddress = addresses.find((address) => address.id === editingAddressId) || null;
@@ -653,7 +672,8 @@ export function Dashboard() {
             canManualSync={accounts.some((account) => account.status === "active")}
             manualSyncing={isPending("icloud:manual-sync")}
             onManualSync={() => void runAction("icloud:manual-sync", async () => {
-              const results = await syncIcloudAccounts();
+              openIcloudFastSyncWindow();
+              const results = await syncIcloudAccounts({ reconcile: true });
               if (!results?.length) return "没有可同步的 iCloud 账号";
               const imported = results.reduce((total, result) => total + result.imported, 0);
               const removed = results.reduce((total, result) => total + result.removed, 0);

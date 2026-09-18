@@ -33,7 +33,8 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
   }
   try {
     const { id } = await params;
-    return withBridgeCors(NextResponse.json({ success: true, ...(await syncIcloudAccount(id)) }));
+    const reconcile = new URL(request.url).searchParams.get("reconcile") === "1";
+    return withBridgeCors(NextResponse.json({ success: true, ...(await syncIcloudAccount(id, { reconcile })) }));
   } catch (error) {
     return withBridgeCors(apiError(error, "同步 iCloud 失败"));
   }

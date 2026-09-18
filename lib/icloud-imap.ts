@@ -6,7 +6,7 @@ const CRLF = encoder.encode("\r\n");
 const IMAP_HOST = "imap.mail.me.com";
 const IMAP_PORT = 993;
 
-type Mailbox = { uidValidity: string | null };
+type Mailbox = { uidValidity: string | null; uidNext: number | null };
 export type IcloudImapMessage = { uid: number; internalDate: Date | null; source: Uint8Array };
 
 function concat(left: Uint8Array, right: Uint8Array) {
@@ -100,11 +100,18 @@ export class IcloudImapClient {
 
   async examineInbox(): Promise<Mailbox> {
     const response = decoder.decode(await this.command('EXAMINE "INBOX"'));
-    return { uidValidity: response.match(/\[UIDVALIDITY (\d+)\]/i)?.[1] || null };
+    const uidNext = Number(response.match(/\[UIDNEXT (\d+)\]/i)?.[1]);
+    return {
+      uidValidity: response.match(/\[UIDVALIDITY (\d+)\]/i)?.[1] || null,
+      uidNext: Number.isSafeInteger(uidNext) && uidNext > 0 ? uidNext : null,
+    };
   }
 
-  async searchUids() {
-    const response = decoder.decode(await this.command("UID SEARCH NOT DELETED"));
+  async searchUids(afterUid?: number) {
+    const criteria = Number.isSafeInteger(afterUid) && afterUid! > 0
+      ? `UID ${afterUid}:* NOT DELETED`
+      : "NOT DELETED";
+    const response = decoder.decode(await this.command(`UID SEARCH ${criteria}`));
     const list = response.match(/^\* SEARCH(?:\s+(.*))?$/mi)?.[1] || "";
     return list.split(/\s+/).map(Number).filter((value) => Number.isSafeInteger(value) && value > 0);
   }
