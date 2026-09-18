@@ -1404,9 +1404,17 @@ function MailDrawer(props: {
   </div>;
 }
 
+function responsiveEmailDocument(value: string) {
+  const viewport = '<meta name="viewport" content="width=device-width, initial-scale=1" />';
+  const adaptiveStyles = "<style>html,body{width:100%!important;max-width:100%!important;min-width:0!important}table{max-width:100%!important}img{max-width:100%!important;height:auto!important}</style>";
+  if (/<head\b[^>]*>/i.test(value)) return `<!doctype html>${value.replace(/<head\b[^>]*>/i, (head) => `${head}${viewport}${adaptiveStyles}`)}`;
+  return `<!doctype html><html><head>${viewport}${adaptiveStyles}</head><body>${value}</body></html>`;
+}
+
 function MailReadingPane({ message, onDismissVerificationCode, onCopyCode }: { message: MailMessageDto; onDismissVerificationCode: (message: MailMessageDto) => Promise<void>; onCopyCode: (value: string) => Promise<void> }) {
   const code = verificationCode(message);
-  const emailHtml = message.htmlBody || plainTextEmailHtml(message.textBody);
+  const emailHtml = responsiveEmailDocument(message.htmlBody || plainTextEmailHtml(message.textBody));
+
   return <>
     <div className="drawer-message-meta"><div><h3>{message.subject}</h3><p>{message.senderName || message.senderAddress} · {message.senderAddress}</p><p>收件人 · {message.recipients.join("、") || "未提供"}</p></div></div>
     <div className="reader-scroll">
