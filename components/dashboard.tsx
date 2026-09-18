@@ -1374,7 +1374,7 @@ function MailReadingPane({ message, onDismissVerificationCode, onCopyCode }: { m
   return <>
     <div className="drawer-message-meta"><div><h3>{message.subject}</h3><p>{message.senderName || message.senderAddress} · {message.senderAddress}</p><p>收件人 · {message.recipients.join("、") || "未提供"}</p></div></div>
     <div className="reader-scroll">
-      {code && <div className="drawer-code"><div><strong>{code.display}</strong></div><div className="drawer-code-actions"><button className="button secondary compact" type="button" onClick={() => void onCopyCode(code.value)}><Copy size={15} />复制验证码</button><button className="button secondary compact" type="button" onClick={() => void onDismissVerificationCode(message)}>不是验证码</button></div></div>}
+      {code && <div className="drawer-code"><div><strong>{code.display}</strong></div><div className="drawer-code-actions"><button className="button secondary compact" type="button" onClick={() => void onCopyCode(code.value)}><Copy size={15} />复制验证码</button><button className="button secondary compact" type="button" onClick={() => void onDismissVerificationCode(message)}>非验证码</button></div></div>}
       <article className="drawer-mail-content">
         <iframe
           className="mail-html-frame"
