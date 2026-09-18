@@ -188,13 +188,14 @@ button:active:not(:disabled), a.button:active:not([aria-disabled="true"]) { opac
 .date-picker-day.is-selected, .date-picker-day.is-selected:hover { color: #fcfbf8; background: var(--color-ink); border-color: var(--color-ink); font-weight: 600; }
 .date-picker-actions { margin-top: var(--space-xs); padding-top: var(--space-xs); display: flex; justify-content: flex-end; border-top: 1px solid var(--color-hairline); }
 
-.settings-dialog-body { min-height: 0; padding: var(--space-lg); overflow-y: auto; }
+.settings-dialog-body { min-height: 0; padding: var(--space-md) var(--space-lg) var(--space-lg); overflow-y: auto; }
 .settings-content { min-width: 0; }
-.empty-inline { min-height: 128px; display: flex; align-items: center; justify-content: center; gap: var(--space-md); color: var(--color-muted); }
+.empty-inline { min-height: 96px; display: flex; align-items: center; justify-content: center; gap: var(--space-md); color: var(--color-muted); }
 .empty-inline p { margin: 0; }
 .empty-inline p strong { display: block; }
 .empty-inline p strong { color: var(--color-body-strong); font-size: 13px; font-weight: 500; }
-.connection-row { min-height: 0; margin-top: var(--space-md); padding: var(--space-md); display: grid; grid-template-columns: minmax(160px, 1fr) auto; align-items: center; gap: var(--space-sm); background: var(--color-surface-soft); border: 1px solid var(--color-hairline); border-radius: var(--radius-card); }
+.connection-row { min-height: 0; padding: var(--space-md); display: grid; grid-template-columns: minmax(160px, 1fr) auto; align-items: center; gap: var(--space-sm); background: var(--color-surface-soft); border: 1px solid var(--color-hairline); border-radius: var(--radius-card); }
+.connection-row + .connection-row { margin-top: var(--space-md); }
 .connection-row strong, .connection-row span { display: block; }
 .connection-row strong { overflow: hidden; color: var(--color-ink); font-size: 14px; line-height: 20px; font-weight: 500; text-overflow: ellipsis; white-space: nowrap; }
 .connection-row > div > span { margin-top: 2px; color: var(--color-muted); font-size: 11px; line-height: 16px; }
