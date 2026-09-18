@@ -24,6 +24,8 @@ button:active:not(:disabled), a.button:active:not([aria-disabled="true"]) { opac
 .button.primary:hover:not(:disabled) { color: #fcfbf8; background: var(--color-ink); border-color: var(--color-ink); }
 .button.secondary { color: var(--color-body-strong); background: var(--color-surface-card); border-color: var(--color-hairline); }
 .button.secondary:hover:not(:disabled) { color: var(--color-ink); background: var(--color-canvas); border-color: var(--color-interactive-border); }
+.button.secondary.subtle { border-color: transparent; }
+.button.secondary.subtle:hover:not(:disabled) { border-color: transparent; }
 .button.outline { color: var(--color-ink); background: transparent; border-color: var(--color-interactive-border); }
 .button.outline:hover:not(:disabled) { background: var(--color-surface-card); }
 .button.ghost { color: var(--color-body-strong); background: transparent; border-color: transparent; }
@@ -256,6 +258,7 @@ button:active:not(:disabled), a.button:active:not([aria-disabled="true"]) { opac
 .modal-card.confirm-dialog { width: min(440px, 100%); grid-template-rows: auto auto auto; }
 .modal-card.settings-dialog { width: min(680px, 100%); }
 .modal-head { min-height: 64px; padding: var(--space-md) var(--space-lg); display: flex; align-items: center; justify-content: space-between; gap: var(--space-lg); border-bottom: 1px solid var(--color-hairline); }
+.modal-head-leading { min-width: 0; display: flex; align-items: center; gap: var(--space-md); }
 .modal-head h2 { margin: 0; color: var(--color-ink); font-size: 18px; line-height: 24px; font-weight: 600; letter-spacing: -.36px; }
 .modal-head p { margin: 2px 0 0; overflow-wrap: anywhere; color: var(--color-muted); font-size: 12px; line-height: 18px; }
 .modal-head-actions { display: flex; align-items: center; gap: var(--space-sm); }

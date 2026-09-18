@@ -827,7 +827,7 @@ export function Dashboard() {
           title={{ edit_address: "编辑邮箱", icloud: "连接 iCloud", icloud_password: "更新 App 专用密码", settings: "设置" }[modal]}
           subtitle={modal === "edit_address" ? editingAddress?.address : undefined}
           variant={modal === "settings" ? "settings" : "form"}
-          headerAction={modal === "settings" ? <button className="button primary compact" type="button" onClick={() => setModal("icloud")}><Plus size={15} />连接 iCloud</button> : undefined}
+          headerAction={modal === "settings" ? <button className="button secondary subtle compact" type="button" onClick={() => setModal("icloud")}><Plus size={15} />连接 iCloud</button> : undefined}
           onClose={() => { setModal(null); setEditingAddressId(null); setCredentialAccountId(null); }}
         >
           {modal === "edit_address" && editingAddress && <EditAddressForm address={editingAddress} onDone={() => { setModal(null); setEditingAddressId(null); }} onSave={async (input) => {
@@ -1080,7 +1080,7 @@ function AddressView(props: {
     <section className="address-table-section">
       <div className="address-table-toolbar">
         {(props.canManualSync || visibleAddresses.length > 0) && <div className="table-toolbar-controls">
-          {props.canManualSync && <button className="button secondary compact manual-mail-sync" type="button" disabled={props.manualSyncing} onClick={props.onManualSync}>
+          {props.canManualSync && <button className="button secondary subtle compact manual-mail-sync" type="button" disabled={props.manualSyncing} onClick={props.onManualSync}>
             {props.manualSyncing ? <LoaderCircle className="spin" size={15} /> : <RefreshCw size={15} />}
             {props.manualSyncing ? "正在同步…" : "手动同步邮件"}
           </button>}
@@ -1615,7 +1615,7 @@ function ModalShell({ title, subtitle, variant = "form", headerAction, onClose, 
       previousFocus?.focus();
     };
   }, []);
-  return <div className="modal-backdrop" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose(); }}><div ref={dialogRef} className={`modal-card ${variant === "confirm" ? "confirm-dialog" : ""} ${variant === "settings" ? "settings-dialog" : ""}`} role="dialog" aria-modal="true" aria-labelledby="modal-title" aria-describedby={subtitle ? "modal-subtitle" : undefined}><div className="modal-head"><div><h2 id="modal-title">{title}</h2>{subtitle && <p id="modal-subtitle">{subtitle}</p>}</div><div className="modal-head-actions">{headerAction}<button className="modal-head-close" type="button" aria-label={`关闭“${title}”`} onClick={onClose}><X size={18} /></button></div></div>{children}</div></div>;
+  return <div className="modal-backdrop" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose(); }}><div ref={dialogRef} className={`modal-card ${variant === "confirm" ? "confirm-dialog" : ""} ${variant === "settings" ? "settings-dialog" : ""}`} role="dialog" aria-modal="true" aria-labelledby="modal-title" aria-describedby={subtitle ? "modal-subtitle" : undefined}><div className="modal-head"><div className="modal-head-leading"><div><h2 id="modal-title">{title}</h2>{subtitle && <p id="modal-subtitle">{subtitle}</p>}</div>{headerAction}</div><div className="modal-head-actions"><button className="modal-head-close" type="button" aria-label={`关闭“${title}”`} onClick={onClose}><X size={18} /></button></div></div>{children}</div></div>;
 }
 
 function ConfirmDialog({ confirmation, pending, onCancel, onConfirm }: { confirmation: Confirmation; pending: boolean; onCancel: () => void; onConfirm: () => Promise<void> }) {
