@@ -1,7 +1,7 @@
 "use client";
 
 import "./dashboard.css";
-import { useCallback, useEffect, useRef, useState, type CSSProperties, type FormEvent, type MouseEvent } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type FormEvent, type MouseEvent } from "react";
 import { createPortal } from "react-dom";
 import {
   ArrowDown,
@@ -43,7 +43,7 @@ type ContentFilter = "all" | "empty" | "filled";
 type TagFilter = string;
 type AddressTag = { name: string; color: string };
 type TagEditorState = { addressId: string; top: number; left: number; trigger: HTMLButtonElement };
-type TagFilterMenuState = { top: number; left: number; width: number; trigger: HTMLButtonElement };
+type TagFilterMenuState = { top: number; left: number; trigger: HTMLButtonElement };
 type IcloudSyncResponse = { imported: number; removed: number; synced: number; remaining?: number; automaticTagApplied?: number; primaryUnlinkedMessages?: number };
 type IcloudSyncProgress = { accountId: string; completed: number; total: number; remaining: number };
 type Modal = "edit_address" | "icloud" | "icloud_password" | null;
@@ -1074,14 +1074,8 @@ function AddressView(props: {
   const openTagFilterMenu = (event: MouseEvent<HTMLButtonElement>) => {
     const trigger = event.currentTarget;
     const rect = trigger.getBoundingClientRect();
-    const width = Math.max(rect.width, 144);
-    const menuHeight = Math.min(288, tagFilterOptions.length * 32 + 8);
     const gutter = 8;
-    const left = Math.min(Math.max(gutter, rect.left), window.innerWidth - width - gutter);
-    const top = rect.bottom + 6 + menuHeight <= window.innerHeight - gutter
-      ? rect.bottom + 6
-      : Math.max(gutter, rect.top - menuHeight - 6);
-    setTagFilterMenu((current) => current?.trigger === trigger ? null : { top, left, width, trigger });
+    setTagFilterMenu((current) => current?.trigger === trigger ? null : { top: rect.bottom + 6, left: Math.max(gutter, rect.left), trigger });
   };
   const updateTagFilter = (nextFilter: TagFilter) => {
     setTagFilter(nextFilter);
@@ -1283,6 +1277,20 @@ function TagFilterMenu({ value, options, position, onClose, onSelect }: {
   onSelect: (value: TagFilter) => void;
 }) {
   const menuRef = useRef<HTMLDivElement>(null);
+  const [menuPosition, setMenuPosition] = useState(() => ({ top: position.top, left: position.left }));
+  useLayoutEffect(() => {
+    const menu = menuRef.current;
+    if (!menu) return;
+    const triggerRect = position.trigger.getBoundingClientRect();
+    const menuRect = menu.getBoundingClientRect();
+    const gutter = 8;
+    setMenuPosition({
+      left: Math.min(Math.max(gutter, triggerRect.left), window.innerWidth - menuRect.width - gutter),
+      top: triggerRect.bottom + 6 + menuRect.height <= window.innerHeight - gutter
+        ? triggerRect.bottom + 6
+        : Math.max(gutter, triggerRect.top - menuRect.height - 6),
+    });
+  }, [position]);
   useEffect(() => {
     const handlePointerDown = (event: PointerEvent) => {
       const target = event.target as Node;
@@ -1308,7 +1316,7 @@ function TagFilterMenu({ value, options, position, onClose, onSelect }: {
   }, [onClose, position.trigger]);
 
   return createPortal(
-    <div ref={menuRef} className="tag-filter-menu" role="menu" aria-label="标签筛选选项" style={{ top: position.top, left: position.left, width: position.width }}>
+    <div ref={menuRef} className="tag-filter-menu" role="menu" aria-label="标签筛选选项" style={menuPosition}>
       {options.map((option) => <button
         key={option.value}
         type="button"

@@ -56,11 +56,11 @@ button:active:not(:disabled), a.button:active:not([aria-disabled="true"]) { opac
 .content-filter button { width: auto; min-height: 26px; padding: 0 var(--space-sm); display: inline-flex; align-items: center; justify-content: center; flex: none; color: var(--color-muted); background: transparent; border: 0; border-radius: var(--radius-control); font-size: 12px; white-space: nowrap; }
 .content-filter button:hover { color: var(--color-ink); }
 .content-filter button.active { color: var(--color-ink); background: var(--color-canvas); }
-.tag-filter-trigger { min-width: 112px; min-height: 32px; padding: 0 10px; display: inline-flex; align-items: center; justify-content: space-between; gap: 6px; flex: none; color: var(--color-body-strong); background: var(--color-canvas); border: 1px solid var(--color-hairline); border-radius: 8px; font-size: 12px; white-space: nowrap; }
+.tag-filter-trigger { width: fit-content; min-width: 0; min-height: 32px; padding: 0 10px; display: inline-flex; align-items: center; justify-content: space-between; gap: 6px; flex: none; color: var(--color-body-strong); background: var(--color-canvas); border: 1px solid var(--color-hairline); border-radius: 8px; font-size: 12px; white-space: nowrap; }
 .tag-filter-trigger:hover, .tag-filter-trigger[aria-expanded="true"] { border-color: var(--color-interactive-border); }
 .tag-filter-trigger:focus-visible { outline: 2px solid var(--color-focus); outline-offset: 1px; }
 .tag-filter-trigger svg { flex: none; color: var(--color-muted); }
-.tag-filter-menu { position: fixed; z-index: 70; max-height: min(288px, calc(100vh - 16px)); padding: 4px; overflow-y: auto; color: var(--color-body-strong); background: var(--color-canvas); border: 1px solid var(--color-hairline); border-radius: 8px; box-shadow: 0 12px 28px rgb(34 31 27 / 12%); }
+.tag-filter-menu { position: fixed; z-index: 70; width: max-content; max-width: calc(100vw - 16px); max-height: min(288px, calc(100vh - 16px)); padding: 4px; overflow-y: auto; color: var(--color-body-strong); background: var(--color-canvas); border: 1px solid var(--color-hairline); border-radius: 8px; box-shadow: 0 12px 28px rgb(34 31 27 / 12%); }
 .tag-filter-menu button { width: 100%; min-height: 32px; padding: 0 var(--space-sm); display: flex; align-items: center; color: inherit; background: transparent; border: 0; border-radius: var(--radius-control); font-size: 12px; text-align: left; }
 .tag-filter-menu button:hover, .tag-filter-menu button.selected { color: var(--color-ink); background: var(--color-surface-card); }
 .tag-filter-menu button:focus-visible { outline: 2px solid var(--color-focus); outline-offset: -1px; }
@@ -136,7 +136,7 @@ button:active:not(:disabled), a.button:active:not([aria-disabled="true"]) { opac
 .account-tag-existing-option:focus-visible { outline: 2px solid var(--color-focus); outline-offset: 1px; }
 .account-tag-existing-option:disabled { opacity: .55; cursor: wait; }
 .account-tag-name { color: var(--color-body); font-size: 11px; line-height: 16px; }
-.account-tag-name input { width: 100%; min-height: 40px; margin-top: 5px; padding: 0 11px; color: var(--color-ink); background: var(--color-canvas); border: 1px solid var(--color-hairline); border-radius: 8px; outline: 0; font-size: 12px; }
+.account-tag-name input { width: 100%; min-height: var(--control-height); margin-top: 5px; padding: 0 11px; color: var(--color-ink); background: var(--color-canvas); border: 1px solid var(--color-hairline); border-radius: 8px; outline: 0; font-size: 12px; }
 .account-tag-name input:focus { border-color: var(--color-focus-border); }
 .account-tag-colors { min-width: 0; padding: 0; border: 0; }
 .account-tag-colors legend { margin-bottom: 6px; color: var(--color-body); font-size: 11px; line-height: 16px; }
@@ -157,8 +157,8 @@ button:active:not(:disabled), a.button:active:not([aria-disabled="true"]) { opac
 .pagination-controls button:disabled { opacity: .4; cursor: not-allowed; }
 
 .form-section label, .modal-form label { color: var(--color-body); font-size: 13px; line-height: 20px; font-weight: 500; letter-spacing: -.26px; }
-.form-section input, .form-section textarea, .modal-form input, .modal-form textarea, .modal-form select { width: 100%; min-height: var(--control-height); margin-top: var(--space-xs); padding: 9px var(--space-sm); color: var(--color-ink); background: var(--color-canvas); border: 1px solid var(--color-hairline); border-radius: var(--radius-control); outline: 0; font-size: 14px; font-weight: 400; text-transform: none; letter-spacing: 0; }
-.form-section textarea, .modal-form textarea { min-height: 120px; resize: vertical; line-height: 1.6; }
+.form-section input, .modal-form input, .modal-form select { width: 100%; min-height: var(--control-height); margin-top: var(--space-xs); padding: 5px var(--space-sm); color: var(--color-ink); background: var(--color-canvas); border: 1px solid var(--color-hairline); border-radius: var(--radius-control); outline: 0; font-size: 14px; font-weight: 400; line-height: 20px; text-transform: none; letter-spacing: 0; }
+.form-section textarea, .modal-form textarea { width: 100%; min-height: 120px; margin-top: var(--space-xs); padding: 9px var(--space-sm); color: var(--color-ink); background: var(--color-canvas); border: 1px solid var(--color-hairline); border-radius: var(--radius-control); outline: 0; font-size: 14px; font-weight: 400; line-height: 1.6; text-transform: none; letter-spacing: 0; resize: vertical; }
 .form-section input:focus, .form-section textarea:focus, .modal-form input:focus, .modal-form textarea:focus, .modal-form select:focus { border-color: var(--color-focus-border); outline: 2px solid var(--color-focus); outline-offset: 1px; }
 .form-section input::placeholder, .form-section textarea::placeholder, .modal-form input::placeholder, .modal-form textarea::placeholder { color: var(--color-muted); }
 .date-picker-field { display: grid; }
@@ -264,8 +264,8 @@ button:active:not(:disabled), a.button:active:not([aria-disabled="true"]) { opac
 .modal-form-body { min-height: 0; padding: var(--space-md) var(--space-lg) var(--space-lg); display: grid; align-content: start; gap: var(--space-md); overflow-y: auto; }
 .modal-form-footer { min-height: 64px; padding: var(--space-sm) var(--space-lg); display: flex; align-items: center; justify-content: flex-end; gap: var(--space-xs); background: var(--color-canvas); border-top: 1px solid var(--color-hairline); }
 .form-two { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-md); }
-.segmented { min-height: 44px; padding: 3px; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 3px; background: var(--color-surface-card); border: 1px solid var(--color-hairline); border-radius: 8px; }
-.segmented button { min-height: 36px; color: var(--color-muted); background: transparent; border: 0; border-radius: var(--radius-control); font-size: 12px; font-weight: 500; }
+.segmented { min-height: 32px; padding: 2px; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 2px; background: var(--color-surface-card); border: 1px solid var(--color-hairline); border-radius: 8px; }
+.segmented button { min-height: 26px; color: var(--color-muted); background: transparent; border: 0; border-radius: var(--radius-control); font-size: 12px; font-weight: 500; }
 .segmented button:hover { color: var(--color-body-strong); }
 .segmented button.active { color: var(--color-ink); background: var(--color-canvas); }
 .form-hint { padding: var(--space-md); display: flex; align-items: flex-start; gap: var(--space-sm); color: var(--color-body); background: var(--color-canvas); border: 1px solid var(--color-hairline); border-radius: 8px; }
