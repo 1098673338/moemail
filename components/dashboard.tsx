@@ -827,6 +827,7 @@ export function Dashboard() {
           title={{ edit_address: "编辑邮箱", icloud: "连接 iCloud", icloud_password: "更新 App 专用密码", settings: "设置" }[modal]}
           subtitle={modal === "edit_address" ? editingAddress?.address : undefined}
           variant={modal === "settings" ? "settings" : "form"}
+          headerAction={modal === "settings" ? <button className="button primary compact" type="button" onClick={() => setModal("icloud")}><Plus size={15} />连接 iCloud</button> : undefined}
           onClose={() => { setModal(null); setEditingAddressId(null); setCredentialAccountId(null); }}
         >
           {modal === "edit_address" && editingAddress && <EditAddressForm address={editingAddress} onDone={() => { setModal(null); setEditingAddressId(null); }} onSave={async (input) => {
@@ -850,7 +851,6 @@ export function Dashboard() {
           {modal === "settings" && <SettingsView
             accounts={accounts}
             syncProgress={icloudSyncProgress}
-            onConnectIcloud={() => setModal("icloud")}
             onUpdateCredentials={(account) => { setCredentialAccountId(account.id); setModal("icloud_password"); }}
             onClearAliases={(account) => { setModal(null); setConfirmation({
               title: "清空所有 iCloud 邮箱",
@@ -1541,7 +1541,6 @@ function MailReadingPane({ message, onDismissVerificationCode, onCopyCode }: { m
 function SettingsView(props: {
   accounts: ICloudAccountDto[];
   syncProgress: IcloudSyncProgress | null;
-  onConnectIcloud: () => void;
   onUpdateCredentials: (account: ICloudAccountDto) => void;
   onClearAliases: (account: ICloudAccountDto) => void;
   onClearAliasData: (account: ICloudAccountDto) => void;
@@ -1551,7 +1550,6 @@ function SettingsView(props: {
   return (
     <div className="settings-dialog-body">
       <section className="settings-content">
-        <div className="settings-toolbar"><h3>iCloud 账号</h3><button className="button primary" type="button" onClick={props.onConnectIcloud}><Plus size={16} />连接 iCloud</button></div>
         {props.accounts.length === 0 ? (
           <div className="empty-inline"><p><strong>还没有连接 iCloud 账号</strong></p></div>
         ) : props.accounts.map((account) => {
@@ -1579,7 +1577,7 @@ function SettingsView(props: {
   );
 }
 
-function ModalShell({ title, subtitle, variant = "form", onClose, children }: { title: string; subtitle?: string; variant?: "form" | "confirm" | "settings"; onClose: () => void; children: React.ReactNode }) {
+function ModalShell({ title, subtitle, variant = "form", headerAction, onClose, children }: { title: string; subtitle?: string; variant?: "form" | "confirm" | "settings"; headerAction?: React.ReactNode; onClose: () => void; children: React.ReactNode }) {
   const dialogRef = useRef<HTMLDivElement>(null);
   const onCloseRef = useRef(onClose);
   useEffect(() => { onCloseRef.current = onClose; }, [onClose]);
@@ -1617,7 +1615,7 @@ function ModalShell({ title, subtitle, variant = "form", onClose, children }: { 
       previousFocus?.focus();
     };
   }, []);
-  return <div className="modal-backdrop" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose(); }}><div ref={dialogRef} className={`modal-card ${variant === "confirm" ? "confirm-dialog" : ""} ${variant === "settings" ? "settings-dialog" : ""}`} role="dialog" aria-modal="true" aria-labelledby="modal-title" aria-describedby={subtitle ? "modal-subtitle" : undefined}><div className="modal-head"><div><h2 id="modal-title">{title}</h2>{subtitle && <p id="modal-subtitle">{subtitle}</p>}</div><button type="button" aria-label={`关闭“${title}”`} onClick={onClose}><X size={18} /></button></div>{children}</div></div>;
+  return <div className="modal-backdrop" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose(); }}><div ref={dialogRef} className={`modal-card ${variant === "confirm" ? "confirm-dialog" : ""} ${variant === "settings" ? "settings-dialog" : ""}`} role="dialog" aria-modal="true" aria-labelledby="modal-title" aria-describedby={subtitle ? "modal-subtitle" : undefined}><div className="modal-head"><div><h2 id="modal-title">{title}</h2>{subtitle && <p id="modal-subtitle">{subtitle}</p>}</div><div className="modal-head-actions">{headerAction}<button className="modal-head-close" type="button" aria-label={`关闭“${title}”`} onClick={onClose}><X size={18} /></button></div></div>{children}</div></div>;
 }
 
 function ConfirmDialog({ confirmation, pending, onCancel, onConfirm }: { confirmation: Confirmation; pending: boolean; onCancel: () => void; onConfirm: () => Promise<void> }) {

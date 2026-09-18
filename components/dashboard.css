@@ -190,8 +190,6 @@ button:active:not(:disabled), a.button:active:not([aria-disabled="true"]) { opac
 
 .settings-dialog-body { min-height: 0; padding: var(--space-lg); overflow-y: auto; }
 .settings-content { min-width: 0; }
-.settings-toolbar { min-height: var(--button-height); display: flex; align-items: center; justify-content: space-between; gap: var(--space-md); }
-.settings-toolbar h3 { margin: 0; color: var(--color-body-strong); font-size: 13px; line-height: 20px; font-weight: 500; }
 .empty-inline { min-height: 128px; display: flex; align-items: center; justify-content: center; gap: var(--space-md); color: var(--color-muted); }
 .empty-inline p { margin: 0; }
 .empty-inline p strong { display: block; }
@@ -260,8 +258,9 @@ button:active:not(:disabled), a.button:active:not([aria-disabled="true"]) { opac
 .modal-head { min-height: 64px; padding: var(--space-md) var(--space-lg); display: flex; align-items: center; justify-content: space-between; gap: var(--space-lg); border-bottom: 1px solid var(--color-hairline); }
 .modal-head h2 { margin: 0; color: var(--color-ink); font-size: 18px; line-height: 24px; font-weight: 600; letter-spacing: -.36px; }
 .modal-head p { margin: 2px 0 0; overflow-wrap: anywhere; color: var(--color-muted); font-size: 12px; line-height: 18px; }
-.modal-head button { width: 32px; height: 32px; flex: none; display: grid; place-items: center; color: var(--color-body); background: transparent; border: 0; border-radius: var(--radius-control); }
-.modal-head button:hover { color: var(--color-ink); background: var(--color-surface-card); }
+.modal-head-actions { display: flex; align-items: center; gap: var(--space-sm); }
+.modal-head-close { width: 32px; height: 32px; flex: none; display: grid; place-items: center; color: var(--color-body); background: transparent; border: 0; border-radius: var(--radius-control); }
+.modal-head-close:hover { color: var(--color-ink); background: var(--color-surface-card); }
 .modal-form { min-height: 0; display: grid; grid-template-rows: minmax(0, 1fr) auto; overflow: hidden; }
 .modal-form-body { min-height: 0; padding: var(--space-md) var(--space-lg) var(--space-lg); display: grid; align-content: start; gap: var(--space-md); overflow-y: auto; }
 .modal-form-footer { min-height: 64px; padding: var(--space-sm) var(--space-lg); display: flex; align-items: center; justify-content: flex-end; gap: var(--space-xs); background: var(--color-canvas); border-top: 1px solid var(--color-hairline); }
