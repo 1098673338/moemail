@@ -44,7 +44,7 @@ button:active:not(:disabled), a.button:active:not([aria-disabled="true"]) { opac
 .address-table-panel { min-height: 0; display: flex; flex: 1; flex-direction: column; overflow: hidden; }
 .table-toolbar-controls { min-width: 0; display: flex; align-items: center; gap: var(--space-xs); flex: 1; overflow-x: auto; scrollbar-width: none; }
 .table-toolbar-controls::-webkit-scrollbar { display: none; }
-.manual-mail-sync { flex: none; white-space: nowrap; }
+.button.manual-mail-sync { min-height: 40px; flex: none; white-space: nowrap; }
 .address-search { width: 320px; min-height: 40px; margin-left: auto; padding: 0 8px 0 11px; display: flex; align-items: center; gap: 7px; flex: none; color: var(--color-muted); background: var(--color-canvas); border: 1px solid var(--color-hairline); border-radius: 8px; }
 .address-search:focus-within { color: var(--color-body-strong); border-color: var(--color-focus-border); }
 .address-search input { min-width: 0; height: 38px; padding: 0; flex: 1; color: var(--color-ink); background: transparent; border: 0; outline: 0; font-size: 12px; }
@@ -236,6 +236,7 @@ button:active:not(:disabled), a.button:active:not([aria-disabled="true"]) { opac
 .drawer-code strong { display: block; font-size: 30px; line-height: 36px; font-weight: 600; letter-spacing: 1.5px; }
 .drawer-code .button.secondary { color: var(--color-ink); background: var(--color-surface-elevated); border-color: var(--color-surface-elevated); }
 .drawer-code .button.secondary:hover:not(:disabled) { color: var(--color-ink); background: #fff; border-color: #fff; }
+.drawer-code-actions { display: flex; align-items: center; gap: var(--space-xs); flex: none; }
 .drawer-mail-content { max-width: 900px; min-height: 240px; margin: var(--space-lg) auto 0; padding: var(--space-lg); color: var(--color-body-strong); background: #fff; }
 .mail-html-frame { display: block; width: 100%; min-height: 240px; border: 0; background: #fff; }
 @keyframes drawer-in { from { transform: translateX(24px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }

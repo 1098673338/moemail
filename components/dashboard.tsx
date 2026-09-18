@@ -42,7 +42,7 @@ type ContentFilter = "all" | "empty" | "filled";
 type TagFilter = string;
 type AddressTag = { name: string; color: string };
 type TagEditorState = { addressId: string; top: number; left: number; trigger: HTMLButtonElement };
-type IcloudSyncResponse = { imported: number; removed: number; synced: number; remaining?: number; automaticTagApplied?: number };
+type IcloudSyncResponse = { imported: number; removed: number; synced: number; remaining?: number; automaticTagApplied?: number; primaryUnlinkedMessages?: number };
 type IcloudSyncProgress = { accountId: string; completed: number; total: number; remaining: number };
 type Modal = "edit_address" | "icloud" | "icloud_password" | null;
 type Notice = { tone: "success" | "error"; text: string };
@@ -280,6 +280,7 @@ function requestAppleAliasDeactivation(address: MailAddressDto) {
 const otpContextPattern = /(?:验证码|校验码|动态码|安全码|登录码|确认码|授权码|一次性密码|临时密码|短信码|verification\s+code|security\s+code|one[-\s]?time\s+password|authentication\s+code|validation\s+code|temporary\s+code|access\s+code|security\s+token|login\s+code|passcode|verify|otp|\b(?:code|pin|token)\b)/giu;
 
 function verificationCode(message: MailMessageDto) {
+  if (message.verificationCodeIgnored) return null;
   const source = `${message.subject}\n${messageSummary(message)}`.normalize("NFKC");
   const contexts = Array.from(source.matchAll(otpContextPattern)).map((match) => ({
     start: match.index ?? 0,
@@ -319,6 +320,11 @@ function verificationCode(message: MailMessageDto) {
   candidates.sort((left, right) => right.score - left.score || left.index - right.index);
   const best = candidates[0];
   return best ? { display: best.display, value: best.value } : null;
+}
+
+function messageMatchesAddress(message: MailMessageDto, address: MailAddressDto) {
+  if (!message.addressIds.includes(address.id)) return false;
+  return address.type !== "icloud_primary" || message.recipients.some((recipient) => recipient.trim().toLowerCase() === address.address.toLowerCase());
 }
 
 export function Dashboard() {
@@ -361,7 +367,8 @@ export function Dashboard() {
     setMessages(messageData.messages);
     const activeDrawerAddressId = drawerAddressIdRef.current;
     if (activeDrawerAddressId) {
-      const nextDrawerMessages = messageData.messages.filter((message) => message.addressIds.includes(activeDrawerAddressId));
+      const activeDrawerAddress = addressData.addresses.find((address) => address.id === activeDrawerAddressId);
+      const nextDrawerMessages = messageData.messages.filter((message) => activeDrawerAddress ? messageMatchesAddress(message, activeDrawerAddress) : message.addressIds.includes(activeDrawerAddressId));
       setDrawerMessages(nextDrawerMessages.map((message) => readRequestsRef.current.has(message.id) ? { ...message, isRead: true } : message));
       setDrawerMessageId((current) => nextDrawerMessages.some((message) => message.id === current) ? current : nextDrawerMessages[0]?.id || null);
     }
@@ -462,7 +469,7 @@ export function Dashboard() {
           recordIcloudSyncProgress(account.id, result);
           return result;
         }));
-        if (results.some((result) => result.imported > 0 || result.removed > 0 || result.automaticTagApplied)) await refreshData();
+        if (results.some((result) => result.imported > 0 || result.removed > 0 || result.primaryUnlinkedMessages || result.automaticTagApplied)) await refreshData();
         return results;
       } catch (error) {
         await refreshData().catch(() => undefined);
@@ -585,9 +592,27 @@ export function Dashboard() {
     }
   };
 
+  const dismissVerificationCode = async (message: MailMessageDto) => {
+    if (message.verificationCodeIgnored) return;
+    const update = (items: MailMessageDto[], ignored: boolean) => items.map((item) => item.id === message.id ? { ...item, verificationCodeIgnored: ignored } : item);
+    setMessages((current) => update(current, true));
+    setDrawerMessages((current) => update(current, true));
+    try {
+      await requestJson(`/api/messages/${message.id}`, {
+        method: "PATCH",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ verificationCodeIgnored: true }),
+      });
+    } catch (error) {
+      setMessages((current) => update(current, false));
+      setDrawerMessages((current) => update(current, false));
+      setNotice({ tone: "error", text: error instanceof Error ? error.message : "无法移除验证码模块" });
+    }
+  };
+
   const openAddressMail = async (address: MailAddressDto) => {
     const requestId = ++drawerRequestRef.current;
-    const cachedMessages = messages.filter((message) => message.addressIds.includes(address.id));
+    const cachedMessages = messages.filter((message) => messageMatchesAddress(message, address));
     drawerAddressIdRef.current = address.id;
     setDrawerAddressId(address.id);
     setDrawerMessages(cachedMessages.map((message) => readRequestsRef.current.has(message.id) ? { ...message, isRead: true } : message));
@@ -691,10 +716,11 @@ export function Dashboard() {
               if (!results?.length) return "没有可同步的 iCloud 账号";
               const imported = results.reduce((total, result) => total + result.imported, 0);
               const removed = results.reduce((total, result) => total + result.removed, 0);
+              const primaryUnlinked = results.reduce((total, result) => total + (result.primaryUnlinkedMessages || 0), 0);
               const remaining = results.reduce((total, result) => total + (result.remaining || 0), 0);
               if (remaining) return `本次已同步邮件，新增 ${imported} 封；剩余 ${remaining} 封将继续同步`;
-              return imported || removed
-                ? `邮件同步完成：新增 ${imported} 封，移除 ${removed} 封远端已删除邮件`
+              return imported || removed || primaryUnlinked
+                ? `邮件同步完成：新增 ${imported} 封，移除 ${removed} 封远端已删除邮件${primaryUnlinked ? `；已从主号移除 ${primaryUnlinked} 封隐藏地址邮件` : ""}`
                 : "邮件已同步，暂无变化";
             }, "邮件同步完成")}
             onOpen={openAddressMail}
@@ -837,6 +863,7 @@ export function Dashboard() {
           onSelectMessage={(message) => { setDrawerMessageId(message.id); void markMessageRead(message); }}
           onDeleteMessage={confirmDeleteMessage}
           onClose={closeMailDrawer}
+          onDismissVerificationCode={dismissVerificationCode}
           onCopyCode={async (value) => {
             try {
               await navigator.clipboard.writeText(value);
@@ -889,10 +916,10 @@ function AddressView(props: {
   const availableTags = Array.from(new Set(visibleAddresses.map((address) => addressTag(address)?.name).filter((tag): tag is string => Boolean(tag))))
     .sort((left, right) => left.localeCompare(right, "zh-CN", { numeric: true, sensitivity: "base" }));
   const activeTagFilter = tagFilter === "all" || tagFilter === "untagged" || availableTags.includes(tagFilter) ? tagFilter : "all";
-  const latestMessage = (addressId: string) => props.messages
-    .filter((message) => message.addressIds.includes(addressId))
+  const latestMessage = (address: MailAddressDto) => props.messages
+    .filter((message) => messageMatchesAddress(message, address))
     .reduce<MailMessageDto | null>((latest, message) => !latest || Date.parse(message.receivedAt) > Date.parse(latest.receivedAt) ? message : latest, null);
-  const rows = visibleAddresses.map((address) => ({ address, message: latestMessage(address.id) }));
+  const rows = visibleAddresses.map((address) => ({ address, message: latestMessage(address) }));
   const tagValue = (address: MailAddressDto) => addressTag(address)?.name || "";
   const resetTableScroll = () => tableScrollRef.current?.scrollTo({ top: 0 });
   const closeTagEditor = (restoreFocus = false) => {
@@ -1277,6 +1304,7 @@ function MailDrawer(props: {
   onSelectMessage: (message: MailMessageDto) => void;
   onDeleteMessage: (message: MailMessageDto) => void;
   onClose: () => void;
+  onDismissVerificationCode: (message: MailMessageDto) => Promise<void>;
   onCopyCode: (value: string) => Promise<void>;
 }) {
   const drawerRef = useRef<HTMLDivElement>(null);
@@ -1333,20 +1361,20 @@ function MailDrawer(props: {
           </div>
         </aside>
         <section className={`drawer-reader ${props.message ? "" : "is-empty"}`}>
-          {props.message ? <MailReadingPane key={props.message.id} message={props.message} onCopyCode={props.onCopyCode} /> : <EmptyState title="这个地址还没有邮件" description="收到第一封邮件后，可以在这里查看完整正文。" />}
+          {props.message ? <MailReadingPane key={props.message.id} message={props.message} onDismissVerificationCode={props.onDismissVerificationCode} onCopyCode={props.onCopyCode} /> : <EmptyState title="这个地址还没有邮件" description="收到第一封邮件后，可以在这里查看完整正文。" />}
         </section>
       </div>
     </aside>
   </div>;
 }
 
-function MailReadingPane({ message, onCopyCode }: { message: MailMessageDto; onCopyCode: (value: string) => Promise<void> }) {
+function MailReadingPane({ message, onDismissVerificationCode, onCopyCode }: { message: MailMessageDto; onDismissVerificationCode: (message: MailMessageDto) => Promise<void>; onCopyCode: (value: string) => Promise<void> }) {
   const code = verificationCode(message);
   const emailHtml = message.htmlBody || plainTextEmailHtml(message.textBody);
   return <>
     <div className="drawer-message-meta"><div><h3>{message.subject}</h3><p>{message.senderName || message.senderAddress} · {message.senderAddress}</p><p>收件人 · {message.recipients.join("、") || "未提供"}</p></div></div>
     <div className="reader-scroll">
-      {code && <div className="drawer-code"><div><strong>{code.display}</strong></div><button className="button secondary compact" type="button" onClick={() => void onCopyCode(code.value)}><Copy size={15} />复制验证码</button></div>}
+      {code && <div className="drawer-code"><div><strong>{code.display}</strong></div><div className="drawer-code-actions"><button className="button secondary compact" type="button" onClick={() => void onCopyCode(code.value)}><Copy size={15} />复制验证码</button><button className="button secondary compact" type="button" onClick={() => void onDismissVerificationCode(message)}>不是验证码</button></div></div>}
       <article className="drawer-mail-content">
         <iframe
           className="mail-html-frame"

@@ -48,6 +48,7 @@ export interface MailMessageDto {
   htmlBody: string | null;
   receivedAt: string;
   isRead: boolean;
+  verificationCodeIgnored: boolean;
   addressIds: string[];
 }
 

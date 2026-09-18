@@ -19,7 +19,7 @@ function addressDto(row: AddressRow): MailAddressDto {
 }
 
 function messageDto(row: MessageRow): MailMessageDto {
-  return { id: row.id, source: row.source, senderAddress: row.sender_address, senderName: String(row.sender_name || "") || null, recipients: strings(row.recipients_json), subject: row.subject, textBody: row.text_body, htmlBody: String(row.html_body || "") || null, receivedAt: new Date(row.received_at).toISOString(), isRead: Boolean(row.is_read), addressIds: row.address_ids ? row.address_ids.split(",") : [] };
+  return { id: row.id, source: row.source, senderAddress: row.sender_address, senderName: String(row.sender_name || "") || null, recipients: strings(row.recipients_json), subject: row.subject, textBody: row.text_body, htmlBody: String(row.html_body || "") || null, receivedAt: new Date(row.received_at).toISOString(), isRead: Boolean(row.is_read), verificationCodeIgnored: Boolean(row.verification_code_ignored_at), addressIds: row.address_ids ? row.address_ids.split(",") : [] };
 }
 
 export async function listAddresses(includeDeleted = false) {
@@ -82,6 +82,7 @@ export async function deleteIcloudAddressAfterAppleDeactivation(id: string) {
 }
 
 export async function listMessages(addressId?: string | null) {
+  const selectedAddress = addressId ? await getAddress(addressId) : null;
   const rows = addressId
     ? await all<MessageRow>(`SELECT m.*, GROUP_CONCAT(mr.address_id) address_ids
       FROM message_recipient selected
@@ -102,7 +103,10 @@ export async function listMessages(addressId?: string | null) {
       JOIN message_recipient mr ON mr.message_id = m.id
       GROUP BY m.id
       ORDER BY m.received_at DESC`);
-  return rows.map(messageDto);
+  const messages = rows.map(messageDto);
+  return selectedAddress?.type === "icloud_primary"
+    ? messages.filter((message) => message.recipients.some((recipient) => recipient.trim().toLowerCase() === selectedAddress.address.toLowerCase()))
+    : messages;
 }
 export async function getMessage(id: string) { const row=await one<MessageRow>("SELECT m.*,GROUP_CONCAT(mr.address_id) address_ids FROM message m JOIN message_recipient mr ON mr.message_id=m.id WHERE m.id=? AND m.source='icloud' GROUP BY m.id",id); return row ? messageDto(row) : null; }
 
@@ -116,6 +120,7 @@ export async function ingestMessage(input: { source: "icloud"; accountId?: strin
 }
 
 export async function setMessageRead(id:string,isRead:boolean){ const result=await run("UPDATE message SET is_read=?,updated_at=? WHERE id=? AND source='icloud' AND deleted_at IS NULL",isRead?1:0,now(),id); if(!result.meta.changes) throw new MailStoreError("邮件不存在","not_found"); return (await getMessage(id))!; }
+export async function setVerificationCodeIgnored(id:string,ignored:boolean){ const result=await run("UPDATE message SET verification_code_ignored_at=?,updated_at=? WHERE id=? AND source='icloud' AND deleted_at IS NULL",ignored ? now() : null,now(),id); if(!result.meta.changes) throw new MailStoreError("邮件不存在","not_found"); return (await getMessage(id))!; }
 export async function hideLocalMessage(id:string){ const result=await run("UPDATE message SET deleted_at=?,updated_at=? WHERE id=? AND source='icloud' AND deleted_at IS NULL",now(),now(),id); if(!result.meta.changes) throw new MailStoreError("邮件不存在或已删除","not_found"); }
 export async function restoreLocalMessage(id:string){ const result=await run("UPDATE message SET deleted_at=NULL,updated_at=? WHERE id=? AND source='icloud' AND deleted_at IS NOT NULL",now(),id); if(!result.meta.changes) throw new MailStoreError("待恢复的邮件不存在","not_found"); }
 export async function purgeLocalMessage(id:string){ const row=await one("SELECT id FROM message WHERE id=? AND source='icloud'",id); if(!row) throw new MailStoreError("邮件不存在或已删除","not_found"); await run("DELETE FROM message WHERE id=?",id); }

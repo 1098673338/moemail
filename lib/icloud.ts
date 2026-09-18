@@ -8,7 +8,7 @@ import { IcloudImapClient } from "@/lib/icloud-imap";
 const domains = new Set(["icloud.com", "me.com", "mac.com"]);
 const aliasDomains = new Set(["icloud.com", "me.com", "mac.com", "privaterelay.appleid.com", "icloudprivaterelay.com"]);
 const ICLOUD_SYNC_BATCH_SIZE = 20;
-const PRIMARY_RECIPIENT_REPAIR_ACTION = "repair:primary-recipient-scope:v1";
+const PRIMARY_RECIPIENT_REPAIR_ACTION = "repair:primary-recipient-scope:v3";
 type Account = { id:string; email_address:string; username:string; encrypted_password:string; status:"active"|"disabled"|"sync_error"; uid_validity:string|null; last_uid:number };
 const normalize=(value:string)=>value.trim().toLowerCase();
 const stamp=()=>Date.now();
@@ -73,7 +73,9 @@ async function repairPrimaryMessageRecipients(accountId: string) {
   const staleMessageIds = messages.flatMap((message) => {
     try {
       const recipients = JSON.parse(message.recipients_json);
-      return Array.isArray(recipients) && recipients.some((recipient) => normalize(String(recipient || "")) === primaryAddress) ? [] : [message.id];
+      if (!Array.isArray(recipients)) return [message.id];
+      const recipientAddresses = recipients.map((recipient) => normalize(String(recipient || "")));
+      return recipientAddresses.includes(primaryAddress) ? [] : [message.id];
     } catch {
       return [message.id];
     }
@@ -142,14 +144,15 @@ async function listActiveIcloudAddresses(accountId: string) {
 
 function matchingIds(addresses: ActiveIcloudAddress[], list: string[]) {
   const values = new Set(list.map(normalize));
-  return addresses.filter((row) => values.has(normalize(row.address))).map((row) => row.id);
+  const matched = addresses.filter((row) => values.has(normalize(row.address)));
+  return matched.map((row) => row.id);
 }
 
 export async function syncIcloudAccount(accountId:string, options:{reconcile?:boolean}={}) {
   const account=await one<Account>("SELECT * FROM mail_account WHERE id=?",accountId);
   if(!account) throw new MailStoreError("iCloud 账号不存在","not_found");
   if(account.status==="disabled") throw new Error("这个 iCloud 账号已停用");
-  let active:ReturnType<typeof client>|null=null; let imported=0,removed=0,synced=0,uidValidityChanged=false,maxUid=0;
+  let active:ReturnType<typeof client>|null=null; let imported=0,removed=0,synced=0,primaryUnlinkedMessages=0,uidValidityChanged=false,maxUid=0;
   try {
     active=client(account);
     await active.client.connect(active.username,active.password);
@@ -188,8 +191,9 @@ export async function syncIcloudAccount(accountId:string, options:{reconcile?:bo
       await run("INSERT INTO icloud_mailbox_state (account_id,mailbox_path,uid_validity,last_uid,last_sync_at,created_at,updated_at) VALUES (?,?,?,?,?,?,?) ON CONFLICT(account_id,mailbox_path) DO UPDATE SET uid_validity=excluded.uid_validity,last_uid=excluded.last_uid,last_sync_at=excluded.last_sync_at,updated_at=excluded.updated_at",accountId,mailboxPath,validity,maxUid,current,current,current);
       await run("UPDATE mail_account SET uid_validity=?,last_uid=?,last_sync_at=?,sync_error=NULL,status='active',updated_at=? WHERE id=?",validity,maxUid,current,current,accountId);
     }
+    if(options.reconcile) primaryUnlinkedMessages=await repairPrimaryMessageRecipients(accountId);
     const automatic=fetchedMessages.length ? await scanPendingAutomaticTags({accountId}) : {scanned:0,tagged:0};
-    return {imported,removed,synced,lastUid:maxUid,uidValidity:validity,uidValidityChanged,mailboxes:1,remaining,automaticTagScanned:automatic.scanned,automaticTagApplied:automatic.tagged};
+    return {imported,removed,synced,primaryUnlinkedMessages,lastUid:maxUid,uidValidity:validity,uidValidityChanged,mailboxes:1,remaining,automaticTagScanned:automatic.scanned,automaticTagApplied:automatic.tagged};
   } catch(error) { const message=error instanceof Error ? error.message : "iCloud 同步失败"; await run("UPDATE mail_account SET status='sync_error',sync_error=?,updated_at=? WHERE id=?",message,stamp(),accountId); throw error; }
   finally { await active?.client.logout(); }
 }
