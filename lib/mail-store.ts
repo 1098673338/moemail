@@ -60,11 +60,20 @@ export async function updateAddress(id: string, input: { label?: string | null; 
   if (current.type === "icloud_hide" && input.status === "deleted" && current.status === "active") throw new MailStoreError("iCloud 隐藏地址必须先在 Apple 停用，再确认永久删除", "invalid_transition");
   if (current.type === "icloud_primary" && input.status === "deleted") throw new MailStoreError("请在 iCloud 连接设置中断开主邮箱", "invalid_transition");
   if ("providerLabel" in input && current.type !== "icloud_hide") throw new MailStoreError("只有 iCloud 隐藏地址可以修改 Apple 标签", "conflict");
+  const sharedTagName = input.tags?.length === 1 && current.tags.includes(input.tags[0]) && "tagColor" in input && input.tagColor !== current.tagColor
+    ? input.tags[0]
+    : null;
   const fields: string[] = []; const values: unknown[] = [];
   const set = (key: string, column: string, value: unknown) => { if (key in input) { fields.push(`${column}=?`); values.push(value); } };
   set("label","label",input.label || null); set("note","note",input.note || null); set("providerLabel","provider_label",input.providerLabel || null); set("phoneNumber","phone_number",input.phoneNumber || null); set("phoneUrl","phone_url",input.phoneUrl || null); if (input.tags) { fields.push("tags_json=?"); values.push(JSON.stringify(input.tags)); } set("tagColor","tag_color",input.tagColor || null); if ("addedAt" in input) { fields.push("added_at=?"); values.push(input.addedAt?.getTime() || null); } if ("providerCreatedAt" in input) { fields.push("provider_created_at=?"); values.push(input.providerCreatedAt?.getTime() || null); }
   if (input.status) { fields.push("status=?"); values.push(input.status); if (["disabled","pending_delete"].includes(input.status)) { fields.push("disabled_at=?"); values.push(now()); } if (input.status === "active") fields.push("disabled_at=NULL", "deleted_at=NULL"); if (input.status === "deleted") { fields.push("deleted_at=?"); values.push(now()); } }
-  if (!fields.length) return current; fields.push("updated_at=?"); values.push(now(), id); await run(`UPDATE mail_address SET ${fields.join(",")} WHERE id=?`, ...values); await event(id,input.status ? `status:${input.status}` : "updated",input.providerLabel || input.note || input.label || undefined); return (await getAddress(id))!;
+  if (!fields.length) return current; const updatedAt = now(); fields.push("updated_at=?"); values.push(updatedAt, id); await run(`UPDATE mail_address SET ${fields.join(",")} WHERE id=?`, ...values);
+  if (sharedTagName) {
+    const rows = await all<{ id: string; tags_json: string }>("SELECT id,tags_json FROM mail_address WHERE id<>? AND type IN ('icloud_primary','icloud_hide') AND status<>'deleted'", id);
+    const matchingIds = rows.filter((row) => tags(row.tags_json).includes(sharedTagName)).map((row) => row.id);
+    if (matchingIds.length) await batch(matchingIds.map((addressId) => ({ query: "UPDATE mail_address SET tag_color=?,updated_at=? WHERE id=?", params: [input.tagColor || null, updatedAt, addressId] })));
+  }
+  await event(id,input.status ? `status:${input.status}` : "updated",input.providerLabel || input.note || input.label || undefined); return (await getAddress(id))!;
 }
 
 export async function deleteIcloudAddressAfterAppleDeactivation(id: string) {

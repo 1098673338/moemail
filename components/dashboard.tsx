@@ -719,7 +719,7 @@ export function Dashboard() {
                 headers: { "content-type": "application/json" },
                 body: JSON.stringify({ tags: tag ? [tag.name] : [], tagColor: tag?.color || null }),
               });
-            }, tag ? `标签已修改为“${tag.name}”` : "标签已清除")}
+            }, tag ? `标签“${tag.name}”的颜色已更新` : "标签已清除")}
             onCopyAddress={async (value) => {
               try {
                 await navigator.clipboard.writeText(value);
