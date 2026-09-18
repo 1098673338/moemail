@@ -786,6 +786,14 @@ export function Dashboard() {
                 setNotice({ tone: "error", text: "无法复制邮箱地址，请检查浏览器权限" });
               }
             }}
+            onCopyRemark={async (value) => {
+              try {
+                await navigator.clipboard.writeText(value);
+                setNotice({ tone: "success", text: "备注已复制" });
+              } catch {
+                setNotice({ tone: "error", text: "无法复制备注，请检查浏览器权限" });
+              }
+            }}
             onCopyPhone={async (value) => {
               try {
                 await navigator.clipboard.writeText(value);
@@ -932,6 +940,7 @@ function AddressView(props: {
   onDelete: (address: MailAddressDto) => void;
   onUpdateTag: (address: MailAddressDto, tag: AddressTag | null) => Promise<boolean>;
   onCopyAddress: (value: string) => Promise<void>;
+  onCopyRemark: (value: string) => Promise<void>;
   onCopyPhone: (value: string) => Promise<void>;
   onCopyCode: (value: string) => Promise<void>;
 }) {
@@ -1059,7 +1068,7 @@ function AddressView(props: {
     <section className="address-table-section">
       <div className="address-table-toolbar">
         {(props.canManualSync || visibleAddresses.length > 0) && <div className="table-toolbar-controls">
-          {props.canManualSync && <button className="button secondary compact manual-mail-sync" type="button" disabled={props.manualSyncing} onClick={props.onManualSync}>
+          {props.canManualSync && <button className="button primary compact manual-mail-sync" type="button" disabled={props.manualSyncing} onClick={props.onManualSync}>
             {props.manualSyncing ? <LoaderCircle className="spin" size={15} /> : <RefreshCw size={15} />}
             {props.manualSyncing ? "正在同步…" : "手动同步邮件"}
           </button>}
@@ -1141,7 +1150,12 @@ function AddressView(props: {
                         <button type="button" className="icon-button address-table-action table-copy-button address-cell-copy" title="复制邮箱地址" aria-label={`复制邮箱地址 ${address.address}`} onClick={(event) => { event.stopPropagation(); void props.onCopyAddress(address.address); }} onKeyDown={(event) => event.stopPropagation()}><Copy size={14} aria-hidden="true" /></button>
                       </div>
                     </td>
-                    <td className="remark-value" title={remark || undefined}>{remark || "-"}</td>
+                    <td className="remark-value" title={remark || undefined}>
+                      <div className="remark-cell-content">
+                        <span>{remark || "-"}</span>
+                        {remark && <button type="button" className="icon-button address-table-action table-copy-button" title="复制备注" aria-label={`复制 ${address.address} 的备注`} onClick={(event) => { event.stopPropagation(); void props.onCopyRemark(remark); }} onKeyDown={(event) => event.stopPropagation()}><Copy size={14} aria-hidden="true" /></button>}
+                      </div>
+                    </td>
                     <td className="account-tag-cell">
                       <button
                         type="button"

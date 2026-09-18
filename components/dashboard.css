@@ -101,6 +101,10 @@ button:active:not(:disabled), a.button:active:not([aria-disabled="true"]) { opac
 .address-value:hover .address-cell-copy, .address-value:focus-within .address-cell-copy, .phone-value-cell:hover .phone-actions, .phone-value-cell:focus-within .phone-actions { opacity: 1; pointer-events: auto; }
 .time-value { color: var(--color-muted) !important; font-variant-numeric: tabular-nums; }
 .remark-value { color: var(--color-body) !important; }
+.remark-cell-content { position: relative; min-width: 0; padding-right: 36px; display: flex; align-items: center; }
+.remark-cell-content > span { min-width: 0; overflow: hidden; flex: 1; text-overflow: ellipsis; white-space: nowrap; }
+.remark-cell-content .table-copy-button { position: absolute; top: 50%; right: 0; opacity: 0; pointer-events: none; transform: translateY(-50%); transition: opacity .12s ease; }
+.remark-cell-content:hover .table-copy-button, .remark-cell-content:focus-within .table-copy-button { opacity: 1; pointer-events: auto; }
 .phone-value-cell { color: var(--color-body) !important; }
 .phone-value-content { min-width: 0; display: flex; align-items: center; gap: 4px; }
 .phone-value-content > span { min-width: 0; overflow: hidden; flex: 1; text-overflow: ellipsis; white-space: nowrap; }
