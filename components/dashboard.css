@@ -6,6 +6,7 @@
 .brand strong { color: var(--color-ink); font-size: 15px; line-height: 20px; letter-spacing: -.3px; font-weight: 600; }
 .mobile-nav-toggle { display: none; }
 .main-nav { display: grid; gap: 4px; margin-top: var(--space-md); }
+.sidebar-footer { margin-top: auto; padding-top: var(--space-md); border-top: 1px solid var(--color-hairline); }
 .main-nav button { width: 100%; min-height: 40px; display: grid; grid-template-columns: 20px minmax(0, 1fr) auto; align-items: center; gap: var(--space-sm); padding: 0 var(--space-sm); color: var(--color-body); background: transparent; border: 0; border-radius: var(--radius-control); text-align: left; font-size: 14px; font-weight: 400; }
 .main-nav button:hover { color: var(--color-ink); background: var(--color-surface-card); }
 .main-nav button.active { color: var(--color-ink); background: var(--color-surface-card); }
@@ -186,9 +187,8 @@ button:active:not(:disabled), a.button:active:not([aria-disabled="true"]) { opac
 .date-picker-day.is-selected, .date-picker-day.is-selected:hover { color: #fcfbf8; background: var(--color-ink); border-color: var(--color-ink); font-weight: 600; }
 .date-picker-actions { margin-top: var(--space-xs); padding-top: var(--space-xs); display: flex; justify-content: flex-end; border-top: 1px solid var(--color-hairline); }
 
-.settings-grid { min-height: 0; padding-top: var(--space-lg); display: grid; flex: 1; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-lg); overflow: auto; }
+.settings-dialog-body { min-height: 0; padding: var(--space-lg); overflow-y: auto; }
 .settings-card { min-width: 0; padding: var(--space-lg); }
-.settings-card.full { grid-column: 1 / -1; }
 .settings-card-head { min-height: 72px; padding-bottom: var(--space-lg); display: grid; grid-template-columns: 44px minmax(0, 1fr) auto; align-items: center; gap: var(--space-md); border-bottom: 1px solid var(--color-hairline); }
 .settings-icon { width: 44px; height: 44px; display: grid; place-items: center; color: var(--color-body-strong); background: var(--color-canvas); border: 1px solid var(--color-hairline); border-radius: var(--radius-control); font-weight: 600; }
 .settings-icon.apple { color: var(--color-ink); border-radius: 50%; }
@@ -255,6 +255,7 @@ button:active:not(:disabled), a.button:active:not([aria-disabled="true"]) { opac
 .modal-backdrop { position: fixed; inset: 0; z-index: 50; padding: var(--space-lg); display: grid; place-items: center; background: rgb(0 0 0 / 36%); backdrop-filter: blur(4px); }
 .modal-card { width: min(560px, 100%); max-height: calc(100dvh - 48px); display: grid; grid-template-rows: auto minmax(0, 1fr); overflow: hidden; color: var(--color-ink); background: var(--color-canvas); border: 1px solid var(--color-hairline); border-radius: var(--radius-large); }
 .modal-card.confirm-dialog { width: min(440px, 100%); grid-template-rows: auto auto auto; }
+.modal-card.settings-dialog { width: min(820px, 100%); }
 .modal-head { min-height: 64px; padding: var(--space-md) var(--space-lg); display: flex; align-items: center; justify-content: space-between; gap: var(--space-lg); border-bottom: 1px solid var(--color-hairline); }
 .modal-head h2 { margin: 0; color: var(--color-ink); font-size: 18px; line-height: 24px; font-weight: 600; letter-spacing: -.36px; }
 .modal-head p { margin: 2px 0 0; overflow-wrap: anywhere; color: var(--color-muted); font-size: 12px; line-height: 18px; }
@@ -290,8 +291,6 @@ button:active:not(:disabled), a.button:active:not([aria-disabled="true"]) { opac
 
 @media (max-width: 1180px) {
   :root { --sidebar-width: 208px; }
-  .settings-grid { grid-template-columns: 1fr; }
-  .settings-card.full { grid-column: auto; }
   .connection-row { grid-template-columns: minmax(180px, 1fr) auto auto; padding: var(--space-sm) 0; }
 }
 
@@ -325,6 +324,7 @@ button:active:not(:disabled), a.button:active:not([aria-disabled="true"]) { opac
   .settings-card { padding: var(--space-md); }
   .settings-card-head { grid-template-columns: 44px minmax(0, 1fr); }
   .settings-card-head > .button { grid-column: 1 / -1; }
+  .settings-dialog-body { padding: var(--space-md); }
   .connection-row { grid-template-columns: minmax(0, 1fr) auto; gap: var(--space-sm); }
   .connection-actions .button { flex: 1 1 calc(50% - var(--space-xs)); }
   .form-two { grid-template-columns: 1fr; }

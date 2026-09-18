@@ -36,7 +36,6 @@ import { zhCN } from "date-fns/locale";
 import type { ICloudAccountDto, MailAddressDto, MailMessageDto } from "@/lib/types";
 import { messageSummary } from "@/lib/message-content";
 
-type View = "icloud" | "settings";
 type AddressSortKey = "addedAt" | "receivedAt" | "tag";
 type AddressSort = { key: AddressSortKey; direction: "asc" | "desc" };
 type ContentFilter = "all" | "empty" | "filled";
@@ -46,7 +45,7 @@ type TagEditorState = { addressId: string; top: number; left: number; trigger: H
 type TagFilterMenuState = { top: number; left: number; trigger: HTMLButtonElement };
 type IcloudSyncResponse = { imported: number; removed: number; synced: number; remaining?: number; automaticTagApplied?: number; primaryUnlinkedMessages?: number };
 type IcloudSyncProgress = { accountId: string; completed: number; total: number; remaining: number };
-type Modal = "edit_address" | "icloud" | "icloud_password" | null;
+type Modal = "edit_address" | "icloud" | "icloud_password" | "settings" | null;
 type Notice = { tone: "success" | "error"; text: string };
 const ADDRESS_PAGE_SIZE = 20;
 const DEFAULT_ADDRESS_SORT: AddressSort = { key: "receivedAt", direction: "desc" };
@@ -330,7 +329,6 @@ function messageMatchesAddress(message: MailMessageDto, address: MailAddressDto)
 }
 
 export function Dashboard() {
-  const [view, setView] = useState<View>("icloud");
   const [addressSort, setAddressSort] = useState<AddressSort>({ ...DEFAULT_ADDRESS_SORT });
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [modal, setModal] = useState<Modal>(null);
@@ -445,8 +443,8 @@ export function Dashboard() {
   }, []);
 
   useEffect(() => {
-    if (view === "icloud") openIcloudFastSyncWindow();
-  }, [view, openIcloudFastSyncWindow]);
+    openIcloudFastSyncWindow();
+  }, [openIcloudFastSyncWindow]);
 
   const syncIcloudAccounts = useCallback(async (options: { reconcile?: boolean } = {}) => {
     while (icloudSyncInFlightRef.current) {
@@ -508,7 +506,6 @@ export function Dashboard() {
   }, []);
 
   useEffect(() => {
-    if (view !== "icloud" && !icloudSyncProgress) return;
     let cancelled = false;
     let timer: number | null = null;
 
@@ -549,7 +546,7 @@ export function Dashboard() {
       if (timer !== null) window.clearTimeout(timer);
       document.removeEventListener("visibilitychange", handleVisibilityChange);
     };
-  }, [view, accounts.length, icloudSyncProgress, syncIcloudAccounts, notifyBackgroundSyncError, openIcloudFastSyncWindow]);
+  }, [accounts.length, icloudSyncProgress, syncIcloudAccounts, notifyBackgroundSyncError, openIcloudFastSyncWindow]);
 
   const drawerAddress = addresses.find((address) => address.id === drawerAddressId) || null;
   const editingAddress = addresses.find((address) => address.id === editingAddressId) || null;
@@ -726,17 +723,19 @@ export function Dashboard() {
         </div>
 
         <nav className="main-nav">
-          <button className={view === "icloud" ? "active" : ""} onClick={() => { setView("icloud"); setMobileNavOpen(false); }}>
+          <button className="active" type="button" onClick={() => setMobileNavOpen(false)}>
             <Cloud size={19} /><span>iCloud 邮箱</span><em>{addresses.length}</em>
           </button>
-          <button className={view === "settings" ? "active" : ""} onClick={() => { setView("settings"); setMobileNavOpen(false); }}>
+        </nav>
+        <nav className="main-nav sidebar-footer" aria-label="账号设置">
+          <button type="button" onClick={() => { setModal("settings"); setMobileNavOpen(false); }}>
             <Settings size={19} /><span>账号设置</span>
           </button>
         </nav>
       </aside>
 
       <section className="main-area">
-        {loading ? <LoadingState /> : view === "icloud" ? (
+        {loading ? <LoadingState /> : (
           <AddressView
             addresses={addresses}
             messages={messages}
@@ -813,44 +812,6 @@ export function Dashboard() {
               }
             }}
           />
-        ) : (
-          <SettingsView
-            accounts={accounts}
-            syncProgress={icloudSyncProgress}
-            onConnectIcloud={() => setModal("icloud")}
-            onUpdateCredentials={(account) => { setCredentialAccountId(account.id); setModal("icloud_password"); }}
-            onClearAliases={(account) => setConfirmation({
-              title: "清空所有 iCloud 邮箱",
-              description: "将删除当前项目中的全部 iCloud 隐藏邮箱，只保留主邮箱。邮件会保留，之后可以重新同步地址。",
-              confirmLabel: "清空所有邮箱",
-              actionKey: `icloud:clear:${account.id}`,
-              action: async () => {
-                await requestJson(`/api/icloud/accounts/${account.id}/aliases`, { method: "DELETE" });
-              },
-              success: "iCloud 邮箱地址已清空，仅保留主邮箱",
-            })}
-            onClearAliasData={(account) => setConfirmation({
-              title: "清空所有 iCloud 邮箱数据",
-              description: "将永久删除当前项目中的全部 iCloud 隐藏邮箱及其添加时间、标签、备注、手机号、链接和操作记录。主邮箱连接、邮件和 Apple 端数据会保留；重新同步只能恢复 Apple 地址，手动填写的资料无法恢复。",
-              confirmLabel: "清空所有数据",
-              actionKey: `icloud:clear-data:${account.id}`,
-              action: async () => {
-                await requestJson(`/api/icloud/accounts/${account.id}/aliases/data`, { method: "DELETE" });
-              },
-              success: "该账号的隐藏邮箱及全部手填数据已永久清空",
-            })}
-            onDisconnect={(account) => setConfirmation({
-              title: "断开 iCloud 连接",
-              description: "将删除当前设备上的连接凭据和 iCloud 主邮箱记录。隐藏邮箱会保留，但不再关联此账号。",
-              confirmLabel: "断开连接",
-              actionKey: `icloud:disconnect:${account.id}`,
-              action: async () => {
-                await requestJson(`/api/icloud/accounts/${account.id}`, { method: "DELETE" });
-              },
-              success: "iCloud 连接已断开",
-            })}
-            isPending={isPending}
-          />
         )}
       </section>
 
@@ -863,8 +824,9 @@ export function Dashboard() {
 
       {modal && (
         <ModalShell
-          title={{ edit_address: "编辑邮箱", icloud: "连接 iCloud", icloud_password: "更新 App 专用密码" }[modal]}
+          title={{ edit_address: "编辑邮箱", icloud: "连接 iCloud", icloud_password: "更新 App 专用密码", settings: "账号设置" }[modal]}
           subtitle={modal === "edit_address" ? editingAddress?.address : undefined}
+          variant={modal === "settings" ? "settings" : "form"}
           onClose={() => { setModal(null); setEditingAddressId(null); setCredentialAccountId(null); }}
         >
           {modal === "edit_address" && editingAddress && <EditAddressForm address={editingAddress} onDone={() => { setModal(null); setEditingAddressId(null); }} onSave={async (input) => {
@@ -885,6 +847,37 @@ export function Dashboard() {
           }} />}
           {modal === "icloud" && <IcloudForm onDone={() => { setModal(null); void loadData().catch(() => undefined); }} setNotice={setNotice} />}
           {modal === "icloud_password" && credentialAccountId && <IcloudPasswordForm account={accounts.find((account) => account.id === credentialAccountId) || null} onDone={() => { setModal(null); setCredentialAccountId(null); void loadData().catch(() => undefined); }} setNotice={setNotice} />}
+          {modal === "settings" && <SettingsView
+            accounts={accounts}
+            syncProgress={icloudSyncProgress}
+            onConnectIcloud={() => setModal("icloud")}
+            onUpdateCredentials={(account) => { setCredentialAccountId(account.id); setModal("icloud_password"); }}
+            onClearAliases={(account) => { setModal(null); setConfirmation({
+              title: "清空所有 iCloud 邮箱",
+              description: "将删除当前项目中的全部 iCloud 隐藏邮箱，只保留主邮箱。邮件会保留，之后可以重新同步地址。",
+              confirmLabel: "清空所有邮箱",
+              actionKey: `icloud:clear:${account.id}`,
+              action: async () => { await requestJson(`/api/icloud/accounts/${account.id}/aliases`, { method: "DELETE" }); },
+              success: "iCloud 邮箱地址已清空，仅保留主邮箱",
+            }); }}
+            onClearAliasData={(account) => { setModal(null); setConfirmation({
+              title: "清空所有 iCloud 邮箱数据",
+              description: "将永久删除当前项目中的全部 iCloud 隐藏邮箱及其添加时间、标签、备注、手机号、链接和操作记录。主邮箱连接、邮件和 Apple 端数据会保留；重新同步只能恢复 Apple 地址，手动填写的资料无法恢复。",
+              confirmLabel: "清空所有数据",
+              actionKey: `icloud:clear-data:${account.id}`,
+              action: async () => { await requestJson(`/api/icloud/accounts/${account.id}/aliases/data`, { method: "DELETE" }); },
+              success: "该账号的隐藏邮箱及全部手填数据已永久清空",
+            }); }}
+            onDisconnect={(account) => { setModal(null); setConfirmation({
+              title: "断开 iCloud 连接",
+              description: "将删除当前设备上的连接凭据和 iCloud 主邮箱记录。隐藏邮箱会保留，但不再关联此账号。",
+              confirmLabel: "断开连接",
+              actionKey: `icloud:disconnect:${account.id}`,
+              action: async () => { await requestJson(`/api/icloud/accounts/${account.id}`, { method: "DELETE" }); },
+              success: "iCloud 连接已断开",
+            }); }}
+            isPending={isPending}
+          />}
         </ModalShell>
       )}
       {confirmation && (
@@ -1556,8 +1549,8 @@ function SettingsView(props: {
   isPending: (key: string) => boolean;
 }) {
   return (
-    <div className="settings-grid">
-      <section className="settings-card panel full">
+    <div className="settings-dialog-body">
+      <section className="settings-card panel">
         <div className="settings-card-head"><div className="settings-icon apple">●</div><div><h2>iCloud 账号</h2><p>IMAP 用于同步邮件，浏览器同步助手用于读取账号中的完整隐藏邮件地址清单。</p></div><button className="button primary" onClick={props.onConnectIcloud}><Plus size={16} />连接 iCloud</button></div>
         {props.accounts.length === 0 ? (
           <div className="empty-inline"><div><Mail size={22} /></div><p><strong>还没有连接 iCloud 账号</strong><span>连接后，可以同步邮件和账号中的隐藏邮件地址。</span></p></div>
@@ -1586,7 +1579,7 @@ function SettingsView(props: {
   );
 }
 
-function ModalShell({ title, subtitle, variant = "form", onClose, children }: { title: string; subtitle?: string; variant?: "form" | "confirm"; onClose: () => void; children: React.ReactNode }) {
+function ModalShell({ title, subtitle, variant = "form", onClose, children }: { title: string; subtitle?: string; variant?: "form" | "confirm" | "settings"; onClose: () => void; children: React.ReactNode }) {
   const dialogRef = useRef<HTMLDivElement>(null);
   const onCloseRef = useRef(onClose);
   useEffect(() => { onCloseRef.current = onClose; }, [onClose]);
@@ -1624,7 +1617,7 @@ function ModalShell({ title, subtitle, variant = "form", onClose, children }: { 
       previousFocus?.focus();
     };
   }, []);
-  return <div className="modal-backdrop"><div ref={dialogRef} className={`modal-card ${variant === "confirm" ? "confirm-dialog" : ""}`} role="dialog" aria-modal="true" aria-labelledby="modal-title" aria-describedby={subtitle ? "modal-subtitle" : undefined}><div className="modal-head"><div><h2 id="modal-title">{title}</h2>{subtitle && <p id="modal-subtitle">{subtitle}</p>}</div><button type="button" aria-label={`关闭“${title}”`} onClick={onClose}><X size={18} /></button></div>{children}</div></div>;
+  return <div className="modal-backdrop"><div ref={dialogRef} className={`modal-card ${variant === "confirm" ? "confirm-dialog" : ""} ${variant === "settings" ? "settings-dialog" : ""}`} role="dialog" aria-modal="true" aria-labelledby="modal-title" aria-describedby={subtitle ? "modal-subtitle" : undefined}><div className="modal-head"><div><h2 id="modal-title">{title}</h2>{subtitle && <p id="modal-subtitle">{subtitle}</p>}</div><button type="button" aria-label={`关闭“${title}”`} onClick={onClose}><X size={18} /></button></div>{children}</div></div>;
 }
 
 function ConfirmDialog({ confirmation, pending, onCancel, onConfirm }: { confirmation: Confirmation; pending: boolean; onCancel: () => void; onConfirm: () => Promise<void> }) {
