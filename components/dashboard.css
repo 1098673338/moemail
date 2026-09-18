@@ -62,14 +62,17 @@ button:active:not(:disabled), a.button:active:not([aria-disabled="true"]) { opac
 .address-table-scroll { width: 100%; min-height: 0; flex: 1; overflow: auto; contain: layout paint; }
 .address-table { width: 100%; min-width: 1320px; border-collapse: collapse; table-layout: fixed; }
 .address-table th { height: 44px; padding: 0 var(--space-md); color: var(--color-muted); background: rgb(28 28 28 / 3%); border-bottom: 1px solid var(--color-hairline); text-align: left; font-size: 11px; line-height: 16px; font-weight: 500; white-space: nowrap; }
-.address-table th:nth-child(1) { width: 19%; }
-.address-table th:nth-child(2) { width: 12%; }
-.address-table th:nth-child(3) { width: 9%; }
-.address-table th:nth-child(4) { width: 14%; }
-.address-table th:nth-child(5) { width: 19%; }
-.address-table th:nth-child(6) { width: 11%; }
-.address-table th:nth-child(7) { width: 7%; text-align: center; }
+.address-table th:nth-child(1) { width: 4%; }
+.address-table th:nth-child(2) { width: 20%; }
+.address-table th:nth-child(3) { width: 13%; }
+.address-table th:nth-child(4) { width: 10%; }
+.address-table th:nth-child(5) { width: 14%; }
+.address-table th:nth-child(6) { width: 20%; }
+.address-table th:nth-child(7) { width: 12%; }
+.address-table th:nth-child(8) { width: 7%; text-align: center; }
 .address-table th + th, .address-table td + td { border-left: 1px solid var(--color-hairline); }
+.row-selection-cell { padding: 0 !important; text-align: center !important; }
+.row-selection-cell input { width: 16px; height: 16px; margin: 0; vertical-align: middle; accent-color: var(--color-ink); cursor: pointer; }
 .table-sort { min-height: 30px; padding: 0; display: inline-flex; align-items: center; gap: 4px; color: inherit; background: transparent; border: 0; font-size: inherit; font-weight: inherit; }
 .table-sort:hover { color: var(--color-ink); }
 .table-sort:focus-visible { outline: 2px solid var(--color-focus); outline-offset: 1px; }
@@ -85,6 +88,9 @@ button:active:not(:disabled), a.button:active:not([aria-disabled="true"]) { opac
 .address-table tbody tr.unread .time-value { color: var(--color-body-strong) !important; font-weight: 500; }
 .address-actions-cell { padding: 10px var(--space-xs) !important; display: flex; align-items: center; justify-content: center; gap: 2px; }
 .address-actions-cell.primary-only::after { content: ""; width: 28px; height: 28px; flex: none; }
+.batch-controls { min-height: 40px; padding-left: var(--space-sm); display: inline-flex; align-items: center; gap: var(--space-xs); flex: none; border-left: 1px solid var(--color-hairline); white-space: nowrap; }
+.batch-controls > span { color: var(--color-muted); font-size: 12px; }
+.batch-dialog-description { margin: 0; color: var(--color-body); font-size: 13px; line-height: 20px; }
 .icon-button { width: 32px; height: 32px; display: inline-grid; place-items: center; color: var(--color-body); background: transparent; border: 1px solid transparent; border-radius: var(--radius-control); }
 .icon-button:hover { color: var(--color-ink); background: var(--color-canvas); border-color: var(--color-hairline); }
 .address-table-action { width: 28px; height: 28px; }

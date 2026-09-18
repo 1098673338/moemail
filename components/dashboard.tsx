@@ -771,6 +771,44 @@ export function Dashboard() {
                 success: "iCloud 邮箱已在 Apple 停用，本地数据已清空",
               });
             }}
+            onBatchUpdateRemarks={(selectedAddresses, remark) => runAction(`address:batch:remark:${selectedAddresses.map((address) => address.id).sort().join(",")}`, async () => {
+              const hiddenAddresses = selectedAddresses.filter((address) => address.type === "icloud_hide");
+              if (!hiddenAddresses.length) throw new Error("主号不能批量修改备注");
+              let completed = false;
+              try {
+                for (const address of hiddenAddresses) {
+                  await requestAppleLabelUpdate(address, remark);
+                  await requestJson(`/api/addresses/${address.id}`, {
+                    method: "PATCH",
+                    headers: { "content-type": "application/json" },
+                    body: JSON.stringify({ providerLabel: remark }),
+                  });
+                }
+                completed = true;
+              } finally {
+                if (!completed) await refreshData().catch(() => undefined);
+              }
+              return selectedAddresses.length === hiddenAddresses.length
+                ? `已修改 ${hiddenAddresses.length} 个邮箱的备注`
+                : `已修改 ${hiddenAddresses.length} 个邮箱的备注，已跳过 ${selectedAddresses.length - hiddenAddresses.length} 个主号`;
+            }, "已批量修改邮箱备注")}
+            onBatchDelete={(selectedAddresses) => runAction(`address:batch:delete:${selectedAddresses.map((address) => address.id).sort().join(",")}`, async () => {
+              const hiddenAddresses = selectedAddresses.filter((address) => address.type === "icloud_hide");
+              if (!hiddenAddresses.length) throw new Error("主号不能批量删除");
+              let completed = false;
+              try {
+                for (const address of hiddenAddresses) {
+                  await requestAppleAliasDeactivation(address);
+                  await requestJson(`/api/addresses/${address.id}/apple-deactivated`, { method: "POST" });
+                }
+                completed = true;
+              } finally {
+                if (!completed) await refreshData().catch(() => undefined);
+              }
+              return selectedAddresses.length === hiddenAddresses.length
+                ? `已停用并删除 ${hiddenAddresses.length} 个邮箱`
+                : `已停用并删除 ${hiddenAddresses.length} 个邮箱，已跳过 ${selectedAddresses.length - hiddenAddresses.length} 个主号`;
+            }, "已批量删除邮箱")}
             onUpdateTag={(address, tag) => runAction(`address:tag:${address.id}`, async () => {
               await requestJson(`/api/addresses/${address.id}`, {
                 method: "PATCH",
@@ -930,6 +968,8 @@ function AddressView(props: {
   onMarkRead: (message: MailMessageDto) => Promise<void>;
   onEdit: (address: MailAddressDto) => void;
   onDelete: (address: MailAddressDto) => void;
+  onBatchUpdateRemarks: (addresses: MailAddressDto[], remark: string) => Promise<boolean>;
+  onBatchDelete: (addresses: MailAddressDto[]) => Promise<boolean>;
   onUpdateTag: (address: MailAddressDto, tag: AddressTag | null) => Promise<boolean>;
   onCopyAddress: (value: string) => Promise<void>;
   onCopyPhone: (value: string) => Promise<void>;
@@ -942,6 +982,10 @@ function AddressView(props: {
   const [addressQuery, setAddressQuery] = useState("");
   const [page, setPage] = useState(1);
   const [tagEditor, setTagEditor] = useState<TagEditorState | null>(null);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set());
+  const [batchEditOpen, setBatchEditOpen] = useState(false);
+  const [batchDeleteAddresses, setBatchDeleteAddresses] = useState<MailAddressDto[] | null>(null);
+  const [batchDeletePending, setBatchDeletePending] = useState(false);
   const tableScrollRef = useRef<HTMLDivElement>(null);
   const visibleAddresses = props.addresses;
   const existingTags = Array.from(props.addresses.reduce((tags, address) => {
@@ -1044,6 +1088,38 @@ function AddressView(props: {
   const pagedRows = filteredRows.slice(pageStartIndex, pageStartIndex + ADDRESS_PAGE_SIZE);
   const pageStart = filteredRows.length === 0 ? 0 : pageStartIndex + 1;
   const pageEnd = Math.min(pageStartIndex + ADDRESS_PAGE_SIZE, filteredRows.length);
+  const selectedAddresses = props.addresses.filter((address) => selectedIds.has(address.id));
+  const selectedHiddenAddresses = selectedAddresses.filter((address) => address.type === "icloud_hide");
+  const selectedPrimaryCount = selectedAddresses.length - selectedHiddenAddresses.length;
+  const pageAddressIds = pagedRows.map(({ address }) => address.id);
+  const allPageSelected = pageAddressIds.length > 0 && pageAddressIds.every((id) => selectedIds.has(id));
+  const somePageSelected = pageAddressIds.some((id) => selectedIds.has(id));
+  const selectAddress = (id: string, selected: boolean) => {
+    setSelectedIds((current) => {
+      const next = new Set(current);
+      if (selected) next.add(id);
+      else next.delete(id);
+      return next;
+    });
+  };
+  const selectPage = (selected: boolean) => {
+    setSelectedIds((current) => {
+      const next = new Set(current);
+      for (const id of pageAddressIds) {
+        if (selected) next.add(id);
+        else next.delete(id);
+      }
+      return next;
+    });
+  };
+  const clearSelectedAddresses = () => setSelectedIds(new Set());
+  useEffect(() => {
+    const availableIds = new Set(props.addresses.map((address) => address.id));
+    setSelectedIds((current) => {
+      const next = new Set(Array.from(current).filter((id) => availableIds.has(id)));
+      return next.size === current.size ? current : next;
+    });
+  }, [props.addresses]);
   const changePage = (nextPage: number) => {
     setPage(nextPage);
     resetTableScroll();
@@ -1092,6 +1168,12 @@ function AddressView(props: {
             {addressQuery && <button type="button" aria-label="清除邮箱地址或备注搜索" onClick={() => updateAddressQuery("")}><X size={14} aria-hidden="true" /></button>}
           </div>
           </>}
+          {selectedAddresses.length > 0 && <div className="batch-controls" role="group" aria-label="批量操作">
+            <span>{selectedAddresses.length} 项已选</span>
+            <button className="button secondary compact" type="button" disabled={selectedHiddenAddresses.length === 0} onClick={() => setBatchEditOpen(true)}>批量编辑</button>
+            <button className="button destructive compact" type="button" disabled={selectedHiddenAddresses.length === 0} onClick={() => setBatchDeleteAddresses(selectedAddresses)}>批量删除</button>
+            <button className="button ghost compact" type="button" onClick={clearSelectedAddresses}>取消选择</button>
+          </div>}
         </div>}
       </div>
       {visibleAddresses.length === 0 ? (
@@ -1110,6 +1192,7 @@ function AddressView(props: {
             <div ref={tableScrollRef} className="address-table-scroll">
               <table className="address-table">
             <thead><tr>
+              <th className="row-selection-cell"><input type="checkbox" aria-label="选择当前页全部邮箱" checked={allPageSelected} ref={(input) => { if (input) input.indeterminate = somePageSelected && !allPageSelected; }} onChange={(event) => selectPage(event.target.checked)} /></th>
               <th aria-sort={sort.key === "addedAt" ? sort.direction === "asc" ? "ascending" : "descending" : "none"}><button type="button" className="table-sort" aria-label={`按添加时间${sortAria("addedAt")}`} onClick={() => sortRows("addedAt")}>邮箱地址 {sortIndicator("addedAt")}</button></th>
               <th>备注</th>
               <th aria-sort={sort.key === "tag" ? sort.direction === "asc" ? "ascending" : "descending" : "none"}><button type="button" className="table-sort" aria-label={`按标签${sortAria("tag")}`} onClick={() => sortRows("tag")}>标签 {sortIndicator("tag")}</button></th>
@@ -1125,7 +1208,8 @@ function AddressView(props: {
                 const remark = addressRemark(address);
                 const unread = Boolean(message && !message.isRead);
                 return (
-                  <tr key={address.id} className={unread ? "unread" : undefined} tabIndex={0} onClickCapture={() => {
+                  <tr key={address.id} className={unread ? "unread" : undefined} tabIndex={0} onClickCapture={(event) => {
+                    if (event.target instanceof Element && event.target.closest("button, a, input, select, textarea, label")) return;
                     if (message) void props.onMarkRead(message);
                   }} onClick={() => props.onOpen(address)} onKeyDown={(event) => {
                     if (event.key === "Enter" || event.key === " ") {
@@ -1134,6 +1218,16 @@ function AddressView(props: {
                       props.onOpen(address);
                     }
                   }}>
+                    <td className="row-selection-cell">
+                      <input
+                        type="checkbox"
+                        aria-label={`选择邮箱 ${address.address}`}
+                        checked={selectedIds.has(address.id)}
+                        onClick={(event) => event.stopPropagation()}
+                        onKeyDown={(event) => event.stopPropagation()}
+                        onChange={(event) => selectAddress(address.id, event.target.checked)}
+                      />
+                    </td>
                     <td className="address-value">
                       <div className="address-cell-content">
                         <span className="address-cell-text" title={address.address}>{address.address}</span>
@@ -1225,8 +1319,82 @@ function AddressView(props: {
           }}
         />;
       })()}
+      {batchEditOpen && <BatchEditRemarksDialog
+        selectedCount={selectedAddresses.length}
+        selectedPrimaryCount={selectedPrimaryCount}
+        onClose={() => setBatchEditOpen(false)}
+        onSave={async (remark) => {
+          const completed = await props.onBatchUpdateRemarks(selectedAddresses, remark);
+          if (completed) {
+            clearSelectedAddresses();
+            setBatchEditOpen(false);
+          }
+        }}
+      />}
+      {batchDeleteAddresses && <ConfirmDialog
+        confirmation={{
+          title: "批量删除邮箱",
+          description: `${batchDeleteAddresses.filter((address) => address.type === "icloud_hide").length} 个 iCloud 隐藏邮箱将在 Apple 停用，并清空当前项目中的资料和邮件。此操作无法撤销。${batchDeleteAddresses.some((address) => address.type === "icloud_primary") ? " 已选择的主号会自动跳过。" : ""}`,
+          confirmLabel: "停用并删除",
+          actionKey: "address:batch:delete:confirm",
+          action: async () => undefined,
+          success: "",
+          refresh: false,
+        }}
+        pending={batchDeletePending}
+        onCancel={() => { if (!batchDeletePending) setBatchDeleteAddresses(null); }}
+        onConfirm={async () => {
+          const selected = batchDeleteAddresses;
+          if (!selected) return;
+          setBatchDeletePending(true);
+          try {
+            const completed = await props.onBatchDelete(selected);
+            if (completed) {
+              setBatchDeleteAddresses(null);
+              clearSelectedAddresses();
+            }
+          } finally {
+            setBatchDeletePending(false);
+          }
+        }}
+      />}
     </section>
   );
+}
+
+function BatchEditRemarksDialog({ selectedCount, selectedPrimaryCount, onClose, onSave }: {
+  selectedCount: number;
+  selectedPrimaryCount: number;
+  onClose: () => void;
+  onSave: (remark: string) => Promise<void>;
+}) {
+  const [remark, setRemark] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [formError, setFormError] = useState<string | null>(null);
+  const submit = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const normalizedRemark = remark.trim();
+    if (!normalizedRemark || saving) return;
+    setSaving(true);
+    setFormError(null);
+    try {
+      await onSave(normalizedRemark);
+    } catch (error) {
+      setFormError(error instanceof Error ? error.message : "无法批量修改备注");
+    } finally {
+      setSaving(false);
+    }
+  };
+  return <ModalShell title="批量编辑备注" variant="form" onClose={saving ? () => undefined : onClose}>
+    <form className="modal-form" onSubmit={submit}>
+      <div className="modal-form-body">
+        <p className="batch-dialog-description">将为 {selectedCount - selectedPrimaryCount} 个隐藏邮箱设置相同的备注（iCloud 标签）。{selectedPrimaryCount > 0 ? `已选择的 ${selectedPrimaryCount} 个主号不会被修改。` : ""}</p>
+        <label>备注（iCloud 标签）<textarea rows={5} maxLength={500} required value={remark} disabled={saving} onChange={(event) => setRemark(event.target.value)} /></label>
+        <FormError message={formError} />
+      </div>
+      <div className="modal-form-footer"><button className="button ghost" type="button" disabled={saving} onClick={onClose}>取消</button><button className="button primary" disabled={saving || !remark.trim()}>{saving && <LoaderCircle className="spin" size={17} />}{saving ? "正在保存…" : "保存备注"}</button></div>
+    </form>
+  </ModalShell>;
 }
 
 function TagColorPicker({ value, disabled = false, onChange }: { value: string; disabled?: boolean; onChange: (color: string) => void }) {
