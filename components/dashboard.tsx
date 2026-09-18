@@ -51,12 +51,16 @@ const DEFAULT_ADDRESS_SORT: AddressSort = { key: "receivedAt", direction: "desc"
 const ICLOUD_FAST_SYNC_INTERVAL = 2_000;
 const ICLOUD_FAST_SYNC_DURATION = 2 * 60_000;
 const ICLOUD_SYNC_INTERVAL = 5 * 60_000;
-const DEFAULT_TAG_COLOR = "#6b7280";
+const DEFAULT_TAG_COLOR = "#475569";
 const ICLOUD_BRIDGE_VERSION = 1;
 const TAG_COLOR_OPTIONS = [
-  "#6b7280", "#dc2626", "#ea580c", "#ca8a04", "#16a34a", "#2563eb", "#7c3aed", "#db2777",
-  "#111827", "#9f1239", "#9a3412", "#4d7c0f", "#0f766e", "#0e7490", "#4338ca", "#a21caf",
+  "#475569", "#dc2626", "#ea580c", "#a16207", "#15803d", "#2563eb", "#6d28d9", "#db2777",
 ];
+const LEGACY_TAG_COLOR_ALIASES: Record<string, string> = {
+  "#6b7280": "#475569", "#111827": "#475569", "#9f1239": "#dc2626", "#9a3412": "#ea580c",
+  "#ca8a04": "#a16207", "#4d7c0f": "#15803d", "#16a34a": "#15803d", "#0f766e": "#15803d",
+  "#0e7490": "#2563eb", "#4338ca": "#6d28d9", "#7c3aed": "#6d28d9", "#a21caf": "#db2777",
+};
 type Confirmation = {
   title: string;
   description: string;
@@ -184,6 +188,12 @@ function addressRemark(address: MailAddressDto) {
 function addressTag(address: MailAddressDto): AddressTag | null {
   const name = address.tags[0]?.trim();
   return name ? { name, color: address.tagColor || DEFAULT_TAG_COLOR } : null;
+}
+
+function canonicalTagColor(color?: string | null) {
+  const normalized = color?.toLowerCase();
+  if (!normalized) return DEFAULT_TAG_COLOR;
+  return TAG_COLOR_OPTIONS.includes(normalized) ? normalized : LEGACY_TAG_COLOR_ALIASES[normalized] || DEFAULT_TAG_COLOR;
 }
 
 function tagStyle(color: string): CSSProperties {
@@ -1171,7 +1181,7 @@ function TagEditor({ address, currentTag, existingTags, position, trigger, onClo
   const editorRef = useRef<HTMLFormElement>(null);
   const nameInputRef = useRef<HTMLInputElement>(null);
   const [name, setName] = useState(currentTag?.name || "");
-  const [color, setColor] = useState(currentTag?.color || DEFAULT_TAG_COLOR);
+  const [color, setColor] = useState(canonicalTagColor(currentTag?.color));
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {

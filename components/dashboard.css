@@ -110,7 +110,7 @@ button:active:not(:disabled), a.button:active:not([aria-disabled="true"]) { opac
 .status-pill.disabled { color: var(--color-warning); }
 .status-pill.sync_error { color: var(--color-danger); }
 .status-pill i { width: 5px; height: 5px; margin-right: 6px; display: inline-block; border-radius: 50%; background: currentColor; }
-.account-tag { width: fit-content; min-height: 24px; padding: 3px 9px; display: inline-flex; align-items: center; color: var(--tag-color, var(--color-muted)); background: color-mix(in srgb, var(--tag-color, var(--color-muted)) 9%, transparent); border: 1px solid color-mix(in srgb, var(--tag-color, var(--color-muted)) 20%, var(--color-hairline)); border-radius: 999px; font-size: 11px; line-height: 16px; font-weight: 500; }
+.account-tag { width: fit-content; min-height: 24px; padding: 3px 9px; display: inline-flex; align-items: center; color: var(--tag-color, var(--color-muted)); background: color-mix(in srgb, var(--tag-color, var(--color-muted)) 12%, transparent); border: 1px solid color-mix(in srgb, var(--tag-color, var(--color-muted)) 34%, var(--color-hairline)); border-radius: 999px; font-size: 11px; line-height: 16px; font-weight: 500; }
 .account-tag-cell { overflow: visible !important; }
 .account-tag-trigger { cursor: pointer; }
 .account-tag-trigger:hover { filter: brightness(.96); }
@@ -130,7 +130,7 @@ button:active:not(:disabled), a.button:active:not([aria-disabled="true"]) { opac
 .account-tag-name input:focus { border-color: var(--color-focus-border); }
 .account-tag-colors { min-width: 0; padding: 0; border: 0; }
 .account-tag-colors legend { margin-bottom: 6px; color: var(--color-body); font-size: 11px; line-height: 16px; }
-.account-tag-colors > div { display: grid; grid-template-columns: repeat(8, 24px); align-items: center; justify-content: space-between; row-gap: 7px; }
+.account-tag-colors > div { display: flex; align-items: center; justify-content: space-between; gap: 6px; flex-wrap: nowrap; }
 .account-tag-colors > div button { width: 24px; height: 24px; padding: 0; display: grid; place-items: center; color: #fff; border: 2px solid var(--color-surface-elevated); border-radius: 50%; outline: 1px solid var(--color-hairline); }
 .account-tag-colors > div button:hover, .account-tag-colors > div button:focus-visible { outline: 2px solid var(--color-focus); outline-offset: 1px; }
 .account-tag-colors > div button.active { outline: 2px solid var(--color-ink); outline-offset: 1px; }
