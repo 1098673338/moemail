@@ -1406,7 +1406,11 @@ function MailDrawer(props: {
 
 function responsiveEmailDocument(value: string) {
   const viewport = '<meta name="viewport" content="width=device-width, initial-scale=1" />';
-  const adaptiveStyles = "<style>html,body{width:100%!important;max-width:100%!important;min-width:0!important}table{max-width:100%!important}img{max-width:100%!important;height:auto!important}</style>";
+  // Apple receipts include both a 742px desktop table and a 480px mobile table,
+  // but only switch at 480px. The reading pane can be narrower than 742px while
+  // still being wider than that breakpoint, so activate Apple's own mobile table
+  // before the desktop table can be clipped.
+  const adaptiveStyles = "<style>html,body{margin:0!important;min-width:0!important}img{max-width:100%!important;height:auto!important}@media (max-width:767px){div[class=aapl-mobile-div]{display:block!important;-webkit-text-size-adjust:none!important;height:100%!important;overflow:visible!important;max-height:none!important;min-height:none!important;line-height:normal!important}div[class=aapl-desktop-div]{display:none!important;height:0!important;overflow:hidden!important;max-height:0!important;min-height:0!important;line-height:0!important}}</style>";
   if (/<head\b[^>]*>/i.test(value)) return `<!doctype html>${value.replace(/<head\b[^>]*>/i, (head) => `${head}${viewport}${adaptiveStyles}`)}`;
   return `<!doctype html><html><head>${viewport}${adaptiveStyles}</head><body>${value}</body></html>`;
 }
