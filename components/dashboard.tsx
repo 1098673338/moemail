@@ -258,15 +258,15 @@ function requestAppleLabelUpdate(address: MailAddressDto, label: string) {
 
 function requestAppleAliasDeactivation(address: MailAddressDto) {
   return new Promise<void>((resolve, reject) => {
-    if (!address.providerId) {
-      reject(new Error("这个 iCloud 地址缺少 Apple 标识，请先在插件中同步邮箱地址"));
+    if (!address.address) {
+      reject(new Error("缺少要停用的 iCloud 地址，请刷新页面后重试"));
       return;
     }
     const requestId = crypto.randomUUID();
     const timeout = window.setTimeout(() => {
       window.removeEventListener("message", handleMessage);
       reject(new Error("未检测到同步助手，请重新加载插件并刷新当前 MoeMail 页面"));
-    }, 30_000);
+    }, 45_000);
     const handleMessage = (event: MessageEvent) => {
       if (event.source !== window || event.data?.type !== "MOEMAIL_DEACTIVATE_APPLE_ALIAS_RESULT" || event.data.requestId !== requestId || event.data.bridgeVersion !== ICLOUD_BRIDGE_VERSION) return;
       window.clearTimeout(timeout);
@@ -279,6 +279,7 @@ function requestAppleAliasDeactivation(address: MailAddressDto) {
       type: "MOEMAIL_DEACTIVATE_APPLE_ALIAS",
       requestId,
       providerId: address.providerId,
+      address: address.address,
     }, "*");
   });
 }

@@ -32,6 +32,7 @@
       chrome.runtime.sendMessage({
         type: event.data.type,
         providerId: event.data.providerId,
+        address: event.data.address,
         label: event.data.label,
       }, (response) => {
         const runtimeError = chrome.runtime.lastError;

@@ -148,9 +148,7 @@ async function appleRequest(target, method, path, body) {
 
 async function readAppleAliases() {
   const target = await locateAppleTarget();
-  const payload = await appleRequest(target, "GET", "/v2/hme/list");
-  const list = Array.isArray(payload?.hmeEmails) ? payload.hmeEmails : Array.isArray(payload?.items) ? payload.items : Array.isArray(payload) ? payload : null;
-  if (!list) throw new Error("Apple 地址清单格式无法识别");
+  const list = await listAppleAliases(target);
   const aliases = list.filter((item) => item?.isActive === true).map((item) => ({
     address: String(item.hme || item.address || "").trim().toLowerCase(),
     providerId: String(item.anonymousId || item.id || "").trim(),
@@ -163,6 +161,13 @@ async function readAppleAliases() {
   return aliases;
 }
 
+async function listAppleAliases(target) {
+  const payload = await appleRequest(target, "GET", "/v2/hme/list");
+  const list = Array.isArray(payload?.hmeEmails) ? payload.hmeEmails : Array.isArray(payload?.items) ? payload.items : Array.isArray(payload) ? payload : null;
+  if (!list) throw new Error("Apple 地址清单格式无法识别");
+  return list;
+}
+
 async function updateAppleLabel(providerId, label) {
   if (!providerId) throw new Error("这个 iCloud 地址缺少 Apple 标识，请先同步地址");
   if (String(label || "").trim().length > 500) throw new Error("Apple 标签不能超过 500 个字符");
@@ -170,10 +175,23 @@ async function updateAppleLabel(providerId, label) {
   await appleRequest(target, "POST", "/v1/hme/updateMetaData", { anonymousId: providerId, label: String(label || "").trim() });
 }
 
-async function deactivateAppleAlias(providerId) {
-  if (!providerId) throw new Error("这个 iCloud 地址缺少 Apple 标识，请先同步地址");
+async function deactivateAppleAlias(providerId, expectedAddress) {
   const target = await locateAppleTarget();
-  await appleRequest(target, "POST", "/v1/hme/deactivate", { anonymousId: providerId });
+  const aliases = await listAppleAliases(target);
+  const address = String(expectedAddress || "").trim().toLowerCase();
+  if (!address) throw new Error("缺少要停用的 iCloud 地址，请刷新页面后重试");
+  const matchingAddress = aliases.find((item) => String(item?.hme || item?.address || "").trim().toLowerCase() === address);
+  const matchingId = aliases.find((item) => String(item?.anonymousId || item?.id || "").trim() === providerId);
+  if (matchingId && String(matchingId?.hme || matchingId?.address || "").trim().toLowerCase() !== address) {
+    throw new Error("当前 Apple 账号中的地址标识与项目记录不匹配；请确认浏览器登录的 iCloud 账号并重新同步地址");
+  }
+  const alias = matchingId || matchingAddress;
+  if (!alias) throw new Error("当前浏览器登录的 Apple 账号中找不到这个邮箱；请检查 iCloud 账号并重新同步地址");
+  if (alias.isActive === false) return;
+  if (alias.isActive !== true) throw new Error("Apple 未返回这个地址的有效状态，请稍后重试");
+  const currentProviderId = String(alias.anonymousId || alias.id || "").trim();
+  if (!currentProviderId) throw new Error("Apple 地址缺少有效标识，请重新同步地址");
+  await appleRequest(target, "POST", "/v1/hme/deactivate", { anonymousId: currentProviderId });
 }
 
 async function createAppleAlias(label) {
@@ -233,7 +251,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     if (["MOEMAIL_UPDATE_APPLE_LABEL", "MOEMAIL_DEACTIVATE_APPLE_ALIAS"].includes(message.type)) {
       if (!await senderIsConfiguredApp(sender)) throw new Error("只允许从已连接的 MoeMail 页面发起 Apple 地址操作");
       if (message.type === "MOEMAIL_UPDATE_APPLE_LABEL") await updateAppleLabel(String(message.providerId || ""), message.label);
-      else await deactivateAppleAlias(String(message.providerId || ""));
+      else await deactivateAppleAlias(String(message.providerId || ""), String(message.address || ""));
       return {};
     }
     if (!senderIsExtension(sender)) throw new Error("只允许从 MoeMail 同步助手发起 Apple 地址操作");
