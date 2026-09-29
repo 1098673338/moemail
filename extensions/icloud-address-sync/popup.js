@@ -175,7 +175,7 @@ async function syncAliases() {
       body: JSON.stringify({ authoritative: true, scope: "active", aliases }),
     });
     setStatus(`地址已同步 ${addressResult.activeCount} 个，已关联 ${addressResult.linkedMessages || 0} 封历史邮件，自动标记 ${addressResult.automaticTagApplied || 0} 个地址，正在同步邮箱…`);
-    const mailResult = await cloudRequest(`/api/icloud/accounts/${connectedAccountId}/sync`, { method: "POST" });
+    const mailResult = await cloudRequest(`/api/icloud/bridge/accounts/${connectedAccountId}/sync`, { method: "POST" });
     const updatedPages = await notifyCloudPages(addressResult);
     const pageStatus = updatedPages > 0 ? "；项目页面已更新" : "";
     setStatus(`同步完成：${addressResult.activeCount} 个地址，${labelCount} 个带标签；邮件新增 ${mailResult.imported || 0} 封，已处理 ${mailResult.synced || 0} 封${pageStatus}。`, "success");

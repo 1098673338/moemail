@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { requireDashboardSession } from "@/lib/auth";
 import { apiError } from "@/lib/http";
 import { setMessageRead, setVerificationCodeIgnored } from "@/lib/mail-store";
 import { deleteIcloudMessage, refreshIcloudMessageHtml } from "@/lib/icloud";
@@ -6,6 +7,8 @@ import { deleteIcloudMessage, refreshIcloudMessageHtml } from "@/lib/icloud";
 export const runtime = "nodejs";
 
 export async function PATCH(request: Request, { params }: { params: Promise<{ id: string }> }) {
+  const unauthorized = await requireDashboardSession(request);
+  if (unauthorized) return unauthorized;
   try {
     const { id } = await params;
     const body: unknown = await request.json();
@@ -24,7 +27,9 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
   }
 }
 
-export async function DELETE(_request: Request, { params }: { params: Promise<{ id: string }> }) {
+export async function DELETE(request: Request, { params }: { params: Promise<{ id: string }> }) {
+  const unauthorized = await requireDashboardSession(request);
+  if (unauthorized) return unauthorized;
   try {
     const { id } = await params;
     await deleteIcloudMessage(id);

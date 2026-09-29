@@ -33,16 +33,8 @@ jobs:
           DATABASE_NAME: ${{ secrets.DATABASE_NAME }}
           DATABASE_ID: ${{ secrets.DATABASE_ID }}
           EXTERNAL_MAIL_SECRET: ${{ secrets.EXTERNAL_MAIL_SECRET }}
+          DASHBOARD_LOGIN_SECRET: ${{ secrets.DASHBOARD_LOGIN_SECRET }}
         run: pnpm exec tsx scripts/deploy/index.ts
-
-      - name: Preserve pre-migration D1 export
-        if: always()
-        uses: actions/upload-artifact@v6
-        with:
-          name: d1-before-migration
-          path: artifacts/d1-backup/*.sql
-          if-no-files-found: warn
-          retention-days: 30
 
       # Clean up
       - name: Post deployment cleanup

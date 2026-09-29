@@ -22,5 +22,5 @@ export async function GET(request: Request) {
     aliasesActiveCount: account.aliasesActiveCount,
     aliasesInactiveCount: account.aliasesInactiveCount,
   }));
-  return withBridgeCors(NextResponse.json({ accounts }));
+  return withBridgeCors(NextResponse.json({ accounts }, { headers: { "Cache-Control": "private, no-store" } }));
 }

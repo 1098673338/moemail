@@ -29,11 +29,16 @@ Run the **Deploy** workflow manually after adding these repository secrets:
 - `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID`
 - `DATABASE_NAME`, `DATABASE_ID`
 - `EXTERNAL_MAIL_SECRET` (the existing MoeMail secret)
+- `DASHBOARD_LOGIN_SECRET` (a separate random secret of at least 32 characters)
+
+Generate `DASHBOARD_LOGIN_SECRET` with `openssl rand -hex 32`. Do not reuse
+`EXTERNAL_MAIL_SECRET`: it also encrypts saved iCloud credentials.
 
 Set `WORKER_NAME` only to override the default main Worker name, `moemail`.
 
-The workflow exports remote D1 before migrations, builds, and deploys only the
-main Worker. It fails if a required secret, migration, or deployment fails. The
+The workflow exports remote D1 to the temporary runner before migrations,
+builds, and deploys only the main Worker. It does not publish that database
+export as a workflow artifact. It fails if a required secret, migration, or deployment fails. The
 main Worker can be created as the approved Pages replacement; no D1, KV, or
 Email Routing resource is created.
 

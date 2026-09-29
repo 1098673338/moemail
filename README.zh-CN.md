@@ -28,11 +28,16 @@ pnpm run preview:worker
 - `CLOUDFLARE_API_TOKEN`、`CLOUDFLARE_ACCOUNT_ID`
 - `DATABASE_NAME`、`DATABASE_ID`
 - 现有的 `EXTERNAL_MAIL_SECRET`
+- 独立的 `DASHBOARD_LOGIN_SECRET`（至少 32 个字符的随机值）
+
+可以用 `openssl rand -hex 32` 生成 `DASHBOARD_LOGIN_SECRET`。不要复用
+`EXTERNAL_MAIL_SECRET`，它还用于加密已保存的 iCloud 凭据。
 
 主应用默认 Worker 名称为 `moemail`，只有需要改名时才配置 `WORKER_NAME`。
 
-工作流会先导出远端 D1，再执行迁移、构建并部署主应用 Worker。任一必需 Secret、
-迁移或部署失败都会失败退出。主应用 Worker 可以首次创建以替代 Pages；D1、KV 和
+工作流会先将远端 D1 导出到临时 Runner，再执行迁移、构建并部署主应用 Worker；
+数据库导出不会作为 Actions Artifact 发布。任一必需 Secret、迁移或部署失败都会失败退出。
+主应用 Worker 可以首次创建以替代 Pages；D1、KV 和
 Email Routing 不会被创建。
 
 先验证 Workers 预览地址，再将现有自定义域名从 Pages 切到主 Worker。真实 iCloud

@@ -2,7 +2,7 @@ import { execFileSync } from "node:child_process";
 import { existsSync, mkdirSync, readFileSync, unlinkSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 
-const required = ["CLOUDFLARE_API_TOKEN", "CLOUDFLARE_ACCOUNT_ID", "DATABASE_NAME", "DATABASE_ID", "EXTERNAL_MAIL_SECRET"] as const;
+const required = ["CLOUDFLARE_API_TOKEN", "CLOUDFLARE_ACCOUNT_ID", "DATABASE_NAME", "DATABASE_ID", "EXTERNAL_MAIL_SECRET", "DASHBOARD_LOGIN_SECRET"] as const;
 const failPreflight = (title: string, message: string): never => {
   // Render the actual cause in GitHub Actions' annotations, rather than only
   // the generic exit-code annotation that GitHub emits for a failed shell step.
@@ -56,7 +56,10 @@ run("Workers build", "pnpm", ["run", "build:worker"]);
 run("D1 backup export", "pnpm", ["exec", "wrangler", "d1", "export", process.env.DATABASE_NAME!, "--remote", "--skip-confirmation", "--output", resolve("artifacts/d1-backup", `${process.env.DATABASE_NAME}-before-migration.sql`), "--config", config]);
 run("D1 migrations", "pnpm", ["exec", "wrangler", "d1", "migrations", "apply", process.env.DATABASE_NAME!, "--remote", "--config", config]);
 const secretFile = ".release-secrets.json";
-writeFileSync(secretFile, JSON.stringify({ EXTERNAL_MAIL_SECRET: process.env.EXTERNAL_MAIL_SECRET }));
+writeFileSync(secretFile, JSON.stringify({
+  EXTERNAL_MAIL_SECRET: process.env.EXTERNAL_MAIL_SECRET,
+  DASHBOARD_LOGIN_SECRET: process.env.DASHBOARD_LOGIN_SECRET,
+}));
 run("Main Worker secret update", "pnpm", ["exec", "wrangler", "secret", "bulk", secretFile, "--config", config]);
 unlinkSync(secretFile);
 // OpenNext has already emitted .open-next/worker.js. Deploy it with Wrangler so

@@ -19,6 +19,7 @@ import {
   DatabaseX,
   ExternalLink,
   LoaderCircle,
+  LogOut,
   Mail,
   Menu,
   PencilLine,
@@ -78,6 +79,10 @@ async function requestJson<T>(url: string, init?: RequestInit, timeoutMs = 30_00
   const timeout = window.setTimeout(() => controller.abort(), timeoutMs);
   try {
     const response = await fetch(url, { ...init, signal: init?.signal || controller.signal, cache: "no-store" });
+    if (response.status === 401) {
+      window.location.replace("/login");
+      throw new Error("登录状态已失效，正在返回登录页");
+    }
     const body = await response.text();
     let data: (T & { error?: string }) | null = null;
     if (body.trim()) {
@@ -355,8 +360,19 @@ export function Dashboard() {
   const icloudSyncRequestIdRef = useRef(0);
   const backgroundSyncNoticeAtRef = useRef(0);
   const [notice, setNotice] = useState<Notice | null>(null);
+  const [loggingOut, setLoggingOut] = useState(false);
   const [confirmation, setConfirmation] = useState<Confirmation | null>(null);
   const [icloudSyncProgress, setIcloudSyncProgress] = useState<IcloudSyncProgress | null>(null);
+
+  const logout = async () => {
+    if (loggingOut) return;
+    setLoggingOut(true);
+    try {
+      await fetch("/api/auth/logout", { method: "POST", cache: "no-store" });
+    } finally {
+      window.location.replace("/login");
+    }
+  };
 
   const fetchData = useCallback(async () => {
     const [addressData, messageData, accountData] = await Promise.all([
@@ -727,9 +743,12 @@ export function Dashboard() {
             <Cloud size={19} /><span>iCloud 邮箱</span><em>{addresses.length}</em>
           </button>
         </nav>
-        <nav className="main-nav sidebar-footer" aria-label="设置">
+        <nav className="main-nav sidebar-footer" aria-label="账户与设置">
           <button type="button" onClick={() => { setModal("settings"); setMobileNavOpen(false); }}>
             <Settings size={19} /><span>设置</span>
+          </button>
+          <button type="button" onClick={() => void logout()} disabled={loggingOut}>
+            <LogOut size={19} /><span>{loggingOut ? "正在退出…" : "退出登录"}</span>
           </button>
         </nav>
       </aside>

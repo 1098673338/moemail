@@ -15,6 +15,7 @@ export function bridgeOptionsResponse() {
 
 export function withBridgeCors(response: NextResponse) {
   for (const [name, value] of Object.entries(bridgeCorsHeaders)) response.headers.set(name, value);
+  response.headers.set("Cache-Control", "private, no-store");
   return response;
 }
 

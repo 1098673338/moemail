@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { requireDashboardSession } from "@/lib/auth";
 import { apiError } from "@/lib/http";
 import { updateAddress } from "@/lib/mail-store";
 import { updateAddressSchema } from "@/lib/validation";
@@ -6,6 +7,8 @@ import { updateAddressSchema } from "@/lib/validation";
 export const runtime = "nodejs";
 
 export async function PATCH(request: Request, { params }: { params: Promise<{ id: string }> }) {
+  const unauthorized = await requireDashboardSession(request);
+  if (unauthorized) return unauthorized;
   try {
     const { id } = await params;
     const input = updateAddressSchema.parse(await request.json());
