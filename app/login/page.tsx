@@ -42,10 +42,12 @@ export default function LoginPage() {
 
   return (
     <main className="login-page">
-      <section className="login-card" aria-labelledby="login-title">
-        <div className="login-brand-mark" aria-hidden="true">@</div>
-        <h1 id="login-title">登录 Mailbox</h1>
-        <p className="login-description">输入部署时配置的登录密钥，继续管理 iCloud 邮箱。</p>
+      <section className="login-content" aria-labelledby="login-title">
+        <header className="login-heading">
+          <div className="login-brand-mark" aria-hidden="true">@</div>
+          <h1 id="login-title">登录 Mailbox</h1>
+          <p className="login-description">输入部署时配置的登录密钥，继续管理 iCloud 邮箱。</p>
+        </header>
         <form className="login-form" onSubmit={submit}>
           <label htmlFor="login-password">登录密钥</label>
           <input
@@ -54,6 +56,7 @@ export default function LoginPage() {
             autoComplete="current-password"
             autoFocus
             required
+            placeholder="输入登录密钥"
             value={password}
             onChange={(event) => setPassword(event.target.value)}
           />
