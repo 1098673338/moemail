@@ -27,11 +27,14 @@ function setConnectButtonState(state) {
 
 function serverOrigin() {
   try {
-    const url = new URL(serverInput.value.trim());
+    const value = serverInput.value.trim();
+    if (!value) throw new Error();
+    const hasProtocol = /^[a-z][a-z\d+.-]*:\/\//i.test(value);
+    const url = new URL(hasProtocol ? value : `https://${value}`);
     if (!/^https?:$/.test(url.protocol)) throw new Error();
     return url.origin;
   } catch {
-    throw new Error("请填写有效的 MoeMail 云端地址，例如 https://moemail.你的账号.workers.dev");
+    throw new Error("请填写有效的 MoeMail 云端地址，例如 moemail.你的账号.workers.dev");
   }
 }
 
@@ -91,23 +94,22 @@ async function cloudRequest(path, options = {}) {
   return data;
 }
 
-async function notifyCloudPages(result) {
-  const origin = serverOrigin();
-  const tabs = await chrome.tabs.query({});
-  let notified = 0;
-  await Promise.all(tabs.map(async (tab) => {
-    try {
-      if (!Number.isInteger(tab.id) || new URL(tab.url || "").origin !== origin) return;
-      const response = await chrome.tabs.sendMessage(tab.id, {
-        type: "MOEMAIL_ALIAS_SNAPSHOT_SYNCED",
-        result,
-      });
-      if (response?.ok) notified += 1;
-    } catch {
-      // The project page can close or navigate while the sync is completing.
-    }
-  }));
-  return notified;
+async function refreshCloudPages() {
+  try {
+    const origin = serverOrigin();
+    const tabs = await chrome.tabs.query({});
+    const matchingTabs = tabs.filter((tab) => {
+      try { return Number.isInteger(tab.id) && new URL(tab.url || "").origin === origin; } catch { return false; }
+    });
+    if (!matchingTabs.length) return "；未找到已打开的项目页面";
+    const results = await Promise.allSettled(matchingTabs.map((tab) => chrome.tabs.reload(tab.id, { bypassCache: true })));
+    const refreshed = results.filter((result) => result.status === "fulfilled").length;
+    if (refreshed === matchingTabs.length) return "；项目页面已自动刷新";
+    if (refreshed > 0) return "；部分项目页面已自动刷新，其余页面请手动刷新";
+    return "；项目页面刷新失败，请手动刷新";
+  } catch {
+    return "；项目页面刷新失败，请手动刷新";
+  }
 }
 
 async function ensureAppBridge() {
@@ -176,12 +178,12 @@ async function syncAliases() {
     });
     setStatus(`地址已同步 ${addressResult.activeCount} 个，已关联 ${addressResult.linkedMessages || 0} 封历史邮件，自动标记 ${addressResult.automaticTagApplied || 0} 个地址，正在同步邮箱…`);
     const mailResult = await cloudRequest(`/api/icloud/bridge/accounts/${connectedAccountId}/sync`, { method: "POST" });
-    const updatedPages = await notifyCloudPages(addressResult);
-    const pageStatus = updatedPages > 0 ? "；项目页面已更新" : "";
+    const pageStatus = await refreshCloudPages();
     setStatus(`同步完成：${addressResult.activeCount} 个地址，${labelCount} 个带标签；邮件新增 ${mailResult.imported || 0} 封，已处理 ${mailResult.synced || 0} 封${pageStatus}。`, "success");
   } catch (error) {
     const message = error instanceof Error ? error.message : "同步失败";
-    setStatus(addressResult ? `地址已同步，但邮箱同步失败：${message}` : message, "error");
+    const pageStatus = addressResult ? await refreshCloudPages() : "";
+    setStatus(addressResult ? `地址已同步，但邮箱同步失败：${message}${pageStatus}` : message, "error");
   } finally {
     setAccountActionsDisabled(false);
   }
