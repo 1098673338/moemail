@@ -67,6 +67,8 @@ function setCreateProgress({ visible = true, state = "running", message = "正�
 }
 
 function setAccountActionsDisabled(disabled) {
+  serverInput.disabled = disabled;
+  tokenInput.disabled = disabled;
   syncButton.disabled = disabled;
   createButton.disabled = disabled;
   deleteDisabledButton.disabled = disabled;
@@ -164,18 +166,24 @@ async function readIcloudAliases() {
   return aliases;
 }
 
+async function syncAddressSnapshot() {
+  const aliases = await readIcloudAliases();
+  const addressResult = await cloudRequest(`/api/icloud/accounts/${connectedAccountId}/aliases/snapshot`, {
+    method: "POST",
+    body: JSON.stringify({ authoritative: true, scope: "active", aliases }),
+  });
+  return { addressResult, labelCount: aliases.filter((alias) => alias.providerLabel).length };
+}
+
 async function syncAliases() {
   if (!connectedAccountId) return setStatus("请先连接云端项目", "error");
   setAccountActionsDisabled(true);
   setStatus("正在获取 iCloud+ 中的使用中地址…");
   let addressResult = null;
   try {
-    const aliases = await readIcloudAliases();
-    const labelCount = aliases.filter((alias) => alias.providerLabel).length;
-    addressResult = await cloudRequest(`/api/icloud/accounts/${connectedAccountId}/aliases/snapshot`, {
-      method: "POST",
-      body: JSON.stringify({ authoritative: true, scope: "active", aliases }),
-    });
+    const snapshot = await syncAddressSnapshot();
+    addressResult = snapshot.addressResult;
+    const { labelCount } = snapshot;
     setStatus(`地址已同步 ${addressResult.activeCount} 个，已关联 ${addressResult.linkedMessages || 0} 封历史邮件，自动标记 ${addressResult.automaticTagApplied || 0} 个地址，正在同步邮箱…`);
     const mailResult = await cloudRequest(`/api/icloud/bridge/accounts/${connectedAccountId}/sync`, { method: "POST" });
     const pageStatus = await refreshCloudPages();
@@ -208,32 +216,53 @@ function randomAlphanumericLabel(usedLabels) {
 }
 
 async function batchCreateAliases() {
+  if (!connectedAccountId) return setStatus("请先连接云端项目", "error");
   setAccountActionsDisabled(true);
   const originalButtonText = createButton.textContent;
   let created = 0;
+  let creationError = "";
   createButton.textContent = "正在创建…";
   setCreateProgress({ visible: false });
   try {
-    setStatus("创建进行中，请保持侧边栏打开。达到账号上限时自动停止。", "", 0);
-    const usedLabels = new Set();
-    while (true) {
-      const index = created + 1;
-      const label = randomAlphanumericLabel(usedLabels);
-      setCreateProgress({ message: `正在创建第 ${index} 个地址…`, created });
-      const result = await chrome.runtime.sendMessage({ type: "MOEMAIL_CREATE_APPLE_ALIAS", label });
-      if (!result?.ok && !result?.limitReached) throw new Error(result?.error || "创建失败");
-      if (result.limitReached) {
-        setCreateProgress({ state: "success", message: "已达到 Apple 账号上限，创建已停止", created });
-        setStatus(`已达到 Apple 账号可创建上限并停止；本次成功创建 ${created} 个隐藏邮件地址。`, "success");
-        return;
+    setStatus("创建进行中，请保持侧边栏打开。达到账号上限时自动停止并同步地址。", "", 0);
+    try {
+      const usedLabels = new Set();
+      while (true) {
+        const index = created + 1;
+        const label = randomAlphanumericLabel(usedLabels);
+        setCreateProgress({ message: `正在创建第 ${index} 个地址…`, created });
+        const result = await chrome.runtime.sendMessage({ type: "MOEMAIL_CREATE_APPLE_ALIAS", label });
+        if (!result?.ok && !result?.limitReached) throw new Error(result?.error || "创建失败");
+        if (result.limitReached) break;
+        if (!result.created) throw new Error(`第 ${index} 个创建失败`);
+        created += 1;
+        setCreateProgress({ message: `第 ${created} 个已创建，正在继续…`, created });
       }
-      if (!result.created) throw new Error(`第 ${index} 个创建失败`);
-      created += 1;
-      setCreateProgress({ message: `第 ${created} 个已创建，正在继续…`, created });
+    } catch (error) {
+      creationError = error instanceof Error ? error.message : "批量创建失败";
     }
-  } catch (error) {
-    setCreateProgress({ state: "error", message: "创建流程异常中断", created });
-    setStatus(error instanceof Error ? error.message : "批量创建失败", "error");
+
+    const creationStatus = `${creationError ? `创建已中断：${creationError}` : "已达到 Apple 账号可创建上限并停止"}；本次成功创建 ${created} 个隐藏邮件地址。`;
+    if (creationError && created === 0) {
+      setCreateProgress({ state: "error", message: "创建流程异常中断", created });
+      setStatus(creationStatus, "error");
+      return;
+    }
+
+    createButton.textContent = "正在同步…";
+    setCreateProgress({ message: "正在自动同步地址到项目…", created });
+    setStatus(`${creationStatus}正在自动同步地址…`, "", 0);
+    try {
+      const { addressResult } = await syncAddressSnapshot();
+      const pageStatus = await refreshCloudPages();
+      const tone = creationError ? "error" : "success";
+      setCreateProgress({ state: tone, message: creationError ? "创建已中断，地址已同步" : "地址已自动同步到项目", created });
+      setStatus(`${creationStatus}已自动同步 ${addressResult.activeCount} 个地址${pageStatus}。`, tone);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "同步失败";
+      setCreateProgress({ state: "error", message: "地址自动同步失败", created });
+      setStatus(`${creationStatus}地址自动同步失败：${message}；请点击“同步地址”重试。`, "error", 0);
+    }
   } finally {
     createButton.textContent = originalButtonText;
     setAccountActionsDisabled(false);
