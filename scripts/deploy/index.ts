@@ -1,6 +1,7 @@
 import { execFileSync } from "node:child_process";
 import { existsSync, mkdirSync, readFileSync, unlinkSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
+import { verifyDeploymentCredentialKey } from "./credential-preflight";
 
 const required = ["CLOUDFLARE_API_TOKEN", "CLOUDFLARE_ACCOUNT_ID", "DATABASE_NAME", "DATABASE_ID", "EXTERNAL_MAIL_SECRET", "DASHBOARD_LOGIN_SECRET"] as const;
 const failPreflight = (title: string, message: string): never => {
@@ -50,6 +51,23 @@ mkdirSync("artifacts/d1-backup", { recursive: true });
 replace("wrangler.jsonc", "wrangler.release.jsonc", mainWorkerName);
 
 const config = "wrangler.release.jsonc";
+// Refuse a changed key before any deployment, secret update, or DB mutation.
+try {
+  verifyDeploymentCredentialKey(process.env.EXTERNAL_MAIL_SECRET, (sql) => {
+    let output: string;
+    try {
+      output = execFileSync("pnpm", ["exec", "wrangler", "d1", "execute", process.env.DATABASE_NAME!, "--remote", "--command", sql, "--json", "--config", config], { encoding: "utf8", stdio: ["ignore", "pipe", "pipe"], maxBuffer: 10 * 1024 * 1024 });
+    } catch {
+      throw new Error("Could not read D1 for credential key verification. Check Cloudflare permissions and database configuration.");
+    }
+    let results: Array<{ success: boolean; results: Record<string, unknown>[] }>;
+    try { results = JSON.parse(output); } catch { throw new Error("Invalid JSON response during credential key verification."); }
+    if (!Array.isArray(results) || results.length !== 1 || results[0].success !== true || !Array.isArray(results[0].results)) throw new Error("Unexpected D1 response during credential key verification.");
+    return results[0].results;
+  });
+} catch (error) {
+  failPreflight("iCloud credential key verification failed", error instanceof Error ? error.message : "Credential key verification failed.");
+}
 // Build before making any remote D1 change. A bad Linux/Workers bundle must
 // never leave the production database migrated without a matching deployment.
 run("Workers build", "pnpm", ["run", "build:worker"]);
@@ -59,9 +77,12 @@ const secretFile = ".release-secrets.json";
 writeFileSync(secretFile, JSON.stringify({
   EXTERNAL_MAIL_SECRET: process.env.EXTERNAL_MAIL_SECRET,
   DASHBOARD_LOGIN_SECRET: process.env.DASHBOARD_LOGIN_SECRET,
-}));
-run("Main Worker secret update", "pnpm", ["exec", "wrangler", "secret", "bulk", secretFile, "--config", config]);
-unlinkSync(secretFile);
+}), { mode: 0o600 });
+try {
+  run("Main Worker secret update", "pnpm", ["exec", "wrangler", "secret", "bulk", secretFile, "--config", config]);
+} finally {
+  unlinkSync(secretFile);
+}
 // OpenNext has already emitted .open-next/worker.js. Deploy it with Wrangler so
 // existing dashboard variables and bindings that are outside this repository are
 // retained when the Pages application is replaced by the Worker.

@@ -34,6 +34,14 @@ Run the **Deploy** workflow manually after adding these repository secrets:
 Generate `DASHBOARD_LOGIN_SECRET` with `openssl rand -hex 32`. Do not reuse
 `EXTERNAL_MAIL_SECRET`: it also encrypts saved iCloud credentials.
 
+Keep the original `EXTERNAL_MAIL_SECRET` across version updates and use the same
+value in GitHub Secrets and the Cloudflare Worker. Deployment checks that this
+key decrypts all existing iCloud credentials before changing secrets or D1 data.
+If verification fails, restore the original key instead of generating another.
+Temporary sync failures retry with backoff; Settings also offers Retry Connection
+without re-entering a password. If the original key is lost, save the existing
+App-specific password again after stabilizing the deployment configuration.
+
 Set `WORKER_NAME` only to override the default main Worker name, `moemail`.
 
 The workflow exports remote D1 to the temporary runner before migrations,

@@ -189,8 +189,9 @@ export async function syncIcloudAccount(accountId:string, options:{reconcile?:bo
     const current=stamp();
     if(needsStateUpdate){
       await run("INSERT INTO icloud_mailbox_state (account_id,mailbox_path,uid_validity,last_uid,last_sync_at,created_at,updated_at) VALUES (?,?,?,?,?,?,?) ON CONFLICT(account_id,mailbox_path) DO UPDATE SET uid_validity=excluded.uid_validity,last_uid=excluded.last_uid,last_sync_at=excluded.last_sync_at,updated_at=excluded.updated_at",accountId,mailboxPath,validity,maxUid,current,current,current);
-      await run("UPDATE mail_account SET uid_validity=?,last_uid=?,last_sync_at=?,sync_error=NULL,status='active',updated_at=? WHERE id=?",validity,maxUid,current,current,accountId);
     }
+    // A successful retry must recover the account even when no new mail arrived.
+    if(needsStateUpdate || account.status==="sync_error") await run("UPDATE mail_account SET uid_validity=?,last_uid=?,last_sync_at=?,sync_error=NULL,status='active',updated_at=? WHERE id=?",validity,maxUid,current,current,accountId);
     if(options.reconcile) primaryUnlinkedMessages=await repairPrimaryMessageRecipients(accountId);
     const automatic=fetchedMessages.length ? await scanPendingAutomaticTags({accountId}) : {scanned:0,tagged:0};
     return {imported,removed,synced,primaryUnlinkedMessages,lastUid:maxUid,uidValidity:validity,uidValidityChanged,mailboxes:1,remaining,automaticTagScanned:automatic.scanned,automaticTagApplied:automatic.tagged};

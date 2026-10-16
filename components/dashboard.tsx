@@ -37,6 +37,7 @@ import { zhCN } from "date-fns/locale";
 import type { ICloudAccountDto, MailAddressDto, MailMessageDto } from "@/lib/types";
 import { messageSummary } from "@/lib/message-content";
 import { verificationCode } from "@/lib/verification-code";
+import { canSyncIcloudAccount, icloudRetryDelay, icloudSyncErrorMessage } from "@/lib/icloud-sync-state";
 
 type AddressSortKey = "addedAt" | "receivedAt" | "tag";
 type AddressSort = { key: AddressSortKey; direction: "asc" | "desc" };
@@ -313,6 +314,7 @@ export function Dashboard() {
   const accountsRef = useRef<ICloudAccountDto[]>([]);
   const dataRefreshInFlightRef = useRef<Promise<void> | null>(null);
   const icloudSyncInFlightRef = useRef<Promise<IcloudSyncResponse[]> | null>(null);
+  const icloudRetryRef = useRef(new Map<string, { failures: number; retryAt: number }>());
   const icloudFastSyncUntilRef = useRef(0);
   const icloudSyncRequestIdRef = useRef(0);
   const backgroundSyncNoticeAtRef = useRef(0);
@@ -419,31 +421,42 @@ export function Dashboard() {
     openIcloudFastSyncWindow();
   }, [openIcloudFastSyncWindow]);
 
-  const syncIcloudAccounts = useCallback(async (options: { reconcile?: boolean } = {}) => {
+  const syncIcloudAccounts = useCallback(async (options: { reconcile?: boolean; manual?: boolean; accountId?: string } = {}) => {
+    const manual = Boolean(options.reconcile || options.manual);
     while (icloudSyncInFlightRef.current) {
       const inFlight = icloudSyncInFlightRef.current;
-      if (!options.reconcile) return inFlight;
-      await inFlight;
+      if (!manual) return inFlight;
+      await inFlight.catch(() => undefined);
     }
-    // A failed IMAP login is persisted as sync_error by the API. It requires a
-    // new App-specific password, so retrying it in the background only creates
-    // repeated requests and repeated error toasts.
-    const syncableAccounts = accountsRef.current.filter((account) => account.status === "active");
+    const syncableAccounts = accountsRef.current.filter((account) =>
+      (!options.accountId || account.id === options.accountId) && canSyncIcloudAccount(account, manual) &&
+      (manual || Date.now() >= (icloudRetryRef.current.get(account.id)?.retryAt || 0)));
     if (syncableAccounts.length === 0) return null;
 
     const requestId = ++icloudSyncRequestIdRef.current;
     const request = (async () => {
       try {
-        const results = await Promise.all(syncableAccounts.map(async (account) => {
-          const result = await requestJson<IcloudSyncResponse>(
-            `/api/icloud/accounts/${account.id}/sync${options.reconcile ? "?reconcile=1" : ""}`,
-            { method: "POST" },
-            75_000,
-          );
-          recordIcloudSyncProgress(account.id, result);
-          return result;
+        // Wait for every account before allowing another sync to start.
+        const settled = await Promise.allSettled(syncableAccounts.map(async (account) => {
+          try {
+            const result = await requestJson<IcloudSyncResponse>(
+              `/api/icloud/accounts/${account.id}/sync${options.reconcile ? "?reconcile=1" : ""}`,
+              { method: "POST" },
+              75_000,
+            );
+            icloudRetryRef.current.delete(account.id);
+            recordIcloudSyncProgress(account.id, result);
+            return result;
+          } catch (error) {
+            const failures = (icloudRetryRef.current.get(account.id)?.failures || 0) + 1;
+            icloudRetryRef.current.set(account.id, { failures, retryAt: Date.now() + icloudRetryDelay(failures) });
+            throw error;
+          }
         }));
-        if (results.some((result) => result.imported > 0 || result.removed > 0 || result.primaryUnlinkedMessages || result.automaticTagApplied)) await refreshData();
+        const failed = settled.find((result) => result.status === "rejected");
+        if (failed?.status === "rejected") throw failed.reason;
+        const results = settled.flatMap((result) => result.status === "fulfilled" ? [result.value] : []);
+        if (syncableAccounts.some((account) => account.status === "sync_error") || results.some((result) => result.imported > 0 || result.removed > 0 || result.primaryUnlinkedMessages || result.automaticTagApplied)) await refreshData();
         return results;
       } catch (error) {
         await refreshData().catch(() => undefined);
@@ -458,24 +471,10 @@ export function Dashboard() {
 
   const notifyBackgroundSyncError = useCallback((error: unknown) => {
     const message = error instanceof Error ? error.message : "自动同步失败，请稍后重试";
-    if (/当前同步密钥解密/.test(message)) {
-      setNotice({
-        tone: "error",
-        text: "已保存的 App 专用密码无法解密，自动同步已暂停。请在“设置”中更新 App 专用密码。",
-      });
-      return;
-    }
-    if (/\bauthentication failed\b|authenticationfailed|app 专用密码|用户名或 app/i.test(message)) {
-      setNotice({
-        tone: "error",
-        text: "iCloud 身份验证失败，自动同步已暂停。请在“设置”中断开当前账号，再使用新的 Apple App 专用密码重新连接。",
-      });
-      return;
-    }
     const now = Date.now();
-    if (now - backgroundSyncNoticeAtRef.current < 15_000) return;
+    if (now - backgroundSyncNoticeAtRef.current < 30_000) return;
     backgroundSyncNoticeAtRef.current = now;
-    setNotice({ tone: "error", text: message });
+    setNotice({ tone: "error", text: icloudSyncErrorMessage(message) });
   }, []);
 
   useEffect(() => {
@@ -506,10 +505,10 @@ export function Dashboard() {
         return;
       }
       openIcloudFastSyncWindow();
-      if (!icloudSyncInFlightRef.current && accountsRef.current.some((account) => account.status === "active")) void tick();
+      if (!icloudSyncInFlightRef.current && accountsRef.current.some((account) => canSyncIcloudAccount(account))) void tick();
     };
     document.addEventListener("visibilitychange", handleVisibilityChange);
-    if (document.visibilityState === "visible" && accountsRef.current.some((account) => account.status === "active")) {
+    if (document.visibilityState === "visible" && accountsRef.current.some((account) => canSyncIcloudAccount(account))) {
       void tick();
     } else if (document.visibilityState === "visible") {
       scheduleNext();
@@ -717,7 +716,7 @@ export function Dashboard() {
             messages={messages}
             sort={addressSort}
             onSortChange={setAddressSort}
-            canManualSync={accounts.some((account) => account.status === "active")}
+            canManualSync={accounts.some((account) => canSyncIcloudAccount(account, true))}
             manualSyncing={isPending("icloud:manual-sync")}
             onManualSync={() => void runAction("icloud:manual-sync", async () => {
               openIcloudFastSyncWindow();
@@ -827,6 +826,10 @@ export function Dashboard() {
           {modal === "settings" && <SettingsView
             accounts={accounts}
             syncProgress={icloudSyncProgress}
+            onRetry={(account) => void runAction(`icloud:retry:${account.id}`, async () => {
+              const results = await syncIcloudAccounts({ manual: true, accountId: account.id });
+              if (!results?.length) throw new Error("这个 iCloud 账号无法重试，请刷新后检查账号状态");
+            }, "邮箱连接已恢复").then((success) => { if (!success) void refreshData().catch(() => undefined); })}
             onUpdateCredentials={(account) => { setCredentialAccountId(account.id); setModal("icloud_password"); }}
             onClearAliases={(account) => { setModal(null); setConfirmation({
               title: "清空所有 iCloud 邮箱",
@@ -1522,6 +1525,7 @@ function MailReadingPane({ message, onDismissVerificationCode, onCopyCode }: { m
 function SettingsView(props: {
   accounts: ICloudAccountDto[];
   syncProgress: IcloudSyncProgress | null;
+  onRetry: (account: ICloudAccountDto) => void;
   onUpdateCredentials: (account: ICloudAccountDto) => void;
   onClearAliases: (account: ICloudAccountDto) => void;
   onClearAliasData: (account: ICloudAccountDto) => void;
@@ -1536,9 +1540,9 @@ function SettingsView(props: {
         ) : props.accounts.map((account) => {
           const syncProgress = props.syncProgress?.accountId === account.id ? props.syncProgress : null;
           const syncPercent = syncProgress ? Math.round((syncProgress.completed / Math.max(syncProgress.total, 1)) * 100) : 0;
-          const accountBusy = props.isPending("icloud:manual-sync") || props.isPending(`icloud:clear:${account.id}`) || props.isPending(`icloud:clear-data:${account.id}`) || props.isPending(`icloud:disconnect:${account.id}`);
+          const accountBusy = props.isPending("icloud:manual-sync") || props.isPending(`icloud:retry:${account.id}`) || props.isPending(`icloud:clear:${account.id}`) || props.isPending(`icloud:clear-data:${account.id}`) || props.isPending(`icloud:disconnect:${account.id}`);
           return <div className="connection-row" key={account.id}>
-            <div><strong>{account.emailAddress}</strong><span>{account.syncError || `邮件上次同步：${relativeTime(account.lastSyncAt)} · 地址：${account.aliasesActiveCount} 个使用中 · 地址清单更新于 ${relativeTime(account.aliasesLastSyncAt)}`}</span></div>
+            <div><strong>{account.emailAddress}</strong><span>{account.syncError ? icloudSyncErrorMessage(account.syncError) : `邮件上次同步：${relativeTime(account.lastSyncAt)} · 地址：${account.aliasesActiveCount} 个使用中 · 地址清单更新于 ${relativeTime(account.aliasesLastSyncAt)}`}</span></div>
             <span className={`status-pill ${account.status}`}>{account.status === "active" ? "已连接" : account.status === "sync_error" ? "需要检查" : "已停用"}</span>
             {syncProgress && <div className="connection-sync-progress" role="status">
               <div className="connection-sync-progress-copy"><span>正在分批同步历史邮件</span><strong>{syncProgress.completed} / {syncProgress.total} 封</strong></div>
@@ -1546,6 +1550,7 @@ function SettingsView(props: {
               <p>本次已同步 {syncProgress.completed} 封，剩余 {syncProgress.remaining} 封将继续同步。</p>
             </div>}
             <div className="connection-actions">
+              {account.status === "sync_error" && <button className="button secondary compact" disabled={accountBusy} onClick={() => props.onRetry(account)}><RefreshCw size={15} />{props.isPending(`icloud:retry:${account.id}`) ? "正在重试…" : "重试连接"}</button>}
               <button className="button secondary compact" disabled={accountBusy} onClick={() => props.onUpdateCredentials(account)}><ShieldCheck size={15} />更新密码</button>
               <button className="button destructive compact" disabled={accountBusy} onClick={() => props.onClearAliases(account)}>{props.isPending(`icloud:clear:${account.id}`) ? <LoaderCircle className="spin" size={15} /> : <Trash2 size={15} />}{props.isPending(`icloud:clear:${account.id}`) ? "正在清空…" : "清空所有邮箱"}</button>
               <button className="button destructive compact" disabled={accountBusy} onClick={() => props.onClearAliasData(account)}>{props.isPending(`icloud:clear-data:${account.id}`) ? <LoaderCircle className="spin" size={15} /> : <DatabaseX size={15} />}{props.isPending(`icloud:clear-data:${account.id}`) ? "正在清除…" : "清空所有数据"}</button>

@@ -33,9 +33,15 @@ pnpm run preview:worker
 可以用 `openssl rand -hex 32` 生成 `DASHBOARD_LOGIN_SECRET`。不要复用
 `EXTERNAL_MAIL_SECRET`，它还用于加密已保存的 iCloud 凭据。
 
+正常升级版本时必须保留原来的 `EXTERNAL_MAIL_SECRET`，并确保 GitHub Secrets
+与 Cloudflare Worker 使用同一个值，不要重新生成。部署会先用该密钥校验远端已有
+iCloud 凭据；无法解密时会在修改密钥或数据库前停止。此时应恢复原密钥。
+临时同步错误会自动退避重试，也可以在设置中点击“重试连接”，无需重新输入密码。
+若原密钥已经丢失，需在部署配置稳定后重新保存一次原有 App 专用密码。
+
 主应用默认 Worker 名称为 `moemail`，只有需要改名时才配置 `WORKER_NAME`。
 
-工作流会先将远端 D1 导出到临时 Runner，再执行迁移、构建并部署主应用 Worker；
+工作流会先校验凭据密钥并完成构建，再将远端 D1 导出到临时 Runner，执行迁移并部署主应用 Worker；
 数据库导出不会作为 Actions Artifact 发布。任一必需 Secret、迁移或部署失败都会失败退出。
 主应用 Worker 可以首次创建以替代 Pages；D1、KV 和
 Email Routing 不会被创建。
