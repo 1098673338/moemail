@@ -36,6 +36,7 @@ import { formatDistanceToNow } from "date-fns";
 import { zhCN } from "date-fns/locale";
 import type { ICloudAccountDto, MailAddressDto, MailMessageDto } from "@/lib/types";
 import { messageSummary } from "@/lib/message-content";
+import { verificationCode } from "@/lib/verification-code";
 
 type AddressSortKey = "addedAt" | "receivedAt" | "tag";
 type AddressSort = { key: AddressSortKey; direction: "asc" | "desc" };
@@ -282,51 +283,6 @@ function requestAppleAliasDeactivation(address: MailAddressDto) {
       address: address.address,
     }, "*");
   });
-}
-
-const otpContextPattern = /(?:验证码|校验码|动态码|安全码|登录码|确认码|授权码|一次性密码|临时密码|短信码|verification\s+code|security\s+code|one[-\s]?time\s+password|authentication\s+code|validation\s+code|temporary\s+code|access\s+code|security\s+token|login\s+code|passcode|verify|otp|\b(?:code|pin|token)\b)/giu;
-
-function verificationCode(message: MailMessageDto) {
-  if (message.verificationCodeIgnored) return null;
-  const source = `${message.subject}\n${messageSummary(message)}`.normalize("NFKC");
-  const contexts = Array.from(source.matchAll(otpContextPattern)).map((match) => ({
-    start: match.index ?? 0,
-    end: (match.index ?? 0) + match[0].length,
-  }));
-  const candidates: Array<{ display: string; value: string; score: number; index: number }> = [];
-
-  const addCandidate = (raw: string, index: number, grouped: boolean) => {
-    const display = raw.replace(/\u00a0/g, " ").trim();
-    const value = display.replace(/[\s-]/g, "");
-    if (!/^\d{6}$/.test(value)) return;
-
-    const end = index + raw.length;
-    if (contexts.some((context) => index < context.end && end > context.start)) return;
-    const nearestContext = contexts.reduce((distance, context) => {
-      if (end < context.start) return Math.min(distance, context.start - end);
-      if (index > context.end) return Math.min(distance, index - context.end);
-      return 0;
-    }, Number.POSITIVE_INFINITY);
-    const hasContext = nearestContext <= 120;
-    const score = (hasContext ? 1000 - nearestContext : 0)
-      + 80
-      + 40
-      + (grouped ? 5 : 0);
-    if (!candidates.some((candidate) => candidate.value === value && candidate.index === index)) {
-      candidates.push({ display, value, score, index });
-    }
-  };
-
-  for (const match of source.matchAll(/(?<![A-Za-z0-9#])(\d{1,3}(?:[\s-]+\d{1,3})+)(?![A-Za-z0-9])/g)) {
-    addCandidate(match[1], match.index ?? 0, true);
-  }
-  for (const match of source.matchAll(/(?<![A-Za-z0-9#])\d{6}(?![A-Za-z0-9])/g)) {
-    addCandidate(match[0], match.index ?? 0, false);
-  }
-
-  candidates.sort((left, right) => right.score - left.score || left.index - right.index);
-  const best = candidates[0];
-  return best ? { display: best.display, value: best.value } : null;
 }
 
 function messageMatchesAddress(message: MailMessageDto, address: MailAddressDto) {

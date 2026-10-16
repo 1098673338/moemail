@@ -14,6 +14,9 @@ importers:
       date-fns:
         specifier: 4.1.0
         version: 4.1.0
+      htmlparser2:
+        specifier: 12.0.0
+        version: 12.0.0
       lucide-react:
         specifier: 1.34.0
         version: 1.34.0(react@19.2.8)
