@@ -39,7 +39,7 @@ import { messageSummary } from "@/lib/message-content";
 import { verificationCode } from "@/lib/verification-code";
 import { canSyncIcloudAccount, icloudRetryDelay, icloudSyncErrorMessage } from "@/lib/icloud-sync-state";
 
-type AddressSortKey = "addedAt" | "receivedAt" | "tag";
+type AddressSortKey = "addedAt" | "receivedAt" | "tag" | "phoneNumber";
 type AddressSort = { key: AddressSortKey; direction: "asc" | "desc" };
 type ContentFilter = "all" | "empty" | "filled";
 type TagFilter = string;
@@ -973,7 +973,7 @@ function AddressView(props: {
     resetTableScroll();
     props.onSortChange(sort.key === key
       ? { key, direction: sort.direction === "asc" ? "desc" : "asc" }
-      : { key, direction: key === "tag" ? "asc" : "desc" });
+      : { key, direction: key === "tag" || key === "phoneNumber" ? "asc" : "desc" });
   };
   rows.sort((left, right) => {
     let comparison = 0;
@@ -983,6 +983,12 @@ function AddressView(props: {
       if (!leftTag && rightTag) return 1;
       if (leftTag && !rightTag) return -1;
       comparison = leftTag.localeCompare(rightTag, "zh-CN", { numeric: true, sensitivity: "base" });
+    } else if (sort.key === "phoneNumber") {
+      const leftPhone = left.address.phoneNumber?.trim() || "";
+      const rightPhone = right.address.phoneNumber?.trim() || "";
+      if (!leftPhone && rightPhone) return 1;
+      if (leftPhone && !rightPhone) return -1;
+      comparison = leftPhone.localeCompare(rightPhone, "en", { sensitivity: "base" });
     } else if (sort.key === "receivedAt") {
       const leftDate = left.message?.receivedAt;
       const rightDate = right.message?.receivedAt;
@@ -1110,7 +1116,7 @@ function AddressView(props: {
               <th aria-sort={sort.key === "addedAt" ? sort.direction === "asc" ? "ascending" : "descending" : "none"}><button type="button" className="table-sort" aria-label={`按添加时间${sortAria("addedAt")}`} onClick={() => sortRows("addedAt")}>邮箱地址 {sortIndicator("addedAt")}</button></th>
               <th>备注</th>
               <th aria-sort={sort.key === "tag" ? sort.direction === "asc" ? "ascending" : "descending" : "none"}><button type="button" className="table-sort" aria-label={`按标签${sortAria("tag")}`} onClick={() => sortRows("tag")}>标签 {sortIndicator("tag")}</button></th>
-              <th>手机号</th>
+              <th aria-sort={sort.key === "phoneNumber" ? sort.direction === "asc" ? "ascending" : "descending" : "none"}><button type="button" className="table-sort" aria-label={`按手机号字母顺序${sortAria("phoneNumber")}`} onClick={() => sortRows("phoneNumber")}>手机号 {sortIndicator("phoneNumber")}</button></th>
               <th>邮件摘要</th>
               <th aria-sort={sort.key === "receivedAt" ? sort.direction === "asc" ? "ascending" : "descending" : "none"}><button type="button" className="table-sort" aria-label={`按邮件时间${sortAria("receivedAt")}`} onClick={() => sortRows("receivedAt")}>邮件时间 {sortIndicator("receivedAt")}</button></th>
               <th>操作</th>
