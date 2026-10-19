@@ -6,6 +6,8 @@ const createButton = document.querySelector("#createAliases");
 const deleteDisabledButton = document.querySelector("#deleteDisabled");
 const accountSection = document.querySelector("#accountSection");
 const statusBox = document.querySelector("#status");
+const statusText = document.querySelector("#statusText");
+const dismissStatusButton = document.querySelector("#dismissStatus");
 const createProgress = document.querySelector("#createProgress");
 const createProgressText = document.querySelector("#createProgressText");
 const createProgressCount = document.querySelector("#createProgressCount");
@@ -40,12 +42,13 @@ function serverOrigin() {
 
 function setStatus(message, tone = "", duration = tone === "error" ? 5000 : 3200) {
   clearTimeout(statusTimer);
-  statusBox.textContent = message;
+  statusText.textContent = message;
   statusBox.className = tone;
+  statusBox.hidden = !message;
+  dismissStatusButton.hidden = duration > 0 || (tone !== "error" && tone !== "warning");
   if (!message || duration <= 0) return;
   statusTimer = setTimeout(() => {
-    statusBox.textContent = "";
-    statusBox.className = "";
+    setStatus("");
   }, duration);
 }
 
@@ -103,14 +106,12 @@ async function refreshCloudPages() {
     const matchingTabs = tabs.filter((tab) => {
       try { return Number.isInteger(tab.id) && new URL(tab.url || "").origin === origin; } catch { return false; }
     });
-    if (!matchingTabs.length) return "；未找到已打开的项目页面";
+    if (!matchingTabs.length) return "";
     const results = await Promise.allSettled(matchingTabs.map((tab) => chrome.tabs.reload(tab.id, { bypassCache: true })));
     const refreshed = results.filter((result) => result.status === "fulfilled").length;
-    if (refreshed === matchingTabs.length) return "；项目页面已自动刷新";
-    if (refreshed > 0) return "；部分项目页面已自动刷新，其余页面请手动刷新";
-    return "；项目页面刷新失败，请手动刷新";
+    return refreshed === matchingTabs.length ? "" : "；请手动刷新页面";
   } catch {
-    return "；项目页面刷新失败，请手动刷新";
+    return "；请手动刷新页面";
   }
 }
 
@@ -172,26 +173,24 @@ async function syncAddressSnapshot() {
     method: "POST",
     body: JSON.stringify({ authoritative: true, scope: "active", aliases }),
   });
-  return { addressResult, labelCount: aliases.filter((alias) => alias.providerLabel).length };
+  return { addressResult };
 }
 
 async function syncAliases() {
   if (!connectedAccountId) return setStatus("请先连接云端项目", "error");
   setAccountActionsDisabled(true);
-  setStatus("正在获取 iCloud+ 中的使用中地址…");
+  setStatus("正在同步…", "", 0);
   let addressResult = null;
   try {
     const snapshot = await syncAddressSnapshot();
     addressResult = snapshot.addressResult;
-    const { labelCount } = snapshot;
-    setStatus(`地址已同步 ${addressResult.activeCount} 个，已关联 ${addressResult.linkedMessages || 0} 封历史邮件，自动标记 ${addressResult.automaticTagApplied || 0} 个地址，正在同步邮箱…`);
     const mailResult = await cloudRequest(`/api/icloud/bridge/accounts/${connectedAccountId}/sync`, { method: "POST" });
     const pageStatus = await refreshCloudPages();
-    setStatus(`同步完成：${addressResult.activeCount} 个地址，${labelCount} 个带标签；邮件新增 ${mailResult.imported || 0} 封，已处理 ${mailResult.synced || 0} 封${pageStatus}。`, "success");
-  } catch (error) {
-    const message = error instanceof Error ? error.message : "同步失败";
+    const mailStatus = mailResult.imported > 0 ? `，新增 ${mailResult.imported} 封邮件` : "";
+    setStatus(`同步完成，共 ${addressResult.activeCount} 个地址${mailStatus}${pageStatus}`, pageStatus ? "warning" : "success", pageStatus ? 0 : 3200);
+  } catch {
     const pageStatus = addressResult ? await refreshCloudPages() : "";
-    setStatus(addressResult ? `地址已同步，但邮箱同步失败：${message}${pageStatus}` : message, "error");
+    setStatus(`${addressResult ? "地址已同步，邮件同步失败，请重试" : "同步失败，请重试"}${pageStatus}`, "error", 0);
   } finally {
     setAccountActionsDisabled(false);
   }
@@ -293,6 +292,7 @@ function resetConnection() {
 }
 
 connectButton.addEventListener("click", () => void connectCloud(true));
+dismissStatusButton.addEventListener("click", () => setStatus(""));
 serverInput.addEventListener("input", resetConnection);
 tokenInput.addEventListener("input", resetConnection);
 syncButton.addEventListener("click", () => void syncAliases());

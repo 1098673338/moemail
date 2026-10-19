@@ -75,9 +75,14 @@ input::placeholder { color: var(--color-muted); }
 .create-progress progress { display: block; width: 100%; height: 6px; margin-top: var(--space-xs); accent-color: #fcfbf8; }
 .create-progress[data-state="success"] { border-left-color: var(--color-success); }
 .create-progress[data-state="error"] { border-left-color: var(--color-danger); }
-#status { display: flex; align-items: center; }
-#status:empty { display: none; }
+#status { display: flex; align-items: center; gap: var(--space-xs); }
+#statusText { flex: 1; min-width: 0; }
+#status[hidden], .toast-close[hidden] { display: none; }
+.toast-close { flex: none; width: 28px; height: 28px; padding: 0; display: grid; place-items: center; color: inherit; background: transparent; border: 0; border-radius: var(--radius-control); font-size: 20px; line-height: 1; }
+.toast-close:hover { background: rgb(252 251 248 / 12%); }
+.toast-close:active { opacity: .62; }
 #status.success { color: #fcfbf8; border-left-color: var(--color-success); }
+#status.warning { color: #fcfbf8; border-left-color: var(--color-warning); }
 #status.error { color: #fcfbf8; border-left-color: var(--color-danger); }
 
 @keyframes toast-in {
