@@ -1,4 +1,5 @@
 import { connect, type TLSSocket } from "node:tls";
+import { ImapReceiveBuffer } from "./imap-receive-buffer";
 
 const encoder = new TextEncoder();
 const decoder = new TextDecoder();
@@ -8,13 +9,6 @@ const IMAP_PORT = 993;
 
 type Mailbox = { uidValidity: string | null; uidNext: number | null };
 export type IcloudImapMessage = { uid: number; internalDate: Date | null; source: Uint8Array };
-
-function concat(left: Uint8Array, right: Uint8Array) {
-  const value = new Uint8Array(left.length + right.length);
-  value.set(left);
-  value.set(right, left.length);
-  return value;
-}
 
 function bytes(value: string) { return encoder.encode(value); }
 
@@ -53,7 +47,7 @@ function timeout<T>(promise: Promise<T>, milliseconds: number, label: string): P
  */
 export class IcloudImapClient {
   private socket: TLSSocket | null = null;
-  private pending = new Uint8Array();
+  private pending = new ImapReceiveBuffer();
   private sequence = 0;
   private streamError: Error | null = null;
   private ended = false;
@@ -63,7 +57,7 @@ export class IcloudImapClient {
     const socket = connect({ host: IMAP_HOST, port: IMAP_PORT, servername: IMAP_HOST });
     this.socket = socket;
     socket.on("data", (chunk: Uint8Array) => {
-      this.pending = concat(this.pending, new Uint8Array(chunk));
+      this.pending.append(chunk);
       this.wakeReaders();
     });
     socket.on("error", (error: Error) => {
@@ -143,7 +137,7 @@ export class IcloudImapClient {
       messages.push({
         uid: Number(match[1]),
         internalDate: Number.isNaN(internalDate.getTime()) ? null : internalDate,
-        source: response.slice(sourceStart, sourceStart + size),
+        source: response.subarray(sourceStart, sourceStart + size),
       });
       cursor = sourceStart + size;
     }
@@ -193,30 +187,43 @@ export class IcloudImapClient {
   }
 
   private async readTagged(tag: string): Promise<Uint8Array> {
-    const prefix = bytes(`${tag} `);
-    const marker = bytes(`\r\n${tag} `);
+    let cursor = 0;
+    let searchFrom = 0;
+    let literalEnd: number | null = null;
     for (;;) {
-      const at = this.pending.length >= prefix.length && indexOf(this.pending, prefix) === 0 ? 0 : indexOf(this.pending, marker);
-      if (at >= 0) {
-        const lineStart = at === 0 ? 0 : at + CRLF.length;
-        const lineEnd = indexOf(this.pending, CRLF, lineStart);
-        if (lineEnd >= 0) {
-          const response = this.pending.slice(0, lineEnd + CRLF.length);
-          this.pending = this.pending.slice(lineEnd + CRLF.length);
-          return response;
+      const pending = this.pending.view();
+      if (literalEnd !== null) {
+        if (pending.length < literalEnd) {
+          await this.readMore();
+          continue;
         }
+        cursor = searchFrom = literalEnd;
+        literalEnd = null;
       }
-      await this.readMore();
+      const lineEnd = indexOf(pending, CRLF, searchFrom);
+      if (lineEnd < 0) {
+        searchFrom = Math.max(cursor, pending.length - 1);
+        await this.readMore();
+        continue;
+      }
+      const line = decoder.decode(pending.subarray(cursor, lineEnd));
+      if (line.startsWith(`${tag} `)) return this.pending.take(lineEnd + CRLF.length);
+      cursor = searchFrom = lineEnd + CRLF.length;
+      const literal = line.match(/\{(\d+)\+?\}$/);
+      if (literal) {
+        const size = Number(literal[1]);
+        if (!Number.isSafeInteger(size)) throw new Error("iCloud IMAP 返回了无效的邮件长度");
+        // Mail bodies are opaque literals: never rescan them for command tags.
+        literalEnd = cursor + size;
+      }
     }
   }
 
   private async readUntilLine(): Promise<Uint8Array> {
     for (;;) {
-      const end = indexOf(this.pending, CRLF);
+      const end = indexOf(this.pending.view(), CRLF);
       if (end >= 0) {
-        const line = this.pending.slice(0, end + CRLF.length);
-        this.pending = this.pending.slice(end + CRLF.length);
-        return line;
+        return this.pending.take(end + CRLF.length);
       }
       await this.readMore();
     }

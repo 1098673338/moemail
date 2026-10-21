@@ -145,6 +145,27 @@ test("snapshot validation accepts ordinary aliases and rejects duplicated cross-
   assert.equal(icloudAliasSnapshotSchema.safeParse({ authoritative: true, scope: "active", aliases: [hidden], mailAliases: [alias(hidden.address)] }).success, false);
 });
 
+test("mail sync fetches and saves one message at a time instead of buffering the whole batch", async (t) => {
+  const { db, primary } = await setup(t);
+  db.exec("UPDATE icloud_mailbox_state SET last_uid=0");
+  t.mock.method(IcloudImapClient.prototype, "connect", async () => {});
+  t.mock.method(IcloudImapClient.prototype, "examineInbox", async () => ({ uidValidity: "123", uidNext: 4 }));
+  t.mock.method(IcloudImapClient.prototype, "searchUids", async () => [1, 2, 3]);
+  const requested: number[][] = [];
+  t.mock.method(IcloudImapClient.prototype, "fetchMessages", async (uids: number[]) => {
+    requested.push(uids);
+    assert.equal(uids.length, 1, "Only one raw mail may be downloaded at a time");
+    assert.equal(db.prepare("SELECT COUNT(*) count FROM message").get()?.count, uids[0] - 1, "The preceding message is stored before downloading another");
+    return [{ uid: uids[0], source: `From: sender@example.com\r\nTo: ${primary.address}\r\nSubject: Message ${uids[0]}\r\nMessage-ID: <sequential-${uids[0]}@example.com>\r\n\r\nMessage body`, internalDate: new Date() }];
+  });
+  t.mock.method(IcloudImapClient.prototype, "logout", async () => {});
+  const result = await syncIcloudAccount("account-1");
+  assert.equal(result.imported, 3);
+  assert.equal(result.remaining, 0);
+  assert.deepEqual(requested, [[1], [2], [3]]);
+  assert.equal((await listMessages(primary.id)).length, 3);
+});
+
 test("a 177-address snapshot uses bounded batch writes and repeated syncs do not rewrite unchanged rows", async (t) => {
   const { calls, db } = await setup(t);
   const aliases = Array.from({ length: 176 }, (_, index) => ({ ...hidden, address: `hidden-${index}@icloud.com`, providerId: `hme-${index}` }));
