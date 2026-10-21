@@ -31,27 +31,27 @@ test("opening the page syncs immediately and shows the decreasing 120-second fas
   const app = setup(t);
   await app.start();
   assert.equal(app.calls.length, 1);
-  assert.equal(app.text(), "120s · 2s 1次");
+  assert.equal(app.text(), "120s · 2秒1次");
   await app.tick(1000);
-  assert.equal(app.text(), "119s · 2s 1次");
+  assert.equal(app.text(), "119s · 2秒1次");
   assert.equal(app.calls.length, 1);
   await app.tick(1000);
   assert.equal(app.calls.length, 2);
-  assert.equal(app.text(), "118s · 2s 1次");
+  assert.equal(app.text(), "118s · 2秒1次");
 });
 
-test("fast expiry switches to a 500-second countdown then syncs and restarts that countdown", async (t) => {
+test("fast expiry switches to a 300-second countdown then syncs and restarts that countdown", async (t) => {
   const app = setup(t);
   await app.start();
   await app.tick(120_000);
-  assert.equal(app.text(), "500s · 1次");
+  assert.equal(app.text(), "300s · 5分钟1次");
   const count = app.calls.length;
-  await app.tick(499_000);
+  await app.tick(299_000);
   assert.equal(app.calls.length, count);
-  assert.equal(app.text(), "1s · 1次");
+  assert.equal(app.text(), "1s · 5分钟1次");
   await app.tick(1000);
   assert.equal(app.calls.length, count + 1);
-  assert.equal(app.text(), "500s · 1次");
+  assert.equal(app.text(), "300s · 5分钟1次");
 });
 
 test("manual sync replaces the old slow timer and restarts the fast window at the click", async (t) => {
@@ -59,16 +59,16 @@ test("manual sync replaces the old slow timer and restarts the fast window at th
   await app.start();
   await app.tick(120_000);
   await app.tick(100_000);
-  assert.equal(app.text(), "400s · 1次");
+  assert.equal(app.text(), "200s · 5分钟1次");
   let manualCalls = 0;
   await app.scheduler.runManual(async () => { manualCalls++; });
   assert.equal(manualCalls, 1);
-  assert.equal(app.text(), "120s · 2s 1次");
+  assert.equal(app.text(), "120s · 2秒1次");
   const automaticCalls = app.calls.length;
   await app.tick(2000);
   assert.equal(app.calls.length, automaticCalls + 1);
   await app.tick(118_000);
-  assert.equal(app.text(), "500s · 1次");
+  assert.equal(app.text(), "300s · 5分钟1次");
 });
 
 test("long-running syncs never overlap and the next request waits two seconds after completion", async (t) => {
@@ -79,7 +79,7 @@ test("long-running syncs never overlap and the next request waits two seconds af
   await app.tick(10_000);
   assert.equal(app.calls.length, 1);
   assert.equal(app.schedule().syncing, true);
-  assert.equal(app.text(), "110s · 2s 1次");
+  assert.equal(app.text(), "110s · 2秒1次");
   finish();
   await settle();
   await app.tick(1999);
@@ -103,7 +103,7 @@ test("a manual operation during an automatic request creates only one new timer 
   assert.equal(app.calls.length, 1);
   finishManual();
   await running;
-  assert.equal(app.text(), "115s · 2s 1次");
+  assert.equal(app.text(), "115s · 2秒1次");
   await app.tick(2000);
   assert.equal(app.calls.length, 2);
 });
@@ -118,7 +118,7 @@ test("background pages pause requests and returning starts a fresh fast window",
   app.scheduler.setVisible(true);
   await settle();
   assert.equal(app.calls.length, 2);
-  assert.equal(app.text(), "120s · 2s 1次");
+  assert.equal(app.text(), "120s · 2秒1次");
 });
 
 test("retry backoff displays its real countdown and manual sync bypasses the wait", async (t) => {
@@ -134,7 +134,7 @@ test("retry backoff displays its real countdown and manual sync bypasses the wai
   assert.equal(app.calls.length, 1);
   assert.equal(app.text(), "1s · 重试");
   await app.scheduler.runManual(async () => { app.retryAt(0); });
-  assert.equal(app.text(), "120s · 2s 1次");
+  assert.equal(app.text(), "120s · 2秒1次");
 });
 
 test("disabling or stopping the scheduler prevents late completions from leaving a timer behind", async (t) => {
@@ -150,5 +150,5 @@ test("disabling or stopping the scheduler prevents late completions from leaving
 });
 
 test("slow requests show a sync state rather than a fake next-request countdown", () => {
-  assert.equal(icloudSyncScheduleText({ ...PAUSED_SYNC_SCHEDULE, paused: false, syncing: true }, Date.now()), "同步中 · 500s 1次");
+  assert.equal(icloudSyncScheduleText({ ...PAUSED_SYNC_SCHEDULE, paused: false, syncing: true }, Date.now()), "同步中 · 5分钟1次");
 });

@@ -1,6 +1,6 @@
 export const ICLOUD_FAST_SYNC_INTERVAL = 2_000;
 export const ICLOUD_FAST_SYNC_DURATION = 120_000;
-export const ICLOUD_SYNC_INTERVAL = 500_000;
+export const ICLOUD_SYNC_INTERVAL = 300_000;
 
 export type IcloudSyncSchedule = {
   fastUntil: number;
@@ -126,7 +126,7 @@ export function icloudSyncScheduleText(schedule: IcloudSyncSchedule, now: number
   if (schedule.paused) return "自动同步已暂停";
   const seconds = (deadline: number) => Math.max(0, Math.ceil((deadline - now) / 1000));
   if (schedule.retryAt > now) return `${seconds(schedule.retryAt)}s · 重试`;
-  if (now < schedule.fastUntil) return `${seconds(schedule.fastUntil)}s · 2s 1次`;
-  if (schedule.syncing) return "同步中 · 500s 1次";
-  return `${seconds(schedule.nextAt ?? now)}s · 1次`;
+  if (now < schedule.fastUntil) return `${seconds(schedule.fastUntil)}s · 2秒1次`;
+  if (schedule.syncing) return "同步中 · 5分钟1次";
+  return `${seconds(schedule.nextAt ?? now)}s · 5分钟1次`;
 }
