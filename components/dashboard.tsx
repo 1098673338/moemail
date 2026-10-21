@@ -38,6 +38,9 @@ import type { ICloudAccountDto, MailAddressDto, MailMessageDto } from "@/lib/typ
 import { messageSummary } from "@/lib/message-content";
 import { verificationCode } from "@/lib/verification-code";
 import { canSyncIcloudAccount, icloudRetryDelay, icloudSyncErrorMessage } from "@/lib/icloud-sync-state";
+import type { IcloudSyncSchedule } from "@/lib/icloud-sync-schedule";
+import { useIcloudSyncSchedule } from "./use-icloud-sync-schedule";
+import { MailSyncStatus } from "./mail-sync-status";
 
 type AddressSortKey = "addedAt" | "receivedAt" | "tag" | "phoneNumber";
 type AddressSort = { key: AddressSortKey; direction: "asc" | "desc" };
@@ -52,9 +55,6 @@ type Modal = "edit_address" | "icloud" | "icloud_password" | "settings" | null;
 type Notice = { tone: "success" | "error"; text: string };
 const ADDRESS_PAGE_SIZE = 20;
 const DEFAULT_ADDRESS_SORT: AddressSort = { key: "receivedAt", direction: "desc" };
-const ICLOUD_FAST_SYNC_INTERVAL = 2_000;
-const ICLOUD_FAST_SYNC_DURATION = 2 * 60_000;
-const ICLOUD_SYNC_INTERVAL = 5 * 60_000;
 const DEFAULT_TAG_COLOR = "#475569";
 const ICLOUD_BRIDGE_VERSION = 1;
 const TAG_COLOR_OPTIONS = [
@@ -190,7 +190,12 @@ const calendarMonthFormatter = new Intl.DateTimeFormat("zh-CN", { year: "numeric
 const calendarDateFormatter = new Intl.DateTimeFormat("zh-CN", { year: "numeric", month: "long", day: "numeric", weekday: "long" });
 
 function addressRemark(address: MailAddressDto) {
-  return address.type === "icloud_primary" ? "主号" : address.type === "icloud_alias" ? "别名" : address.providerLabel;
+  if (address.type === "icloud_primary") return "主号";
+  if (address.type === "icloud_alias") {
+    const label = address.providerLabel?.trim();
+    return label ? `别名 · ${label}` : "别名";
+  }
+  return address.providerLabel;
 }
 
 function addressTag(address: MailAddressDto): AddressTag | null {
@@ -322,7 +327,6 @@ export function Dashboard() {
   const dataRefreshInFlightRef = useRef<Promise<void> | null>(null);
   const icloudSyncInFlightRef = useRef<Promise<IcloudSyncResponse[]> | null>(null);
   const icloudRetryRef = useRef(new Map<string, { failures: number; retryAt: number }>());
-  const icloudFastSyncUntilRef = useRef(0);
   const icloudSyncRequestIdRef = useRef(0);
   const backgroundSyncNoticeAtRef = useRef(0);
   const [notice, setNotice] = useState<Notice | null>(null);
@@ -420,14 +424,6 @@ export function Dashboard() {
     });
   }, []);
 
-  const openIcloudFastSyncWindow = useCallback(() => {
-    icloudFastSyncUntilRef.current = Date.now() + ICLOUD_FAST_SYNC_DURATION;
-  }, []);
-
-  useEffect(() => {
-    openIcloudFastSyncWindow();
-  }, [openIcloudFastSyncWindow]);
-
   const syncIcloudAccounts = useCallback(async (options: { reconcile?: boolean; manual?: boolean; accountId?: string } = {}) => {
     const manual = Boolean(options.reconcile || options.manual);
     while (icloudSyncInFlightRef.current) {
@@ -484,48 +480,15 @@ export function Dashboard() {
     setNotice({ tone: "error", text: icloudSyncErrorMessage(message) });
   }, []);
 
-  useEffect(() => {
-    let cancelled = false;
-    let timer: number | null = null;
-
-    const scheduleNext = () => {
-      if (!cancelled && document.visibilityState === "visible") {
-        const interval = Date.now() < icloudFastSyncUntilRef.current ? ICLOUD_FAST_SYNC_INTERVAL : ICLOUD_SYNC_INTERVAL;
-        timer = window.setTimeout(tick, interval);
-      }
-    };
-    const tick = async () => {
-      if (cancelled || document.visibilityState !== "visible") return;
-      try {
-        await syncIcloudAccounts();
-      } catch (error) {
-        notifyBackgroundSyncError(error);
-      } finally {
-        scheduleNext();
-      }
-    };
-
-    const handleVisibilityChange = () => {
-      if (document.visibilityState !== "visible") {
-        if (timer !== null) window.clearTimeout(timer);
-        timer = null;
-        return;
-      }
-      openIcloudFastSyncWindow();
-      if (!icloudSyncInFlightRef.current && accountsRef.current.some((account) => canSyncIcloudAccount(account))) void tick();
-    };
-    document.addEventListener("visibilitychange", handleVisibilityChange);
-    if (document.visibilityState === "visible" && accountsRef.current.some((account) => canSyncIcloudAccount(account))) {
-      void tick();
-    } else if (document.visibilityState === "visible") {
-      scheduleNext();
-    }
-    return () => {
-      cancelled = true;
-      if (timer !== null) window.clearTimeout(timer);
-      document.removeEventListener("visibilitychange", handleVisibilityChange);
-    };
-  }, [accounts.length, icloudSyncProgress, syncIcloudAccounts, notifyBackgroundSyncError, openIcloudFastSyncWindow]);
+  const { schedule: mailSyncSchedule, runManual: runManualMailSync } = useIcloudSyncSchedule({
+    enabled: accounts.some((account) => canSyncIcloudAccount(account)),
+    sync: syncIcloudAccounts,
+    retryAt: () => {
+      const eligible = accountsRef.current.filter((account) => canSyncIcloudAccount(account));
+      return eligible.length ? Math.min(...eligible.map((account) => icloudRetryRef.current.get(account.id)?.retryAt || 0)) : 0;
+    },
+    onError: notifyBackgroundSyncError,
+  });
 
   const drawerAddress = addresses.find((address) => address.id === drawerAddressId) || null;
   const editingAddress = addresses.find((address) => address.id === editingAddressId) || null;
@@ -725,9 +688,9 @@ export function Dashboard() {
             onSortChange={setAddressSort}
             canManualSync={accounts.some((account) => canSyncIcloudAccount(account, true))}
             manualSyncing={isPending("icloud:manual-sync")}
+            syncSchedule={mailSyncSchedule}
             onManualSync={() => void runAction("icloud:manual-sync", async () => {
-              openIcloudFastSyncWindow();
-              const results = await syncIcloudAccounts({ reconcile: true });
+              const results = await runManualMailSync(() => syncIcloudAccounts({ reconcile: true }));
               if (!results?.length) return "没有可同步的 iCloud 账号";
               const imported = results.reduce((total, result) => total + result.imported, 0);
               const removed = results.reduce((total, result) => total + result.removed, 0);
@@ -918,6 +881,7 @@ function AddressView(props: {
   onSortChange: (sort: AddressSort) => void;
   canManualSync: boolean;
   manualSyncing: boolean;
+  syncSchedule: IcloudSyncSchedule;
   onManualSync: () => void;
   onOpen: (address: MailAddressDto) => void;
   onMarkRead: (message: MailMessageDto) => Promise<void>;
@@ -1076,10 +1040,6 @@ function AddressView(props: {
     <section className="address-table-section">
       <div className="address-table-toolbar">
         {(props.canManualSync || visibleAddresses.length > 0) && <div className="table-toolbar-controls">
-          {props.canManualSync && <button className="button secondary subtle compact manual-mail-sync" type="button" disabled={props.manualSyncing} onClick={props.onManualSync}>
-            {props.manualSyncing ? <LoaderCircle className="spin" size={15} /> : <RefreshCw size={15} />}
-            {props.manualSyncing ? "正在同步…" : "手动同步邮件"}
-          </button>}
           {visibleAddresses.length > 0 && <>
           <div className="content-filter" role="group" aria-label="按邮件内容筛选">
             {filterOptions.map((option) => <button key={option.value} type="button" aria-pressed={contentFilter === option.value} className={contentFilter === option.value ? "active" : ""} onClick={() => {
@@ -1106,6 +1066,10 @@ function AddressView(props: {
             {addressQuery && <button type="button" aria-label="清除邮箱地址或备注搜索" onClick={() => updateAddressQuery("")}><X size={15} aria-hidden="true" /></button>}
           </div>
           </>}
+          {props.canManualSync && <div className="mail-sync-control"><MailSyncStatus schedule={props.syncSchedule} /><button className="button secondary subtle compact manual-mail-sync" type="button" disabled={props.manualSyncing} onClick={props.onManualSync}>
+            {props.manualSyncing ? <LoaderCircle className="spin" size={15} /> : <RefreshCw size={15} />}
+            {props.manualSyncing ? "正在同步…" : "手动同步邮件"}
+          </button></div>}
         </div>}
       </div>
       {visibleAddresses.length === 0 ? (

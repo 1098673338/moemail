@@ -17,13 +17,14 @@ async function setup(t: TestContext) {
   db.exec("PRAGMA foreign_keys=ON; CREATE TABLE email (id TEXT PRIMARY KEY);");
   for (const match of migration.matchAll(/CREATE TABLE(?: IF NOT EXISTS)? `(mail_account|mail_address|icloud_mailbox_state|message|message_recipient|address_event)` \([\s\S]*?\n\);/g)) db.exec(match[0]);
   db.exec("CREATE UNIQUE INDEX recipient_unique ON message_recipient(message_id,address_id);");
+  const calls = { reads: 0, writes: 0, batches: 0, maxBatchSize: 0 };
   const prepare = (sql: string) => ({
     bind(...params: (string | number | null)[]) {
       const statement = db.prepare(sql);
       return {
-        first: async () => statement.get(...params) || null,
-        all: async () => ({ results: statement.all(...params) }),
-        run: async () => ({ meta: statement.run(...params) }),
+        first: async () => { calls.reads++; return statement.get(...params) || null; },
+        all: async () => { calls.reads++; return { results: statement.all(...params) }; },
+        run: async () => { calls.writes++; return { meta: statement.run(...params) }; },
       };
     },
   });
@@ -35,6 +36,8 @@ async function setup(t: TestContext) {
     DB: {
       prepare,
       async batch(statements: ReturnType<ReturnType<typeof prepare>["bind"]>[]) {
+        calls.batches++;
+        calls.maxBatchSize = Math.max(calls.maxBatchSize, statements.length);
         db.exec("BEGIN");
         try {
           const results = [];
@@ -54,7 +57,7 @@ async function setup(t: TestContext) {
     .run("account-1", "primary@icloud.com", "primary@icloud.com", encryptWithSecret("test-app-password", secret));
   db.exec("INSERT INTO icloud_mailbox_state(account_id,mailbox_path,last_uid,created_at,updated_at) VALUES ('account-1','INBOX',500,1,1)");
   const primary = await createAddress({ address: "primary@icloud.com", type: "icloud_primary", accountId: "account-1" });
-  return { db, primary };
+  return { db, primary, calls };
 }
 
 test("ordinary aliases sync alongside hidden addresses, become visible, and trigger historical mail import once", async (t) => {
@@ -140,4 +143,73 @@ test("IMAP imports historical mail sent to the newly synced ordinary alias", asy
 test("snapshot validation accepts ordinary aliases and rejects duplicated cross-type addresses", () => {
   assert.equal(icloudAliasSnapshotSchema.safeParse({ authoritative: true, scope: "active", aliases: [hidden], mailAliases: [alias()] }).success, true);
   assert.equal(icloudAliasSnapshotSchema.safeParse({ authoritative: true, scope: "active", aliases: [hidden], mailAliases: [alias(hidden.address)] }).success, false);
+});
+
+test("a 177-address snapshot uses bounded batch writes and repeated syncs do not rewrite unchanged rows", async (t) => {
+  const { calls, db } = await setup(t);
+  const aliases = Array.from({ length: 176 }, (_, index) => ({ ...hidden, address: `hidden-${index}@icloud.com`, providerId: `hme-${index}` }));
+  const before = { ...calls };
+  const first = await syncIcloudAliasSnapshot("account-1", aliases, true, "active", [alias()]);
+  assert.equal(first.created, 177);
+  assert.equal(first.activeCount, 177);
+  assert.ok(calls.reads - before.reads <= 12, `Initial snapshot reads: ${calls.reads - before.reads}`);
+  assert.ok(calls.batches - before.batches <= 8);
+  assert.ok(calls.maxBatchSize <= 50);
+  db.exec("UPDATE mail_address SET updated_at=1");
+  const afterFirst = { ...calls };
+  const repeated = await syncIcloudAliasSnapshot("account-1", aliases, true, "active", [alias()]);
+  assert.equal(repeated.activeCount, 177);
+  assert.ok(calls.reads - afterFirst.reads <= 8, `Repeated snapshot reads: ${calls.reads - afterFirst.reads}`);
+  assert.equal(calls.batches - afterFirst.batches, 0);
+  assert.equal(calls.writes - afterFirst.writes, 1, "Only the account sync timestamp/counts should be written");
+  assert.equal(db.prepare("SELECT COUNT(*) count FROM mail_address WHERE updated_at<>1").get()?.count, 0);
+});
+
+test("unchanged snapshots preserve completed automatic-tag scans on already linked messages", async (t) => {
+  const { db, calls } = await setup(t);
+  await syncIcloudAliasSnapshot("account-1", [hidden], true, "active", [alias()]);
+  const stored = await ingestMessage({ source: "icloud", accountId: "account-1", providerUid: 1, senderAddress: "sender@example.com", recipients: [hidden.address], subject: "Hello", textBody: "Hello", receivedAt: new Date() });
+  db.prepare("UPDATE message SET automatic_tag_scanned_at=123 WHERE id=?").run(stored.id);
+  const before = { ...calls };
+  const result = await syncIcloudAliasSnapshot("account-1", [hidden], true, "active", [alias()]);
+  assert.equal(result.linkedMessages, 0);
+  assert.equal(result.automaticTagScanned, 0);
+  assert.equal(db.prepare("SELECT automatic_tag_scanned_at FROM message WHERE id=?").get(stored.id)?.automatic_tag_scanned_at, 123);
+  assert.equal(calls.batches - before.batches, 0);
+});
+
+test("changing one provider label updates only that address and preserves local fields", async (t) => {
+  const { calls, db } = await setup(t);
+  await syncIcloudAliasSnapshot("account-1", [hidden], true, "active", [alias()]);
+  db.exec("UPDATE mail_address SET updated_at=1,phone_number='example',tags_json='[\"work\"]'");
+  const before = { ...calls };
+  await syncIcloudAliasSnapshot("account-1", [{ ...hidden, providerLabel: "Updated" }], true, "active", [alias()]);
+  assert.equal(calls.batches - before.batches, 1);
+  assert.equal(calls.writes - before.writes, 2, "One address update and one account update");
+  const changed = db.prepare("SELECT address,provider_label,phone_number,tags_json FROM mail_address WHERE updated_at<>1").all();
+  assert.equal(changed.length, 1);
+  assert.equal(changed[0].provider_label, "Updated");
+  assert.equal(changed[0].phone_number, "example");
+  assert.equal(changed[0].tags_json, '["work"]');
+});
+
+test("a conflicting Apple identity is rejected before either address can be changed", async (t) => {
+  await setup(t);
+  await syncIcloudAliasSnapshot("account-1", [hidden], true, "active", [alias()]);
+  await assert.rejects(syncIcloudAliasSnapshot("account-1", [{ ...hidden, address: "different@icloud.com" }], true, "active", [alias()]), /Apple 标识与项目记录不匹配/);
+  assert.equal((await listAddresses()).filter(item => item.status === "active").length, 3);
+});
+
+test("ordinary alias labels follow Apple changes and clear on the next sync without rewriting unchanged labels", async (t) => {
+  const { calls } = await setup(t);
+  const labelled = { ...alias(), providerLabel: "Personal" };
+  await syncIcloudAliasSnapshot("account-1", [], true, "active", [labelled]);
+  assert.equal((await listAddresses()).find(item => item.type === "icloud_alias")?.providerLabel, "Personal");
+  const batches = calls.batches;
+  await syncIcloudAliasSnapshot("account-1", [], true, "active", [labelled]);
+  assert.equal(calls.batches, batches);
+  await syncIcloudAliasSnapshot("account-1", [], true, "active", [{ ...labelled, providerLabel: "Work" }]);
+  assert.equal((await listAddresses()).find(item => item.type === "icloud_alias")?.providerLabel, "Work");
+  await syncIcloudAliasSnapshot("account-1", [], true, "active", [{ ...labelled, providerLabel: null }]);
+  assert.equal((await listAddresses()).find(item => item.type === "icloud_alias")?.providerLabel, null);
 });

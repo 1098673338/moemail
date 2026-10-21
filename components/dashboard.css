@@ -29,7 +29,9 @@ button { transition: opacity .12s ease; }
 .table-toolbar-controls { min-width: 0; display: flex; align-items: center; gap: var(--space-xs); flex: 1; overflow-x: auto; scrollbar-width: none; }
 .table-toolbar-controls::-webkit-scrollbar { display: none; }
 .button.manual-mail-sync { flex: none; white-space: nowrap; }
-.address-search { width: 280px; min-height: 32px; margin-left: auto; padding: 0 3px 0 11px; display: flex; align-items: center; gap: 7px; flex: none; color: var(--color-muted); background: var(--color-canvas); border: 1px solid var(--color-hairline); border-radius: 8px; }
+.mail-sync-control { margin-left: auto; display: inline-flex; align-items: center; gap: var(--space-xs); flex: none; }
+.mail-sync-status { min-height: var(--control-height); padding: 0 var(--space-sm); display: inline-flex; align-items: center; flex: none; color: var(--color-muted); background: var(--color-canvas); border: 1px solid var(--color-hairline); border-radius: 8px; font-size: 12px; line-height: 18px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.address-search { width: 280px; min-height: 32px; padding: 0 3px 0 11px; display: flex; align-items: center; gap: 7px; flex: none; color: var(--color-muted); background: var(--color-canvas); border: 1px solid var(--color-hairline); border-radius: 8px; }
 .address-search:hover { border-color: var(--color-interactive-border); }
 .address-search:focus-within { color: var(--color-body-strong); border-color: var(--color-focus-border); }
 .address-search input { min-width: 0; height: 30px; padding: 0; flex: 1; color: var(--color-ink); background: transparent; border: 0; outline: 0; font-size: 12px; }

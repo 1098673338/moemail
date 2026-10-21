@@ -31,6 +31,12 @@ export async function updateIcloudAppPassword(accountId:string,appPassword:strin
 }
 
 export type IcloudAliasSnapshotItem={address:string;providerId:string;status:"active"|"disabled";providerLabel?:string|null;providerOrigin?:string|null;providerCreatedAt?:string|null};
+type StoredAlias = {
+  id: string; address: string; type: string; status: string; provider: string;
+  account_id: string | null; provider_id: string | null; provider_label: string | null;
+  provider_origin: string | null; provider_created_at: number | null;
+  disabled_at: number | null; deleted_at: number | null;
+};
 const D1_MUTATION_BATCH_SIZE = 50;
 function chunks<T>(values: T[], size = D1_MUTATION_BATCH_SIZE) { const result: T[][] = []; for (let index = 0; index < values.length; index += size) result.push(values.slice(index, index + size)); return result; }
 
@@ -39,6 +45,8 @@ async function linkExistingMessagesToAliases(accountId: string) {
   if (!aliases.length) return 0;
   const aliasIds = new Map(aliases.map((alias) => [normalize(alias.address), alias.id]));
   const messages = await all<{ id: string; recipients_json: string }>("SELECT id,recipients_json FROM message WHERE source='icloud' AND account_id=? AND deleted_at IS NULL", accountId);
+  const existingLinks = await all<{ message_id: string; address_id: string }>("SELECT mr.message_id,mr.address_id FROM message_recipient mr JOIN message m ON m.id=mr.message_id WHERE m.source='icloud' AND m.account_id=? AND m.deleted_at IS NULL", accountId);
+  const linked = new Set(existingLinks.map((item) => `${item.message_id}:${item.address_id}`));
   const timestamp = stamp();
   const statements: Array<{ query: string; params: unknown[] }> = [];
   const affectedMessageIds = new Set<string>();
@@ -48,7 +56,8 @@ async function linkExistingMessagesToAliases(accountId: string) {
     if (!Array.isArray(recipients)) continue;
     for (const recipient of recipients) {
       const addressId = aliasIds.get(normalize(String(recipient || "")));
-      if (addressId) {
+      if (addressId && !linked.has(`${message.id}:${addressId}`)) {
+        linked.add(`${message.id}:${addressId}`);
         affectedMessageIds.add(message.id);
         statements.push({ query: "INSERT OR IGNORE INTO message_recipient (message_id,address_id,recipient_type,created_at) VALUES (?,?,'to',?)", params: [message.id, addressId, timestamp] });
       }
@@ -94,6 +103,12 @@ export async function syncIcloudAliasSnapshot(accountId:string,aliases:IcloudAli
   const ids=new Set<string>();
   let needsMailRescan=false;
   const snapshot=[...aliases.map(alias=>({alias,type:"icloud_hide" as const})),...(mailAliases || []).map(alias=>({alias,type:"icloud_alias" as const}))];
+  // Read identities once. Per-address reads/writes made an unchanged 177-address
+  // snapshot take hundreds of D1 calls and amplified Worker resource pressure.
+  const stored=await all<StoredAlias>("SELECT id,address,type,status,provider,account_id,provider_id,provider_label,provider_origin,provider_created_at,disabled_at,deleted_at FROM mail_address");
+  const byAddress=new Map(stored.map(item=>[normalize(item.address),item]));
+  const byProviderId=new Map(stored.filter(item=>item.provider==="icloud" && item.provider_id).map(item=>[item.provider_id!,item]));
+  const matched=new Map<string,StoredAlias>();
   const seenAddresses=new Set<string>();
   const seenProviderIds=new Set<string>();
   // Validate the complete snapshot before creating or deleting any records.
@@ -104,33 +119,47 @@ export async function syncIcloudAliasSnapshot(accountId:string,aliases:IcloudAli
     if(type==="icloud_alias" && !alias.providerId.endsWith(`:${address}`)) throw new MailStoreError("邮箱别名标识与地址不匹配","conflict");
     if(seenAddresses.has(address) || seenProviderIds.has(alias.providerId)) throw new MailStoreError("地址清单包含重复记录","conflict");
     seenAddresses.add(address);seenProviderIds.add(alias.providerId);
-    const existing=await one<{type:string;account_id:string|null}>("SELECT type,account_id FROM mail_address WHERE (provider='icloud' AND provider_id=?) OR address=? COLLATE NOCASE LIMIT 1",alias.providerId,address);
+    const providerMatch=byProviderId.get(alias.providerId);
+    const addressMatch=byAddress.get(address);
+    if(providerMatch && (normalize(providerMatch.address)!==address || addressMatch && addressMatch.id!==providerMatch.id)) throw new MailStoreError(`地址 ${address} 的 Apple 标识与项目记录不匹配`,"conflict");
+    const existing=providerMatch || addressMatch;
     if(existing && (existing.type!==type || existing.account_id && existing.account_id!==accountId)) throw new MailStoreError(`地址 ${address} 已属于其他邮箱类型或账号`,"conflict");
+    if(existing) matched.set(address,existing);
   }
 
+  const changes:Array<{query:string;params:unknown[]}>=[];
+  const snapshotAt=stamp();
   for(const {alias,type} of snapshot){
     const address=normalize(alias.address);
-    let existing=await one<{id:string;type:string;account_id:string|null;status:string}>("SELECT id,type,account_id,status FROM mail_address WHERE (provider='icloud' AND provider_id=?) OR address=? COLLATE NOCASE LIMIT 1",alias.providerId,address);
-    if(existing && existing.type!==type) throw new MailStoreError(`地址 ${address} 已被其他邮箱类型占用`,"conflict");
-    if(existing?.account_id && existing.account_id!==accountId) throw new MailStoreError(`地址 ${address} 已属于另一个 iCloud 账号`,"conflict");
+    const existing=matched.get(address);
+    const providerCreatedAt=alias.providerCreatedAt ? new Date(alias.providerCreatedAt).getTime() : null;
     if(!existing){
-      const item=await createAddress({address,type,accountId,note:type==="icloud_alias" ? "从 iCloud 邮件账户设置同步的邮箱别名。" : "从 iCloud+ 账号地址清单同步。",providerCreatedAt:alias.providerCreatedAt ? new Date(alias.providerCreatedAt) : null,addedAt:null});
-      existing={id:item.id,type:item.type,account_id:accountId,status:"new"};
+      const id=crypto.randomUUID();
+      changes.push({query:"INSERT INTO mail_address (id,address,type,status,provider,account_id,provider_id,provider_label,provider_origin,provider_created_at,added_at,note,tags_json,created_at,updated_at,disabled_at) VALUES (?,?,?,?,'icloud',?,?,?,?,?,NULL,?,'[]',?,?,?)",params:[id,address,type,alias.status,accountId,alias.providerId,alias.providerLabel || null,alias.providerOrigin || null,providerCreatedAt,type==="icloud_alias" ? "从 iCloud 邮件账户设置同步的邮箱别名。" : "从 iCloud+ 账号地址清单同步。",snapshotAt,snapshotAt,alias.status==="disabled" ? snapshotAt : null]});
+      changes.push({query:"INSERT INTO address_event (id,address_id,action,detail,created_at) VALUES (?,?,'created',?,?)",params:[crypto.randomUUID(),id,`创建 ${type} 地址`,snapshotAt]});
+      ids.add(id);
+      if(type==="icloud_alias" && alias.status==="active") needsMailRescan=true;
       created++;
-    } else updated++;
+      continue;
+    }
+    updated++;
     if(type==="icloud_alias" && existing.status!=="active" && alias.status==="active") needsMailRescan=true;
-    const now=stamp();
-    await run("UPDATE mail_address SET account_id=?,provider='icloud',provider_id=?,provider_label=COALESCE(?,provider_label),provider_origin=?,provider_created_at=COALESCE(?,provider_created_at),status=?,disabled_at=CASE WHEN ?='disabled' THEN COALESCE(disabled_at,?) ELSE NULL END,deleted_at=NULL,updated_at=? WHERE id=?",accountId,alias.providerId,alias.providerLabel || null,alias.providerOrigin || null,alias.providerCreatedAt ? new Date(alias.providerCreatedAt).getTime() : null,alias.status,alias.status,now,now,existing.id);
+    const providerLabel=type==="icloud_alias" ? alias.providerLabel?.trim() || null : alias.providerLabel || existing.provider_label;
+    const changed=existing.account_id!==accountId || existing.provider!=="icloud" || existing.provider_id!==alias.providerId
+      || existing.provider_label!==providerLabel || existing.provider_origin!==(alias.providerOrigin || null)
+      || existing.provider_created_at!==(providerCreatedAt ?? existing.provider_created_at) || existing.status!==alias.status || existing.deleted_at!==null
+      || (alias.status==="disabled" ? existing.disabled_at===null : existing.disabled_at!==null);
+    if(changed) changes.push({query:"UPDATE mail_address SET account_id=?,provider='icloud',provider_id=?,provider_label=?,provider_origin=?,provider_created_at=COALESCE(?,provider_created_at),status=?,disabled_at=CASE WHEN ?='disabled' THEN COALESCE(disabled_at,?) ELSE NULL END,deleted_at=NULL,updated_at=? WHERE id=?",params:[accountId,alias.providerId,providerLabel,alias.providerOrigin || null,providerCreatedAt,alias.status,alias.status,snapshotAt,snapshotAt,existing.id]});
     ids.add(existing.id);
   }
+  for(const group of chunks(changes)) await batch(group);
 
   let removed=0;
   if(authoritative){
     // D1/SQLite rejects a large NOT IN (?, ?, ...) list. Fetch the small ID-only
     // local set and mark omissions in bounded batches instead, with the same
     // authoritative snapshot semantics and no schema change.
-    const current=await all<{id:string}>(`SELECT id FROM mail_address WHERE account_id=? AND ${mailAliases === undefined ? "type='icloud_hide'" : "type IN ('icloud_hide','icloud_alias')"} AND status<>'deleted'`,accountId);
-    const omitted=current.map(row=>row.id).filter(id=>!ids.has(id));
+    const omitted=stored.filter(row=>row.account_id===accountId && row.status!=="deleted" && (row.type==="icloud_hide" || mailAliases!==undefined && row.type==="icloud_alias") && !ids.has(row.id)).map(row=>row.id);
     const now=stamp();
     for(const group of chunks(omitted)){
       const results=await batch(group.map(id=>({ query:"UPDATE mail_address SET status='deleted',deleted_at=COALESCE(deleted_at,?),updated_at=? WHERE id=? AND status<>'deleted'", params:[now,now,id] })));
