@@ -20,7 +20,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
   try {
     const { id } = await params;
     const input = icloudAliasSnapshotSchema.parse(await request.json());
-    const result = await syncIcloudAliasSnapshot(id, input.aliases, input.authoritative, input.scope);
+    const result = await syncIcloudAliasSnapshot(id, input.aliases, input.authoritative, input.scope, input.mailAliases);
     return withBridgeCors(NextResponse.json(result, { status: 201 }));
   } catch (error) {
     return withBridgeCors(apiError(error, "同步 iCloud+ 地址清单失败"));

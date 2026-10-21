@@ -5,9 +5,9 @@ type VerificationMessage = Pick<MailMessageDto, "subject" | "textBody" | "htmlBo
 type Code = { display: string; value: string };
 type Range = { start: number; end: number };
 
-const codeContext = /验证码|校验码|动态码|安全码|登录码|确认码|授权码|一次性密码|临时密码|短信码|\b(?:(?:verification|security|authentication|validation|temporary|access|login|log-in|sign-in)\s+(?:code|pin)|security\s+token|one[-\s]time\s+(?:code|password|passcode)|passcode|otp)\b/giu;
-const authenticationSubject = /验证|校验|登录|登入|一次性密码|重置密码|\b(?:verify|verification|authenticate|authentication|sign[ -]?in|log[ -]?in|reset\s+(?:your\s+)?password|passcode|otp)\b/iu;
-const otherNumberContext = /邮政编码|邮编|地址|订单(?:号)?|单号|发票(?:号)?|运单(?:号)?|电话|手机|优惠码|折扣码|旧验证码|已过期|已失效|秒|分钟|小时|\b(?:(?:postal|zip|order|invoice|tracking|reference|coupon|discount|promo)(?:[ _-]+(?:code|number|no))?|(?:previous|expired|superseded)(?:\s+(?:verification|security|login))?(?:\s+(?:code|otp|passcode))?|postcode|address|street|road|avenue|suite|telephone|phone|tel|seconds?|minutes?|hours?|days?)\b/giu;
+const codeContext = /验证码|校验码|动态码|安全码|登录码|确认码|授权码|一次性密码|临时密码|短信码|\b(?:(?:verification|confirmation|security|authentication|validation|temporary|access|login|log-in|sign-in)\s+(?:code|pin)|security\s+token|one[-\s]time\s+(?:code|password|passcode)|passcode|otp)\b/giu;
+const authenticationSubject = /验证|校验|登录|登入|一次性密码|重置密码|\b(?:verify|verification|confirm\s+(?:your\s+)?email|email\s+confirmation|authenticate|authentication|sign[ -]?in|log[ -]?in|reset\s+(?:your\s+)?password|passcode|otp)\b/iu;
+const otherNumberContext = /邮政编码|邮编|地址|订单(?:号)?|单号|发票(?:号)?|运单(?:号)?|电话|手机|优惠码|折扣码|旧验证码|已过期|已失效|秒|分钟|小时|\b(?:(?:postal|zip|order|invoice|tracking|reference|coupon|discount|promo)(?:[ _-]+(?:code|number|no))?|(?:previous|expired|superseded)(?:\s+(?:verification|confirmation|security|login))?(?:\s+(?:code|otp|passcode))?|postcode|address|street|road|avenue|suite|telephone|phone|tel|seconds?|minutes?|hours?|days?)\b/giu;
 const blockTags = new Set(["p", "div", "section", "article", "table", "tr", "td", "th", "li", "h1", "h2", "h3", "h4", "h5", "h6", "br", "hr", "pre"]);
 const excludedTags = new Set(["head", "script", "style", "noscript", "template", "footer", "address", "blockquote"]);
 

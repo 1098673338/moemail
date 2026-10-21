@@ -4,6 +4,7 @@
   const actions = new Map([
     ["MOEMAIL_UPDATE_APPLE_LABEL", "MOEMAIL_UPDATE_APPLE_LABEL_RESULT"],
     ["MOEMAIL_DEACTIVATE_APPLE_ALIAS", "MOEMAIL_DEACTIVATE_APPLE_ALIAS_RESULT"],
+    ["MOEMAIL_DELETE_APPLE_MAIL_ALIAS", "MOEMAIL_DELETE_APPLE_MAIL_ALIAS_RESULT"],
   ]);
 
   const previousBridge = window[bridgeStateKey];
@@ -33,6 +34,7 @@
         type: event.data.type,
         providerId: event.data.providerId,
         address: event.data.address,
+        accountAddress: event.data.accountAddress,
         label: event.data.label,
       }, (response) => {
         const runtimeError = chrome.runtime.lastError;

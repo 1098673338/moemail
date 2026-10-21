@@ -1,4 +1,4 @@
-export const ADDRESS_TYPES = ["icloud_primary", "icloud_hide"] as const;
+export const ADDRESS_TYPES = ["icloud_primary", "icloud_hide", "icloud_alias"] as const;
 export type AddressType = (typeof ADDRESS_TYPES)[number];
 
 export const ADDRESS_STATUSES = [

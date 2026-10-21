@@ -92,10 +92,10 @@ function providerError(payload, fallback = "Apple 拒绝请求") {
   return error;
 }
 
-function appleTargetFromValidate(payload, region) {
+function appleTargetFromValidate(payload, region, service = "hme") {
   const data = payload?.result?.webservices ? payload.result : payload;
-  const service = data?.webservices?.premiummailsettings || data?.webservices?.maildomainws;
-  const apiBase = String(typeof service === "string" ? service : service?.url || "").replace(/\/+$/, "");
+  const webservice = service === "mail" ? data?.webservices?.mcc : data?.webservices?.premiummailsettings || data?.webservices?.maildomainws;
+  const apiBase = String(typeof webservice === "string" ? webservice : webservice?.url || "").replace(/\/+$/, "");
   const dsid = String(data?.dsInfo?.dsid || data?.dsid || "").trim();
   if (!apiBase || !dsid) return null;
   return {
@@ -123,19 +123,85 @@ async function sessionTarget(region) {
   };
 }
 
-async function locateAppleTarget() {
+async function locateAppleTarget(service = "hme", requiredRegion) {
   const tabs = await chrome.tabs.query({ url: ["https://*.icloud.com/*", "https://*.icloud.com.cn/*"] });
   const regions = [...new Set(tabs.filter((tab) => ICLOUD_PAGE_PATTERN.test(tab.url || "")).map((tab) => regionForUrl(tab.url)))];
-  for (const region of regions.length ? regions : ["china", "global"]) {
+  for (const region of requiredRegion ? [requiredRegion] : regions.length ? regions : ["china", "global"]) {
     const direct = await extensionFetchJson(REGIONS[region].setupUrl);
     if (direct.ok) {
-      const target = appleTargetFromValidate(direct.payload, region);
+      const target = appleTargetFromValidate(direct.payload, region, service);
       if (target) return target;
     }
-    const fallback = await sessionTarget(region);
+    const fallback = service === "hme" ? await sessionTarget(region) : null;
     if (fallback) return fallback;
   }
-  throw new Error("Chrome 中未找到有效的 iCloud 登录会话。请先登录 iCloud.com 并完成验证后重试。");
+  throw new Error(service === "mail" ? "无法读取 iCloud 邮件账户，请先在 Chrome 中打开 iCloud 邮件并完成登录后重试。" : "Chrome 中未找到有效的 iCloud 登录会话。请先登录 iCloud.com 并完成验证后重试。");
+}
+
+async function mailAccountRequest(target, method, path) {
+  const endpoint = new URL(`${target.apiBase}/cc/mail/v1/account/${encodeURIComponent(target.query.dsid)}/${path}`);
+  const response = await extensionFetchJson(endpoint, { method, headers: { "Content-Type": "application/json" } });
+  if (!response.ok || response.payload?.errorCode || response.payload?.success === false) {
+    throw providerError(response.payload, "iCloud 邮箱别名操作失败，请重新登录 iCloud 邮件后重试");
+  }
+  return response.payload;
+}
+
+function mailAccountAddresses(account) {
+  if (typeof account?.emailId !== "string" || !Array.isArray(account.supportedDomains) || !account.supportedDomains.length) {
+    throw new Error("iCloud 邮件账户资料不完整，已取消操作");
+  }
+  return account.supportedDomains.map((item) => {
+    if (!["icloud.com", "me.com", "mac.com"].includes(item?.domain) || !/^[a-z\d._%+-]+$/i.test(account.emailId)) {
+      throw new Error("iCloud 邮件账户地址格式无法识别，已取消操作");
+    }
+    return `${account.emailId}@${item.domain}`.toLowerCase();
+  });
+}
+
+async function readAppleMailAccount(expectedAccountAddress) {
+  const expected = String(expectedAccountAddress || "").trim().toLowerCase();
+  if (!expected) throw new Error("缺少项目的 iCloud 主邮箱，请重新连接同步助手");
+  const target = await locateAppleTarget("mail");
+  const payload = await mailAccountRequest(target, "GET", "preference/web/all?userEntryPoint=%2Fmail%2Fsettings");
+  const account = payload?.account;
+  const primaryAddresses = mailAccountAddresses(account);
+  if (!primaryAddresses.includes(expected)) throw providerError({ error: { errorMessage: "浏览器登录的 iCloud 邮箱与项目主邮箱不一致，请切换账号后重试", errorCode: "ACCOUNT_MISMATCH" } });
+  const mailAliases = account.aliases === undefined ? [] : account.aliases;
+  if (!Array.isArray(mailAliases)) throw new Error("iCloud 邮箱别名清单不完整，已取消操作");
+  const aliases = mailAliases.flatMap((alias) => {
+    if (typeof alias.isActive !== "boolean") throw new Error("iCloud 邮箱别名状态无法识别，已取消操作");
+    return mailAccountAddresses(alias).map((address) => ({
+      address,
+      providerId: `mail-alias:${target.query.dsid}:${address}`,
+      status: alias.isActive ? "active" : "disabled",
+      providerLabel: String(alias.label || "").trim() || null,
+      providerOrigin: "iCloud Mail",
+    }));
+  });
+  if (new Set(aliases.map((alias) => alias.address)).size !== aliases.length
+    || aliases.some((alias) => primaryAddresses.includes(alias.address))) {
+    throw new Error("iCloud 邮箱别名清单包含重复地址或主邮箱，已取消操作");
+  }
+  return { target, aliases, primaryAddresses };
+}
+
+async function deleteAppleMailAlias(providerId, expectedAddress, accountAddress) {
+  const address = String(expectedAddress || "").trim().toLowerCase();
+  const { target, aliases, primaryAddresses } = await readAppleMailAccount(accountAddress);
+  if (primaryAddresses.includes(address)) throw new Error("不能删除 iCloud 主邮箱");
+  if (!address || providerId !== `mail-alias:${target.query.dsid}:${address}`) {
+    throw new Error("邮箱别名标识与当前 Apple 账户不匹配，请重新同步地址");
+  }
+  const emailId = address.split("@")[0];
+  const matchingAliases = aliases.filter((alias) => alias.address.split("@")[0] === emailId);
+  if (!matchingAliases.length) return;
+  if (!matchingAliases.some((alias) => alias.address === address)) throw new Error("邮箱别名的对应地址已变化，请重新同步地址后再删除");
+  await mailAccountRequest(target, "DELETE", `aliases/${encodeURIComponent(emailId)}`);
+  const after = await readAppleMailAccount(accountAddress);
+  if (after.aliases.some((alias) => alias.address.split("@")[0] === emailId)) {
+    throw new Error("Apple 尚未确认删除邮箱别名，请重新同步地址后重试");
+  }
 }
 
 async function appleRequest(target, method, path, body) {
@@ -146,8 +212,10 @@ async function appleRequest(target, method, path, body) {
   return response.payload?.success === true ? response.payload.result : response.payload;
 }
 
-async function readAppleAliases() {
-  const target = await locateAppleTarget();
+async function readAppleAliases(expectedAccountAddress) {
+  const mail = await readAppleMailAccount(expectedAccountAddress);
+  const target = await locateAppleTarget("hme", mail.target.region);
+  if (target.query.dsid !== mail.target.query.dsid) throw new Error("Apple 登录账户发生变化，请重新同步地址");
   const list = await listAppleAliases(target);
   const aliases = list.filter((item) => item?.isActive === true).map((item) => ({
     address: String(item.hme || item.address || "").trim().toLowerCase(),
@@ -158,7 +226,7 @@ async function readAppleAliases() {
     providerCreatedAt: Number.isFinite(item.createTimestamp) ? new Date(item.createTimestamp < 10_000_000_000 ? item.createTimestamp * 1000 : item.createTimestamp).toISOString() : null,
   }));
   if (aliases.some((item) => !item.address || !item.providerId)) throw new Error("Apple 地址清单中有记录缺少地址或 Apple 标识");
-  return aliases;
+  return { aliases, mailAliases: mail.aliases };
 }
 
 async function listAppleAliases(target) {
@@ -245,13 +313,17 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     return true;
   };
   if (message?.type === "MOEMAIL_ENSURE_APP_BRIDGE") return respond(ensureAppBridge);
-  if (message?.type === "MOEMAIL_READ_APPLE_ALIASES") return respond(async () => ({ aliases: await readAppleAliases() }));
-  if (!["MOEMAIL_UPDATE_APPLE_LABEL", "MOEMAIL_DEACTIVATE_APPLE_ALIAS", "MOEMAIL_CREATE_APPLE_ALIAS", "MOEMAIL_DELETE_DISABLED_APPLE_ALIASES"].includes(message?.type)) return;
+  if (message?.type === "MOEMAIL_READ_APPLE_ALIASES") return respond(async () => {
+    if (!senderIsExtension(sender)) throw new Error("只允许从 MoeMail 同步助手读取邮箱别名");
+    return readAppleAliases(message.accountAddress);
+  });
+  if (!["MOEMAIL_UPDATE_APPLE_LABEL", "MOEMAIL_DEACTIVATE_APPLE_ALIAS", "MOEMAIL_DELETE_APPLE_MAIL_ALIAS", "MOEMAIL_CREATE_APPLE_ALIAS", "MOEMAIL_DELETE_DISABLED_APPLE_ALIASES"].includes(message?.type)) return;
   return respond(async () => {
-    if (["MOEMAIL_UPDATE_APPLE_LABEL", "MOEMAIL_DEACTIVATE_APPLE_ALIAS"].includes(message.type)) {
+    if (["MOEMAIL_UPDATE_APPLE_LABEL", "MOEMAIL_DEACTIVATE_APPLE_ALIAS", "MOEMAIL_DELETE_APPLE_MAIL_ALIAS"].includes(message.type)) {
       if (!await senderIsConfiguredApp(sender)) throw new Error("只允许从已连接的 MoeMail 页面发起 Apple 地址操作");
       if (message.type === "MOEMAIL_UPDATE_APPLE_LABEL") await updateAppleLabel(String(message.providerId || ""), message.label);
-      else await deactivateAppleAlias(String(message.providerId || ""), String(message.address || ""));
+      else if (message.type === "MOEMAIL_DEACTIVATE_APPLE_ALIAS") await deactivateAppleAlias(String(message.providerId || ""), String(message.address || ""));
+      else await deleteAppleMailAlias(String(message.providerId || ""), String(message.address || ""), message.accountAddress);
       return {};
     }
     if (!senderIsExtension(sender)) throw new Error("只允许从 MoeMail 同步助手发起 Apple 地址操作");

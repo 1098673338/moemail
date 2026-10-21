@@ -35,7 +35,7 @@ const D1_MUTATION_BATCH_SIZE = 50;
 function chunks<T>(values: T[], size = D1_MUTATION_BATCH_SIZE) { const result: T[][] = []; for (let index = 0; index < values.length; index += size) result.push(values.slice(index, index + size)); return result; }
 
 async function linkExistingMessagesToAliases(accountId: string) {
-  const aliases = await all<{ id: string; address: string }>("SELECT id,address FROM mail_address WHERE account_id=? AND type='icloud_hide' AND status='active'", accountId);
+  const aliases = await all<{ id: string; address: string }>("SELECT id,address FROM mail_address WHERE account_id=? AND type IN ('icloud_hide','icloud_alias') AND status='active'", accountId);
   if (!aliases.length) return 0;
   const aliasIds = new Map(aliases.map((alias) => [normalize(alias.address), alias.id]));
   const messages = await all<{ id: string; recipients_json: string }>("SELECT id,recipients_json FROM message WHERE source='icloud' AND account_id=? AND deleted_at IS NULL", accountId);
@@ -87,24 +87,38 @@ async function repairPrimaryMessageRecipients(accountId: string) {
   return staleMessageIds.length;
 }
 
-export async function syncIcloudAliasSnapshot(accountId:string,aliases:IcloudAliasSnapshotItem[],authoritative:boolean,scope:"all"|"active"="all") {
+export async function syncIcloudAliasSnapshot(accountId:string,aliases:IcloudAliasSnapshotItem[],authoritative:boolean,scope:"all"|"active"="all",mailAliases?:IcloudAliasSnapshotItem[]) {
   const account=await one<Account>("SELECT * FROM mail_account WHERE id=?",accountId);
   if(!account) throw new MailStoreError("iCloud 账号不存在","not_found");
   let created=0,updated=0;
   const ids=new Set<string>();
-
-  for(const alias of aliases){
-    if(scope==="active" && alias.status!=="active") throw new MailStoreError("使用中地址快照不能包含已停用记录","conflict");
+  let needsMailRescan=false;
+  const snapshot=[...aliases.map(alias=>({alias,type:"icloud_hide" as const})),...(mailAliases || []).map(alias=>({alias,type:"icloud_alias" as const}))];
+  const seenAddresses=new Set<string>();
+  const seenProviderIds=new Set<string>();
+  // Validate the complete snapshot before creating or deleting any records.
+  for(const {alias,type} of snapshot){
     const address=normalize(alias.address);
-    if(!aliasDomains.has(address.split("@")[1] || "") || address===account.email_address) throw new MailStoreError(`地址 ${address} 不是受支持的 iCloud 隐藏地址`,"conflict");
-    let existing=await one<{id:string;type:string;account_id:string|null}>("SELECT id,type,account_id FROM mail_address WHERE (provider='icloud' AND provider_id=?) OR address=? COLLATE NOCASE LIMIT 1",alias.providerId,address);
-    if(existing && existing.type!=="icloud_hide") throw new MailStoreError(`地址 ${address} 已被其他邮箱类型占用`,"conflict");
+    if(type==="icloud_hide" && scope==="active" && alias.status!=="active") throw new MailStoreError("使用中地址快照不能包含已停用记录","conflict");
+    if(!(type==="icloud_alias" ? domains : aliasDomains).has(address.split("@")[1] || "") || address===normalize(account.email_address)) throw new MailStoreError(`地址 ${address} 不是受支持的 iCloud 别名或隐藏地址`,"conflict");
+    if(type==="icloud_alias" && !alias.providerId.endsWith(`:${address}`)) throw new MailStoreError("邮箱别名标识与地址不匹配","conflict");
+    if(seenAddresses.has(address) || seenProviderIds.has(alias.providerId)) throw new MailStoreError("地址清单包含重复记录","conflict");
+    seenAddresses.add(address);seenProviderIds.add(alias.providerId);
+    const existing=await one<{type:string;account_id:string|null}>("SELECT type,account_id FROM mail_address WHERE (provider='icloud' AND provider_id=?) OR address=? COLLATE NOCASE LIMIT 1",alias.providerId,address);
+    if(existing && (existing.type!==type || existing.account_id && existing.account_id!==accountId)) throw new MailStoreError(`地址 ${address} 已属于其他邮箱类型或账号`,"conflict");
+  }
+
+  for(const {alias,type} of snapshot){
+    const address=normalize(alias.address);
+    let existing=await one<{id:string;type:string;account_id:string|null;status:string}>("SELECT id,type,account_id,status FROM mail_address WHERE (provider='icloud' AND provider_id=?) OR address=? COLLATE NOCASE LIMIT 1",alias.providerId,address);
+    if(existing && existing.type!==type) throw new MailStoreError(`地址 ${address} 已被其他邮箱类型占用`,"conflict");
     if(existing?.account_id && existing.account_id!==accountId) throw new MailStoreError(`地址 ${address} 已属于另一个 iCloud 账号`,"conflict");
     if(!existing){
-      const item=await createAddress({address,type:"icloud_hide",accountId,note:"从 iCloud+ 账号地址清单同步。",providerCreatedAt:alias.providerCreatedAt ? new Date(alias.providerCreatedAt) : null,addedAt:null});
-      existing={id:item.id,type:item.type,account_id:accountId};
+      const item=await createAddress({address,type,accountId,note:type==="icloud_alias" ? "从 iCloud 邮件账户设置同步的邮箱别名。" : "从 iCloud+ 账号地址清单同步。",providerCreatedAt:alias.providerCreatedAt ? new Date(alias.providerCreatedAt) : null,addedAt:null});
+      existing={id:item.id,type:item.type,account_id:accountId,status:"new"};
       created++;
     } else updated++;
+    if(type==="icloud_alias" && existing.status!=="active" && alias.status==="active") needsMailRescan=true;
     const now=stamp();
     await run("UPDATE mail_address SET account_id=?,provider='icloud',provider_id=?,provider_label=COALESCE(?,provider_label),provider_origin=?,provider_created_at=COALESCE(?,provider_created_at),status=?,disabled_at=CASE WHEN ?='disabled' THEN COALESCE(disabled_at,?) ELSE NULL END,deleted_at=NULL,updated_at=? WHERE id=?",accountId,alias.providerId,alias.providerLabel || null,alias.providerOrigin || null,alias.providerCreatedAt ? new Date(alias.providerCreatedAt).getTime() : null,alias.status,alias.status,now,now,existing.id);
     ids.add(existing.id);
@@ -115,7 +129,7 @@ export async function syncIcloudAliasSnapshot(accountId:string,aliases:IcloudAli
     // D1/SQLite rejects a large NOT IN (?, ?, ...) list. Fetch the small ID-only
     // local set and mark omissions in bounded batches instead, with the same
     // authoritative snapshot semantics and no schema change.
-    const current=await all<{id:string}>("SELECT id FROM mail_address WHERE account_id=? AND type='icloud_hide' AND status<>'deleted'",accountId);
+    const current=await all<{id:string}>(`SELECT id FROM mail_address WHERE account_id=? AND ${mailAliases === undefined ? "type='icloud_hide'" : "type IN ('icloud_hide','icloud_alias')"} AND status<>'deleted'`,accountId);
     const omitted=current.map(row=>row.id).filter(id=>!ids.has(id));
     const now=stamp();
     for(const group of chunks(omitted)){
@@ -124,7 +138,8 @@ export async function syncIcloudAliasSnapshot(accountId:string,aliases:IcloudAli
     }
   }
 
-  const count=await one<{active_count:number;inactive_count:number}>("SELECT SUM(CASE WHEN status='active' THEN 1 ELSE 0 END) active_count,SUM(CASE WHEN status='disabled' THEN 1 ELSE 0 END) inactive_count FROM mail_address WHERE account_id=? AND type='icloud_hide'",accountId);
+  const count=await one<{active_count:number;inactive_count:number}>("SELECT SUM(CASE WHEN status='active' THEN 1 ELSE 0 END) active_count,SUM(CASE WHEN status='disabled' THEN 1 ELSE 0 END) inactive_count FROM mail_address WHERE account_id=? AND type IN ('icloud_hide','icloud_alias')",accountId);
+  if(needsMailRescan) await run("UPDATE icloud_mailbox_state SET last_uid=0 WHERE account_id=?",accountId);
   const linkedMessages=await linkExistingMessagesToAliases(accountId);
   const primaryUnlinkedMessages=await repairPrimaryMessageRecipients(accountId);
   const automatic=linkedMessages ? await scanPendingAutomaticTags({accountId}) : {scanned:0,tagged:0};
@@ -133,13 +148,13 @@ export async function syncIcloudAliasSnapshot(accountId:string,aliases:IcloudAli
   return {created,updated,removed,disabled:0,activeCount:Number(count?.active_count || 0),inactiveCount:Number(count?.inactive_count || 0),linkedMessages,primaryUnlinkedMessages,automaticTagScanned:automatic.scanned,automaticTagApplied:automatic.tagged};
 }
 
-export async function clearIcloudAliases(accountId:string){ if(!await one("SELECT id FROM mail_account WHERE id=?",accountId)) throw new MailStoreError("iCloud 账号不存在","not_found"); const now=stamp(); const result=await run("UPDATE mail_address SET status='deleted',deleted_at=COALESCE(deleted_at,?),updated_at=? WHERE account_id=? AND type='icloud_hide' AND status<>'deleted'",now,now,accountId); await run("UPDATE mail_account SET aliases_active_count=0,aliases_inactive_count=0,updated_at=? WHERE id=?",now,accountId); return {removed:Number(result.meta.changes || 0)}; }
-export async function purgeIcloudAliasData(accountId:string){ if(!await one("SELECT id FROM mail_account WHERE id=?",accountId)) throw new MailStoreError("iCloud 账号不存在","not_found"); const result=await run("DELETE FROM mail_address WHERE account_id=? AND type='icloud_hide'",accountId); await run("UPDATE mail_account SET aliases_last_sync_at=NULL,aliases_active_count=0,aliases_inactive_count=0,updated_at=? WHERE id=?",stamp(),accountId); return {removed:Number(result.meta.changes || 0)}; }
+export async function clearIcloudAliases(accountId:string){ if(!await one("SELECT id FROM mail_account WHERE id=?",accountId)) throw new MailStoreError("iCloud 账号不存在","not_found"); const now=stamp(); const result=await run("UPDATE mail_address SET status='deleted',deleted_at=COALESCE(deleted_at,?),updated_at=? WHERE account_id=? AND type IN ('icloud_hide','icloud_alias') AND status<>'deleted'",now,now,accountId); await run("UPDATE mail_account SET aliases_active_count=0,aliases_inactive_count=0,updated_at=? WHERE id=?",now,accountId); return {removed:Number(result.meta.changes || 0)}; }
+export async function purgeIcloudAliasData(accountId:string){ if(!await one("SELECT id FROM mail_account WHERE id=?",accountId)) throw new MailStoreError("iCloud 账号不存在","not_found"); const result=await run("DELETE FROM mail_address WHERE account_id=? AND type IN ('icloud_hide','icloud_alias')",accountId); await run("UPDATE mail_account SET aliases_last_sync_at=NULL,aliases_active_count=0,aliases_inactive_count=0,updated_at=? WHERE id=?",stamp(),accountId); return {removed:Number(result.meta.changes || 0)}; }
 
-type ActiveIcloudAddress = { id: string; address: string; type: "icloud_primary" | "icloud_hide" };
+type ActiveIcloudAddress = { id: string; address: string; type: "icloud_primary" | "icloud_hide" | "icloud_alias" };
 
 async function listActiveIcloudAddresses(accountId: string) {
-  return all<ActiveIcloudAddress>("SELECT id,address,type FROM mail_address WHERE status='active' AND ((type='icloud_primary' AND account_id=?) OR (type='icloud_hide' AND account_id=?))", accountId, accountId);
+  return all<ActiveIcloudAddress>("SELECT id,address,type FROM mail_address WHERE status='active' AND account_id=? AND type IN ('icloud_primary','icloud_hide','icloud_alias')", accountId);
 }
 
 function matchingIds(addresses: ActiveIcloudAddress[], list: string[]) {
@@ -222,4 +237,4 @@ export async function refreshIcloudMessageHtml(messageId:string) {
     await active.client.logout();
   }
 }
-export async function disconnectIcloudAccount(accountId:string){ if(!await one("SELECT id FROM mail_account WHERE id=?",accountId)) throw new MailStoreError("iCloud 账号不存在","not_found"); const now=stamp(); await batch([{query:"UPDATE mail_address SET status='deleted',deleted_at=?,updated_at=? WHERE account_id=? AND type='icloud_primary'",params:[now,now,accountId]},{query:"UPDATE mail_address SET account_id=NULL,updated_at=? WHERE account_id=? AND type='icloud_hide'",params:[now,accountId]},{query:"DELETE FROM mail_account WHERE id=?",params:[accountId]}]); }
+export async function disconnectIcloudAccount(accountId:string){ if(!await one("SELECT id FROM mail_account WHERE id=?",accountId)) throw new MailStoreError("iCloud 账号不存在","not_found"); const now=stamp(); await batch([{query:"UPDATE mail_address SET status='deleted',deleted_at=?,updated_at=? WHERE account_id=? AND type='icloud_primary'",params:[now,now,accountId]},{query:"UPDATE mail_address SET account_id=NULL,updated_at=? WHERE account_id=? AND type IN ('icloud_hide','icloud_alias')",params:[now,accountId]},{query:"DELETE FROM mail_account WHERE id=?",params:[accountId]}]); }

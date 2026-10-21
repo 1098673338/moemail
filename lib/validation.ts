@@ -49,10 +49,14 @@ export const icloudAliasSnapshotSchema = z.object({
   scope: z.literal("active"),
   aliases: z.array(icloudAliasSnapshotItemSchema)
     .max(2000, "一次最多同步 2000 个地址"),
-}).superRefine(({ aliases }, context) => {
+  mailAliases: z.array(icloudAliasSnapshotItemSchema.extend({
+    providerId: z.string().trim().regex(/^mail-alias:\d+:[^\s:]+@(?:icloud\.com|me\.com|mac\.com)$/, "邮箱别名标识无效"),
+    status: z.enum(["active", "disabled"]),
+  })).max(100, "邮箱别名清单过大").optional(),
+}).superRefine(({ aliases, mailAliases }, context) => {
   const addresses = new Set<string>();
   const providerIds = new Set<string>();
-  for (const [index, alias] of aliases.entries()) {
+  for (const [index, alias] of [...aliases, ...(mailAliases || [])].entries()) {
     if (addresses.has(alias.address)) {
       context.addIssue({ code: "custom", message: `地址清单中存在重复邮箱：${alias.address}`, path: ["aliases", index, "address"] });
     }

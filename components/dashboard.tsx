@@ -190,7 +190,7 @@ const calendarMonthFormatter = new Intl.DateTimeFormat("zh-CN", { year: "numeric
 const calendarDateFormatter = new Intl.DateTimeFormat("zh-CN", { year: "numeric", month: "long", day: "numeric", weekday: "long" });
 
 function addressRemark(address: MailAddressDto) {
-  return address.type === "icloud_primary" ? "主号" : address.providerLabel;
+  return address.type === "icloud_primary" ? "主号" : address.type === "icloud_alias" ? "别名" : address.providerLabel;
 }
 
 function addressTag(address: MailAddressDto): AddressTag | null {
@@ -258,8 +258,14 @@ function requestAppleLabelUpdate(address: MailAddressDto, label: string) {
   });
 }
 
-function requestAppleAliasDeactivation(address: MailAddressDto) {
+function requestAppleAddressRemoval(address: MailAddressDto, accountAddress?: string) {
   return new Promise<void>((resolve, reject) => {
+    const isMailAlias = address.type === "icloud_alias";
+    const requestType = isMailAlias ? "MOEMAIL_DELETE_APPLE_MAIL_ALIAS" : "MOEMAIL_DEACTIVATE_APPLE_ALIAS";
+    if (isMailAlias && (!address.providerId || !accountAddress)) {
+      reject(new Error("邮箱别名资料不完整，请重新同步地址"));
+      return;
+    }
     if (!address.address) {
       reject(new Error("缺少要停用的 iCloud 地址，请刷新页面后重试"));
       return;
@@ -270,18 +276,19 @@ function requestAppleAliasDeactivation(address: MailAddressDto) {
       reject(new Error("未检测到同步助手，请重新加载插件并刷新当前 MoeMail 页面"));
     }, 45_000);
     const handleMessage = (event: MessageEvent) => {
-      if (event.source !== window || event.data?.type !== "MOEMAIL_DEACTIVATE_APPLE_ALIAS_RESULT" || event.data.requestId !== requestId || event.data.bridgeVersion !== ICLOUD_BRIDGE_VERSION) return;
+      if (event.source !== window || event.data?.type !== `${requestType}_RESULT` || event.data.requestId !== requestId || event.data.bridgeVersion !== ICLOUD_BRIDGE_VERSION) return;
       window.clearTimeout(timeout);
       window.removeEventListener("message", handleMessage);
       if (event.data.ok) resolve();
-      else reject(new Error(event.data.error || "Apple 邮箱停用失败"));
+      else reject(new Error(event.data.error || (isMailAlias ? "Apple 邮箱别名删除失败" : "Apple 邮箱停用失败")));
     };
     window.addEventListener("message", handleMessage);
     window.postMessage({
-      type: "MOEMAIL_DEACTIVATE_APPLE_ALIAS",
+      type: requestType,
       requestId,
       providerId: address.providerId,
       address: address.address,
+      accountAddress,
     }, "*");
   });
 }
@@ -735,16 +742,20 @@ export function Dashboard() {
             onMarkRead={markMessageRead}
             onEdit={(address) => { setEditingAddressId(address.id); setModal("edit_address"); }}
             onDelete={(address) => {
+              const isMailAlias = address.type === "icloud_alias";
+              const relatedAliases = addresses.filter((item) => item.type === "icloud_alias" && item.accountId === address.accountId && item.address.split("@")[0] === address.address.split("@")[0]);
               setConfirmation({
-                title: "停用 iCloud 邮箱",
-                description: `${address.address} 将在 Apple 停用，并清空当前项目中这个邮箱的资料和邮件。此操作无法撤销。`,
-                confirmLabel: "停用并删除",
+                title: isMailAlias ? "永久删除 iCloud 邮箱别名" : "停用 iCloud 邮箱",
+                description: isMailAlias
+                  ? `将从 Apple 账户永久删除 ${relatedAliases.map((item) => item.address).join("、")}，并清空项目中这些地址的资料和邮件。此别名在其他域名下的对应地址也会一并删除。删除后无法恢复，后续邮件将无法送达。`
+                  : `${address.address} 将在 Apple 停用，并清空当前项目中这个邮箱的资料和邮件。此操作无法撤销。`,
+                confirmLabel: isMailAlias ? "永久删除别名" : "停用并删除",
                 actionKey: `address:delete:${address.id}`,
                 action: async () => {
-                  await requestAppleAliasDeactivation(address);
-                  await requestJson(`/api/addresses/${address.id}/apple-deactivated`, { method: "POST" });
+                  await requestAppleAddressRemoval(address, accounts.find((account) => account.id === address.accountId)?.emailAddress);
+                  await requestJson(`/api/addresses/${address.id}/${isMailAlias ? "apple-deleted" : "apple-deactivated"}`, { method: "POST" });
                 },
-                success: "iCloud 邮箱已在 Apple 停用，本地数据已清空",
+                success: isMailAlias ? "邮箱别名已从 Apple 删除，本地数据已清空" : "iCloud 邮箱已在 Apple 停用，本地数据已清空",
               });
             }}
             onUpdateTag={(address, tag) => runAction(`address:tag:${address.id}`, async () => {
@@ -833,7 +844,7 @@ export function Dashboard() {
             onUpdateCredentials={(account) => { setCredentialAccountId(account.id); setModal("icloud_password"); }}
             onClearAliases={(account) => { setModal(null); setConfirmation({
               title: "清空所有 iCloud 邮箱",
-              description: "将删除当前项目中的全部 iCloud 隐藏邮箱，只保留主邮箱。邮件会保留，之后可以重新同步地址。",
+              description: "将删除当前项目中的全部 iCloud 隐藏地址和邮箱别名，只保留主邮箱。Apple 端地址和邮件会保留，之后可以重新同步地址。",
               confirmLabel: "清空所有邮箱",
               actionKey: `icloud:clear:${account.id}`,
               action: async () => { await requestJson(`/api/icloud/accounts/${account.id}/aliases`, { method: "DELETE" }); },
@@ -841,7 +852,7 @@ export function Dashboard() {
             }); }}
             onClearAliasData={(account) => { setModal(null); setConfirmation({
               title: "清空所有 iCloud 邮箱数据",
-              description: "将永久删除当前项目中的全部 iCloud 隐藏邮箱及其添加时间、标签、备注、手机号、链接和操作记录。主邮箱连接、邮件和 Apple 端数据会保留；重新同步只能恢复 Apple 地址，手动填写的资料无法恢复。",
+              description: "将永久删除当前项目中的全部 iCloud 隐藏地址、邮箱别名及其添加时间、标签、备注、手机号、链接和操作记录。主邮箱连接、邮件和 Apple 端数据会保留；重新同步只能恢复 Apple 地址，手动填写的资料无法恢复。",
               confirmLabel: "清空所有数据",
               actionKey: `icloud:clear-data:${account.id}`,
               action: async () => { await requestJson(`/api/icloud/accounts/${account.id}/aliases/data`, { method: "DELETE" }); },
@@ -1099,7 +1110,7 @@ function AddressView(props: {
       </div>
       {visibleAddresses.length === 0 ? (
         <div className="address-table-panel panel">
-          <EmptyState compact title="还没有 iCloud 邮箱" description="连接 iCloud 并同步地址后，会在这里显示地址资料和最近一封邮件。" />
+          <EmptyState compact title="还没有 iCloud 邮箱" description="连接 iCloud 并同步隐藏地址和邮箱别名后，会在这里显示地址资料和最近一封邮件。" />
         </div>
       ) : (
         <div className="address-table-panel panel">
@@ -1193,7 +1204,7 @@ function AddressView(props: {
                     <td className="time-value">{message ? formatTableReceivedAt(message.receivedAt) : "-"}</td>
                     <td className={`address-actions-cell${address.type === "icloud_primary" ? " primary-only" : ""}`}>
                       <button type="button" className="icon-button address-table-action" title="编辑邮箱资料" aria-label={`编辑 ${address.address} 的邮箱资料`} onClick={(event) => { event.stopPropagation(); props.onEdit(address); }} onKeyDown={(event) => event.stopPropagation()}><PencilLine size={14} aria-hidden="true" /></button>
-                      {address.type === "icloud_hide" && <button type="button" className="icon-button address-table-action address-delete-button" title="删除邮箱" aria-label={`删除邮箱 ${address.address}`} onClick={(event) => { event.stopPropagation(); props.onDelete(address); }} onKeyDown={(event) => event.stopPropagation()}><Trash2 size={14} aria-hidden="true" /></button>}
+                      {address.type !== "icloud_primary" && <button type="button" className="icon-button address-table-action address-delete-button" title="删除邮箱" aria-label={`删除邮箱 ${address.address}`} onClick={(event) => { event.stopPropagation(); props.onDelete(address); }} onKeyDown={(event) => event.stopPropagation()}><Trash2 size={14} aria-hidden="true" /></button>}
                     </td>
                   </tr>
                 );

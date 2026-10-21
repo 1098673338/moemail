@@ -33,13 +33,13 @@ export async function listAddresses(includeDeleted = false) {
   SELECT a.*, COALESCE(message_counts.message_count, 0) AS message_count
   FROM mail_address a
   LEFT JOIN message_counts ON message_counts.address_id = a.id
-  WHERE a.type IN ('icloud_primary','icloud_hide') ${includeDeleted ? "" : "AND a.status <> 'deleted'"}
+  WHERE a.type IN ('icloud_primary','icloud_hide','icloud_alias') ${includeDeleted ? "" : "AND a.status <> 'deleted'"}
   ORDER BY a.added_at DESC, a.created_at DESC`);
   return rows.map(addressDto);
 }
 
 export async function getAddress(id: string) {
-  const row = await one<AddressRow>(`SELECT a.*, (SELECT COUNT(*) FROM message_recipient mr JOIN message m ON m.id=mr.message_id WHERE mr.address_id=a.id AND m.source='icloud' AND m.deleted_at IS NULL) message_count FROM mail_address a WHERE a.id=? AND a.type IN ('icloud_primary','icloud_hide')`, id);
+  const row = await one<AddressRow>(`SELECT a.*, (SELECT COUNT(*) FROM message_recipient mr JOIN message m ON m.id=mr.message_id WHERE mr.address_id=a.id AND m.source='icloud' AND m.deleted_at IS NULL) message_count FROM mail_address a WHERE a.id=? AND a.type IN ('icloud_primary','icloud_hide','icloud_alias')`, id);
   return row ? addressDto(row) : null;
 }
 
@@ -49,6 +49,7 @@ export async function createAddress(input: { address: string; type: AddressType;
   const address = input.address.trim().toLowerCase();
   if (await one("SELECT id FROM mail_address WHERE address=? COLLATE NOCASE", address)) throw new MailStoreError("这个邮箱地址已经存在", "conflict");
   if (input.type === "icloud_primary" && !input.accountId) throw new MailStoreError("iCloud 主邮箱必须关联一个账号", "conflict");
+  if (input.type === "icloud_alias" && !input.accountId) throw new MailStoreError("iCloud 邮箱别名必须关联一个账号", "conflict");
   const id = crypto.randomUUID(); const created = now();
   await batch([{ query: `INSERT INTO mail_address (id,address,type,status,provider,account_id,label,note,tags_json,tag_color,provider_created_at,added_at,created_at,updated_at) VALUES (?,? ,?,'active','icloud',?,?,?,?,?,?,?,?,?)`, params: [id,address,input.type,input.accountId || null,input.label || null,input.note || null,JSON.stringify(input.tags || []),input.tagColor || null,input.providerCreatedAt?.getTime() || null,input.addedAt === undefined ? created : input.addedAt?.getTime() || null,created,created] }, { query: "INSERT INTO address_event (id,address_id,action,detail,created_at) VALUES (?,?,?,?,?)", params: [crypto.randomUUID(),id,"created",`创建 ${input.type} 地址`,created] }]);
   return (await getAddress(id))!;
@@ -59,6 +60,7 @@ export async function updateAddress(id: string, input: { label?: string | null; 
   if (current.status === "deleted" && input.status && input.status !== "active") throw new MailStoreError("已删除地址只能恢复为启用状态", "invalid_transition");
   if (current.type === "icloud_hide" && input.status === "deleted" && current.status === "active") throw new MailStoreError("iCloud 隐藏地址必须先在 Apple 停用，再确认永久删除", "invalid_transition");
   if (current.type === "icloud_primary" && input.status === "deleted") throw new MailStoreError("请在 iCloud 连接设置中断开主邮箱", "invalid_transition");
+  if (current.type === "icloud_alias" && input.status === "deleted") throw new MailStoreError("请先从 Apple 永久删除邮箱别名，再确认清理项目记录", "invalid_transition");
   if ("providerLabel" in input && current.type !== "icloud_hide") throw new MailStoreError("只有 iCloud 隐藏地址可以修改 Apple 标签", "conflict");
   const sharedTagName = input.tags?.length === 1 && current.tags.includes(input.tags[0]) && "tagColor" in input && input.tagColor !== current.tagColor
     ? input.tags[0]
@@ -69,7 +71,7 @@ export async function updateAddress(id: string, input: { label?: string | null; 
   if (input.status) { fields.push("status=?"); values.push(input.status); if (["disabled","pending_delete"].includes(input.status)) { fields.push("disabled_at=?"); values.push(now()); } if (input.status === "active") fields.push("disabled_at=NULL", "deleted_at=NULL"); if (input.status === "deleted") { fields.push("deleted_at=?"); values.push(now()); } }
   if (!fields.length) return current; const updatedAt = now(); fields.push("updated_at=?"); values.push(updatedAt, id); await run(`UPDATE mail_address SET ${fields.join(",")} WHERE id=?`, ...values);
   if (sharedTagName) {
-    const rows = await all<{ id: string; tags_json: string }>("SELECT id,tags_json FROM mail_address WHERE id<>? AND type IN ('icloud_primary','icloud_hide') AND status<>'deleted'", id);
+    const rows = await all<{ id: string; tags_json: string }>("SELECT id,tags_json FROM mail_address WHERE id<>? AND type IN ('icloud_primary','icloud_hide','icloud_alias') AND status<>'deleted'", id);
     const matchingIds = rows.filter((row) => tags(row.tags_json).includes(sharedTagName)).map((row) => row.id);
     if (matchingIds.length) await batch(matchingIds.map((addressId) => ({ query: "UPDATE mail_address SET tag_color=?,updated_at=? WHERE id=?", params: [input.tagColor || null, updatedAt, addressId] })));
   }
@@ -79,6 +81,20 @@ export async function updateAddress(id: string, input: { label?: string | null; 
 export async function deleteIcloudAddressAfterAppleDeactivation(id: string) {
   const current = await getAddress(id); if (!current || current.type !== "icloud_hide") throw new MailStoreError("只有 iCloud 隐藏地址可以确认 Apple 停用", "conflict");
   const removed = await run(`DELETE FROM message WHERE id IN (SELECT message_id FROM message_recipient WHERE address_id=?) AND NOT EXISTS (SELECT 1 FROM message_recipient mr WHERE mr.message_id=message.id AND mr.address_id<>?)`,id,id); await run("DELETE FROM mail_address WHERE id=?",id); if (current.accountId && current.status === "active") await run("UPDATE mail_account SET aliases_active_count=MAX(aliases_active_count-1,0),updated_at=? WHERE id=?",now(),current.accountId); return { id, removedMessages: Number(removed.meta.changes || 0) };
+}
+
+export async function deleteIcloudMailAliasAfterAppleDeletion(id: string) {
+  const current = await getAddress(id);
+  if (!current || current.type !== "icloud_alias" || !current.accountId) throw new MailStoreError("只有 iCloud 邮箱别名可以确认 Apple 永久删除", "conflict");
+  // Apple deletes all legacy-domain variants of the same alias together.
+  const group = "SELECT id FROM mail_address WHERE account_id=? AND type='icloud_alias' AND substr(address,1,instr(address,'@')-1)=? COLLATE NOCASE";
+  const params = [current.accountId, current.address.split("@")[0]];
+  const results = await batch([
+    { query: `DELETE FROM message WHERE id IN (SELECT message_id FROM message_recipient WHERE address_id IN (${group})) AND NOT EXISTS (SELECT 1 FROM message_recipient mr WHERE mr.message_id=message.id AND mr.address_id NOT IN (${group}))`, params: [...params, ...params] },
+    { query: `DELETE FROM mail_address WHERE id IN (${group})`, params },
+    { query: "UPDATE mail_account SET aliases_active_count=(SELECT COUNT(*) FROM mail_address WHERE account_id=? AND type IN ('icloud_hide','icloud_alias') AND status='active'),aliases_inactive_count=(SELECT COUNT(*) FROM mail_address WHERE account_id=? AND type IN ('icloud_hide','icloud_alias') AND status='disabled'),updated_at=? WHERE id=?", params: [current.accountId, current.accountId, now(), current.accountId] },
+  ]);
+  return { id, removedMessages: Number(results[0].meta.changes || 0), removedAddresses: Number(results[1].meta.changes || 0) };
 }
 
 export async function listMessages(addressId?: string | null) {
@@ -112,7 +128,7 @@ export async function getMessage(id: string) { const row=await one<MessageRow>("
 
 export async function ingestMessage(input: { source: "icloud"; accountId?: string | null; providerUid?: number | null; providerMailbox?: string | null; providerMessageId?: string | null; senderAddress: string; senderName?: string | null; recipients: string[]; subject: string; textBody: string; htmlBody?: string | null; addressIds?: string[]; receivedAt: Date }) {
   const recipients=Array.from(new Set(input.recipients.map(v=>v.trim().toLowerCase()).filter(Boolean))); let ids=input.addressIds || [];
-  if (!ids.length && recipients.length) { const marks=recipients.map(()=>"?").join(","); ids=(await all<{id:string}>(`SELECT id FROM mail_address WHERE lower(address) IN (${marks}) AND type IN ('icloud_primary','icloud_hide') AND status='active'`,...recipients)).map(row=>row.id); }
+  if (!ids.length && recipients.length) { const marks=recipients.map(()=>"?").join(","); ids=(await all<{id:string}>(`SELECT id FROM mail_address WHERE lower(address) IN (${marks}) AND type IN ('icloud_primary','icloud_hide','icloud_alias') AND status='active'`,...recipients)).map(row=>row.id); }
   ids=Array.from(new Set(ids)); if (!ids.length) throw new MailStoreError("没有找到可接收这封邮件的启用地址", "address_not_found");
   const existing=await one<{id:string}>("SELECT id FROM message WHERE source='icloud' AND account_id=? AND provider_mailbox=? AND (provider_uid=? OR provider_message_id=?) LIMIT 1",input.accountId || null,input.providerMailbox || "INBOX",input.providerUid || null,input.providerMessageId || null); const id=existing?.id || crypto.randomUUID(); const timestamp=now(); const received=input.receivedAt.getTime();
   const statements=[{query: existing ? "UPDATE message SET provider_uid=?,provider_mailbox=?,provider_message_id=?,sender_address=?,sender_name=?,recipients_json=?,subject=?,text_body=?,html_body=?,received_at=?,deleted_at=NULL,updated_at=? WHERE id=?" : "INSERT INTO message (id,source,account_id,provider_uid,provider_mailbox,provider_message_id,sender_address,sender_name,recipients_json,subject,text_body,html_body,received_at,sent_at,is_read,created_at,updated_at) VALUES (?,'icloud',?,?,?,?,?,?,?,?,?,?,?,?,0,?,?)",params: existing ? [input.providerUid || null,input.providerMailbox || "INBOX",input.providerMessageId || null,input.senderAddress,input.senderName || null,JSON.stringify(recipients),input.subject || "（无主题）",input.textBody,input.htmlBody || null,received,timestamp,id] : [id,input.accountId || null,input.providerUid || null,input.providerMailbox || "INBOX",input.providerMessageId || null,input.senderAddress,input.senderName || null,JSON.stringify(recipients),input.subject || "（无主题）",input.textBody,input.htmlBody || null,received,received,timestamp,timestamp]},{query:"DELETE FROM message_recipient WHERE message_id=?",params:[id]}];

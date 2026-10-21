@@ -34,5 +34,23 @@
       { "header": "Referer", "operation": "set", "value": "https://www.icloud.com/" }
     ] },
     "condition": { "urlFilter": "icloud.com/v" }
+  },
+  {
+    "id": 5,
+    "priority": 1,
+    "action": { "type": "modifyHeaders", "requestHeaders": [
+      { "header": "Origin", "operation": "set", "value": "https://www.icloud.com.cn" },
+      { "header": "Referer", "operation": "set", "value": "https://www.icloud.com.cn/mail/" }
+    ] },
+    "condition": { "urlFilter": "icloud.com.cn/cc/mail/" }
+  },
+  {
+    "id": 6,
+    "priority": 1,
+    "action": { "type": "modifyHeaders", "requestHeaders": [
+      { "header": "Origin", "operation": "set", "value": "https://www.icloud.com" },
+      { "header": "Referer", "operation": "set", "value": "https://www.icloud.com/mail/" }
+    ] },
+    "condition": { "urlFilter": "icloud.com/cc/mail/" }
   }
 ]

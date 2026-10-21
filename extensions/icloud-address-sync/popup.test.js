@@ -9,7 +9,7 @@ const created = { ok: true, created: true };
 const limit = { ok: true, created: false, limitReached: true };
 const aliases = [{ address: "alias@icloud.com", providerId: "apple-1", status: "active", providerLabel: "Label123" }];
 
-async function setup({ outcomes = [created, limit], readError, snapshotError, mailError, reloadError, tabs, mailResult = { imported: 2, synced: 3 }, onMailSync } = {}) {
+async function setup({ outcomes = [created, limit], readError, readErrorCode, snapshotError, mailError, reloadError, tabs, mailResult = { imported: 2, synced: 3 }, onMailSync, mailAliases = [] } = {}) {
   const elements = new Map();
   const calls = [];
   const statusHistory = [];
@@ -57,7 +57,8 @@ async function setup({ outcomes = [created, limit], readError, snapshotError, ma
             return result;
           }
           assert.equal(message.type, "MOEMAIL_READ_APPLE_ALIASES");
-          return readError ? { ok: false, error: readError } : { ok: true, aliases };
+          assert.equal(message.accountAddress, "primary@icloud.com");
+          return readError ? { ok: false, error: readError, code: readErrorCode } : { ok: true, aliases, mailAliases };
         },
       },
       tabs: {
@@ -76,14 +77,14 @@ async function setup({ outcomes = [created, limit], readError, snapshotError, ma
     },
     async fetch(url, options) {
       const path = new URL(url).pathname;
-      if (path === "/api/icloud/bridge/accounts") return { ok: true, json: async () => ({ accounts: [{ id: "account-1" }] }) };
+      if (path === "/api/icloud/bridge/accounts") return { ok: true, json: async () => ({ accounts: [{ id: "account-1", emailAddress: "primary@icloud.com" }] }) };
       assertBusy();
       calls.push(path);
       assert.equal(options.method, "POST");
       assert.equal(options.headers.authorization, "Bearer test-token");
       if (path.endsWith("/aliases/snapshot")) {
-        assert.deepEqual(JSON.parse(options.body), { authoritative: true, scope: "active", aliases });
-        return { ok: !snapshotError, json: async () => snapshotError ? { error: snapshotError } : { activeCount: aliases.length } };
+        assert.deepEqual(JSON.parse(options.body), { authoritative: true, scope: "active", aliases, mailAliases });
+        return { ok: !snapshotError, json: async () => snapshotError ? { error: snapshotError } : { activeCount: aliases.length + mailAliases.filter(alias => alias.status === "active").length } };
       }
       assert.equal(path, "/api/icloud/bridge/accounts/account-1/sync");
       await onMailSync?.();
@@ -257,4 +258,17 @@ test("manual sync does not warn when no project page is open", async () => {
   await app.run("syncAliases");
   assert.equal(app.status(), "同步完成，共 1 个地址");
   assert.equal(app.elements.get("#status").className, "success");
+});
+
+test("manual sync submits ordinary mail aliases with hidden addresses and reports the combined count", async () => {
+  const app = await setup({ mailAliases: [{ address: "alternate@icloud.com", providerId: "mail-alias:123:alternate@icloud.com", status: "active" }], mailResult: { imported: 0 } });
+  await app.run("syncAliases");
+  assert.equal(app.status(), "同步完成，共 2 个地址");
+});
+
+test("account mismatch gives a short actionable message without overwriting the project", async () => {
+  const app = await setup({ readError: "Wrong account", readErrorCode: "ACCOUNT_MISMATCH" });
+  await app.run("syncAliases");
+  assert.equal(app.status(), "iCloud 账号不一致，请切换账号后重试");
+  assert.deepEqual(app.calls, ["MOEMAIL_READ_APPLE_ALIASES"]);
 });

@@ -16,6 +16,7 @@ const createProgressBar = document.querySelector("#createProgressBar");
 let statusTimer;
 let createProgressTimer;
 let connectedAccountId = "";
+let connectedAccountAddress = "";
 
 function setConnectButtonState(state) {
   const labels = {
@@ -134,6 +135,7 @@ async function connectCloud(interactive = true) {
     if (!data.accounts?.length) throw new Error("云端项目还没有连接 iCloud 账号");
     if (data.accounts.length !== 1) throw new Error("云端项目存在多个 iCloud 账号，无法自动确定同步账号");
     connectedAccountId = data.accounts[0].id;
+    connectedAccountAddress = data.accounts[0].emailAddress;
     await chrome.storage.local.set({ serverUrl: origin, bridgeToken: tokenInput.value.trim() });
     await ensureAppBridge();
     accountSection.hidden = false;
@@ -141,6 +143,7 @@ async function connectCloud(interactive = true) {
     setStatus("");
   } catch (error) {
     connectedAccountId = "";
+    connectedAccountAddress = "";
     accountSection.hidden = true;
     setConnectButtonState("idle");
     setStatus(error instanceof Error ? error.message : "连接失败", "error");
@@ -160,18 +163,19 @@ function validateCompleteList(aliases, expectedActive) {
 }
 
 async function readIcloudAliases() {
-  const response = await chrome.runtime.sendMessage({ type: "MOEMAIL_READ_APPLE_ALIASES" });
-  if (!response?.ok) throw new Error(response?.error || "无法读取 Apple 地址");
+  const response = await chrome.runtime.sendMessage({ type: "MOEMAIL_READ_APPLE_ALIASES", accountAddress: connectedAccountAddress });
+  if (!response?.ok) throw Object.assign(new Error(response?.error || "无法读取 Apple 地址"), { code: response?.code });
   const aliases = response.aliases || [];
   validateCompleteList(aliases, aliases.length);
-  return aliases;
+  if (!Array.isArray(response.mailAliases)) throw new Error("同步助手未返回邮箱别名清单，请重新加载插件后重试");
+  return { aliases, mailAliases: response.mailAliases };
 }
 
 async function syncAddressSnapshot() {
-  const aliases = await readIcloudAliases();
+  const { aliases, mailAliases } = await readIcloudAliases();
   const addressResult = await cloudRequest(`/api/icloud/accounts/${connectedAccountId}/aliases/snapshot`, {
     method: "POST",
-    body: JSON.stringify({ authoritative: true, scope: "active", aliases }),
+    body: JSON.stringify({ authoritative: true, scope: "active", aliases, mailAliases }),
   });
   return { addressResult };
 }
@@ -188,9 +192,10 @@ async function syncAliases() {
     const pageStatus = await refreshCloudPages();
     const mailStatus = mailResult.imported > 0 ? `，新增 ${mailResult.imported} 封邮件` : "";
     setStatus(`同步完成，共 ${addressResult.activeCount} 个地址${mailStatus}${pageStatus}`, pageStatus ? "warning" : "success", pageStatus ? 0 : 3200);
-  } catch {
+  } catch (error) {
     const pageStatus = addressResult ? await refreshCloudPages() : "";
-    setStatus(`${addressResult ? "地址已同步，邮件同步失败，请重试" : "同步失败，请重试"}${pageStatus}`, "error", 0);
+    const message = error?.code === "ACCOUNT_MISMATCH" ? "iCloud 账号不一致，请切换账号后重试" : addressResult ? "地址已同步，邮件同步失败，请重试" : "同步失败，请重试";
+    setStatus(`${message}${pageStatus}`, "error", 0);
   } finally {
     setAccountActionsDisabled(false);
   }
@@ -287,6 +292,7 @@ async function deleteDisabledAliases() {
 
 function resetConnection() {
   connectedAccountId = "";
+  connectedAccountAddress = "";
   accountSection.hidden = true;
   setConnectButtonState("idle");
 }
